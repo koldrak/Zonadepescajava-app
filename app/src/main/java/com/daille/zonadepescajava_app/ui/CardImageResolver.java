@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-
+import android.content.res.Resources;
 /**
  * Helper that mirrors the asset resolution strategy from the desktop example, but adapted to Android assets.
  */
