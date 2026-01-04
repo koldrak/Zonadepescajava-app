@@ -36,7 +36,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void setupBoard() {
         gameState.newGame();
-        adapter = new BoardSlotAdapter(Arrays.asList(gameState.getBoard()), this);
+        adapter = new BoardSlotAdapter(this, Arrays.asList(gameState.getBoard()), this);
         binding.boardRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.boardRecycler.setAdapter(adapter);
     }
