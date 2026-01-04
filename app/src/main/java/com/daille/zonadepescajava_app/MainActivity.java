@@ -1,7 +1,6 @@
 package com.daille.zonadepescajava_app;
 
 import android.graphics.Bitmap;
-import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -47,7 +46,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         diceImageResolver = new DiceImageResolver(this);
         animationHandler = new Handler(Looper.getMainLooper());
         setupBoard();
-        setupButtons();
         refreshUi("Juego iniciado. Lanza un dado y toca una carta.");
     }
 
@@ -56,24 +54,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         adapter = new BoardSlotAdapter(this, Arrays.asList(gameState.getBoard()), this);
         binding.boardRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.boardRecycler.setAdapter(adapter);
-    }
-
-    private void setupButtons() {
-        binding.rollD4.setOnClickListener(v -> onRoll(DieType.D4));
-        binding.rollD6.setOnClickListener(v -> onRoll(DieType.D6));
-        binding.rollD8.setOnClickListener(v -> onRoll(DieType.D8));
-        binding.rollD12.setOnClickListener(v -> onRoll(DieType.D12));
-
-        setButtonIcon(binding.rollD4, DieType.D4);
-        setButtonIcon(binding.rollD6, DieType.D6);
-        setButtonIcon(binding.rollD8, DieType.D8);
-        setButtonIcon(binding.rollD12, DieType.D12);
-    }
-
-    private void onRoll(DieType type) {
-        startRollingAnimation(type);
-        String msg = gameState.rollFromReserve(type);
-        refreshUi(msg);
     }
 
     private void refreshUi(String log) {
@@ -87,8 +67,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 : "Dado preparado: " + gameState.getSelectedDie().getLabel());
 
         updateSelectedDiePreview();
-        renderDiceCollection(binding.reserveDiceContainer, gameState.getReserve());
-        renderDiceCollection(binding.lostDiceContainer, gameState.getLostDice());
+        renderDiceCollection(binding.reserveDiceContainer, gameState.getReserve(), true);
+        renderDiceCollection(binding.lostDiceContainer, gameState.getLostDice(), false);
 
         binding.reserve.setText("Reserva: " + buildReserveText());
         binding.lost.setText(String.format(Locale.getDefault(), "Perdidos: %d", gameState.getLostDice().size()));
@@ -125,14 +105,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         CardFullscreenDialog.show(this, image);
     }
 
-    private void setButtonIcon(com.google.android.material.button.MaterialButton button, DieType type) {
-        Bitmap bmp = diceImageResolver.getTypePreview(type);
-        if (bmp != null) {
-            button.setIcon(new BitmapDrawable(getResources(), bmp));
-            button.setIconPadding(12);
-        }
-    }
-
     private void updateSelectedDiePreview() {
         if (gameState.getSelectedDie() == null) {
             binding.selectedDieImage.setVisibility(View.GONE);
@@ -148,7 +120,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
     }
 
-    private void renderDiceCollection(View container, Iterable<?> dice) {
+    private void handleReserveDieTap(DieType type) {
+        startRollingAnimation(type);
+        String msg = gameState.rollFromReserve(type);
+        refreshUi(msg);
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+    }
+
+    private void renderDiceCollection(View container, Iterable<?> dice, boolean allowReserveTap) {
         if (!(container instanceof ViewGroup)) return;
         ViewGroup group = (ViewGroup) container;
         group.removeAllViews();
@@ -156,20 +135,22 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         for (Object item : dice) {
             Bitmap bmp = null;
             String contentDescription = "";
+            ImageView chip = new ImageView(this);
+            chip.setLayoutParams(new ViewGroup.MarginLayoutParams(96, 96));
+            ((ViewGroup.MarginLayoutParams) chip.getLayoutParams()).setMargins(4, 0, 4, 0);
 
             if (item instanceof DieType) {
                 DieType type = (DieType) item;
                 bmp = diceImageResolver.getTypePreview(type);
                 contentDescription = type.getLabel();
+                if (allowReserveTap) {
+                    chip.setOnClickListener(v -> handleReserveDieTap(type));
+                }
             } else if (item instanceof com.daille.zonadepescajava_app.model.Die) {
                 com.daille.zonadepescajava_app.model.Die die = (com.daille.zonadepescajava_app.model.Die) item;
                 bmp = diceImageResolver.getFace(die);
                 contentDescription = die.getLabel();
             }
-
-            ImageView chip = new ImageView(this);
-            chip.setLayoutParams(new ViewGroup.MarginLayoutParams(96, 96));
-            ((ViewGroup.MarginLayoutParams) chip.getLayoutParams()).setMargins(4, 0, 4, 0);
             if (bmp != null) {
                 chip.setImageBitmap(bmp);
             }
