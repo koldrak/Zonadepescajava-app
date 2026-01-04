@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 
 import com.daille.zonadepescajava_app.databinding.ActivityMainBinding;
 import com.daille.zonadepescajava_app.model.BoardSlot;
+import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardId;
 import com.daille.zonadepescajava_app.model.Die;
 import com.daille.zonadepescajava_app.model.DieType;
@@ -40,6 +41,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private DiceImageResolver diceImageResolver;
     private Handler animationHandler;
     private Runnable rollingRunnable;
+    private boolean endScoringShown = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,17 +55,46 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         cardImageResolver = new CardImageResolver(this);
         diceImageResolver = new DiceImageResolver(this);
         animationHandler = new Handler(Looper.getMainLooper());
-        boolean startedNewGame = viewModel.startNewGameIfNeeded();
-        setupBoard();
-        refreshUi(startedNewGame
-                ? "Juego iniciado. Lanza un dado y toca una carta."
-                : "Partida restaurada tras cambio de orientación.");
+        setupMenuButtons();
+
+        if (viewModel.isInitialized()) {
+            setupBoard();
+            showGameLayout();
+            refreshUi("Partida restaurada tras cambio de orientación.");
+        } else {
+            showStartMenu();
+        }
     }
 
     private void setupBoard() {
         adapter = new BoardSlotAdapter(this, Arrays.asList(gameState.getBoard()), this);
         binding.boardRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.boardRecycler.setAdapter(adapter);
+    }
+
+    private void setupMenuButtons() {
+        binding.startNewGame.setOnClickListener(v -> {
+            viewModel.startNewGame();
+            gameState = viewModel.getGameState();
+            endScoringShown = false;
+            setupBoard();
+            showGameLayout();
+            refreshUi("Juego iniciado. Lanza un dado y toca una carta.");
+        });
+        binding.openSettings.setOnClickListener(v ->
+                Toast.makeText(this, "Configuraciones próximamente.", Toast.LENGTH_SHORT).show());
+        binding.openCollections.setOnClickListener(v ->
+                Toast.makeText(this, "Colecciones disponibles próximamente.", Toast.LENGTH_SHORT).show());
+    }
+
+    private void showStartMenu() {
+        binding.startMenu.setVisibility(View.VISIBLE);
+        binding.gameContent.setVisibility(View.GONE);
+    }
+
+    private void showGameLayout() {
+        binding.startMenu.setVisibility(View.GONE);
+        binding.gameContent.setVisibility(View.VISIBLE);
     }
 
     private void refreshUi(String log) {
@@ -83,6 +114,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.lost.setText(String.format(Locale.getDefault(), "Perdidos: %d", gameState.getLostDice().size()));
         binding.log.setText(log);
         showRevealedCards();
+        checkForFinalScoring();
     }
 
     private String buildReserveText() {
@@ -103,6 +135,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         String result;
         if (gameState.isAwaitingValueAdjustment()) {
             promptValueAdjustmentChoice();
+            return;
+        }
+        if (gameState.isAwaitingBlueCrabDecision()) {
+            promptBlueCrabDecision();
             return;
         }
         if (gameState.isAwaitingGhostShrimpDecision()) {
@@ -128,6 +164,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
         if (gameState.isAwaitingValueAdjustment()) {
             promptValueAdjustmentChoice();
+        }
+        if (gameState.isAwaitingBlueCrabDecision()) {
+            promptBlueCrabDecision();
         }
         if (gameState.isAwaitingPezVelaDecision()) {
             promptPezVelaDecision();
@@ -186,6 +225,54 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
             CardFullscreenDialog.show(this, image);
         }
+    }
+
+    private void checkForFinalScoring() {
+        if (!gameState.isGameOver() || endScoringShown) {
+            return;
+        }
+        endScoringShown = true;
+        showGameLayout();
+        showCaptureScoringSequence();
+    }
+
+    private void showCaptureScoringSequence() {
+        List<Card> captures = new ArrayList<>(gameState.getCaptures());
+        int running = 0;
+        List<Integer> cumulative = new ArrayList<>();
+        for (Card card : captures) {
+            running += card.getPoints();
+            cumulative.add(running);
+        }
+        int finalScore = gameState.getScore();
+        continueCaptureScoring(0, captures, cumulative, running, finalScore);
+    }
+
+    private void continueCaptureScoring(int index, List<Card> captures,
+                                        List<Integer> cumulative, int baseTotal, int finalScore) {
+        if (index >= captures.size()) {
+            showBonusScoreDialog(baseTotal, finalScore);
+            return;
+        }
+        Card card = captures.get(index);
+        Bitmap image = cardImageResolver.getImageFor(card, true);
+        if (image == null) {
+            image = cardImageResolver.getCardBack();
+        }
+        int cardPoints = card.getPoints();
+        int cumulativeScore = cumulative.get(index);
+        String overlay = (cardPoints >= 0 ? "+" : "") + cardPoints + " → " + cumulativeScore;
+        CardFullscreenDialog.show(this, image, overlay,
+                () -> continueCaptureScoring(index + 1, captures, cumulative, baseTotal, finalScore));
+    }
+
+    private void showBonusScoreDialog(int baseTotal, int finalScore) {
+        int bonus = finalScore - baseTotal;
+        String overlay = bonus != 0
+                ? "Bonos: " + (bonus > 0 ? "+" : "") + bonus + "\nTotal: " + finalScore
+                : "Total final: " + finalScore;
+        Bitmap image = cardImageResolver.getCardBack();
+        CardFullscreenDialog.show(this, image, overlay, null);
     }
 
     private void handleReserveDieTap(DieType type) {
@@ -259,6 +346,28 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setNegativeButton("Conservar", (dialog, which) -> {
                     String msg = gameState.chooseAtunReroll(false);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptBlueCrabDecision() {
+        if (!gameState.isAwaitingBlueCrabDecision()) return;
+        new AlertDialog.Builder(this)
+                .setTitle("Jaiba azul")
+                .setMessage("¿Quieres activar la habilidad para ajustar un dado ±1?")
+                .setPositiveButton("Usar", (dialog, which) -> {
+                    String msg = gameState.chooseBlueCrabUse(true);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    if (gameState.isAwaitingValueAdjustment()) {
+                        promptValueAdjustmentChoice();
+                    }
+                })
+                .setNegativeButton("Omitir", (dialog, which) -> {
+                    String msg = gameState.chooseBlueCrabUse(false);
                     refreshUi(msg);
                     Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
                 })
