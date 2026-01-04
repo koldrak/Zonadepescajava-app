@@ -34,6 +34,7 @@ public class GameState {
     private final List<Die> pendingPercebesDice = new ArrayList<>();
     private final List<Integer> pendingPercebesTargets = new ArrayList<>();
     private final List<Die> pendingBallenaDice = new ArrayList<>();
+    private final Deque<PendingSelectionState> pendingSelectionQueue = new ArrayDeque<>();
     private final List<Card> pendingArenquePool = new ArrayList<>();
     private final List<Card> pendingArenqueChosen = new ArrayList<>();
     private int arenqueSlotIndex = -1;
@@ -57,6 +58,18 @@ public class GameState {
     private PendingSelection pendingSelection = PendingSelection.NONE;
     private int pendingSelectionActor = -1;
     private int pendingSelectionAux = -1;
+
+    private static class PendingSelectionState {
+        private final PendingSelection selection;
+        private final int actor;
+        private final int aux;
+
+        private PendingSelectionState(PendingSelection selection, int actor, int aux) {
+            this.selection = selection;
+            this.actor = actor;
+            this.aux = aux;
+        }
+    }
 
     private enum CurrentDirection { UP, DOWN, LEFT, RIGHT }
 
@@ -88,6 +101,7 @@ public class GameState {
         clearPezVelaState();
         pendingPercebesDice.clear();
         pendingPercebesTargets.clear();
+        pendingSelectionQueue.clear();
         awaitingPezVelaDecision = false;
         awaitingPezVelaResultChoice = false;
         pezVelaSlotIndex = -1;
@@ -898,11 +912,33 @@ public class GameState {
     }
 
     private void clearPendingSelection() {
-        pendingSelection = PendingSelection.NONE;
-        pendingSelectionActor = -1;
-        pendingSelectionAux = -1;
-        clearPercebesState();
-        clearBallenaState();
+        clearSelectionState(pendingSelection);
+        PendingSelectionState next = pendingSelectionQueue.poll();
+        if (next != null) {
+            pendingSelection = next.selection;
+            pendingSelectionActor = next.actor;
+            pendingSelectionAux = next.aux;
+        } else {
+            pendingSelection = PendingSelection.NONE;
+            pendingSelectionActor = -1;
+            pendingSelectionAux = -1;
+        }
+    }
+
+    private void clearSelectionState(PendingSelection selection) {
+        switch (selection) {
+            case PERCEBES_MOVE:
+                clearPercebesState();
+                break;
+            case BLUE_WHALE_PLACE:
+                clearBallenaState();
+                break;
+            case ARENQUE_DESTINATION:
+                clearArenqueState();
+                break;
+            default:
+                break;
+        }
     }
 
     private void clearPercebesState() {
@@ -919,6 +955,21 @@ public class GameState {
         pendingArenqueChosen.clear();
         awaitingArenqueChoice = false;
         arenqueSlotIndex = -1;
+    }
+
+    private String queueableSelection(PendingSelection selection, int actor, int aux, String message) {
+        if (pendingSelection == PendingSelection.NONE) {
+            pendingSelection = selection;
+            pendingSelectionActor = actor;
+            pendingSelectionAux = aux;
+            return message;
+        }
+        pendingSelectionQueue.add(new PendingSelectionState(selection, actor, aux));
+        return message + " Queda en espera hasta que finalice la acción actual.";
+    }
+
+    private String queueableSelection(PendingSelection selection, int actor, String message) {
+        return queueableSelection(selection, actor, -1, message);
     }
 
     private void clearAtunState() {
@@ -951,14 +1002,16 @@ public class GameState {
         String result;
         switch (slot.getCard().getId()) {
             case CANGREJO_ROJO:
-                pendingSelection = PendingSelection.RED_CRAB_FROM;
-                pendingSelectionActor = slotIndex;
-                result = "Cangrejo rojo: elige un dado adyacente para mover.";
+                result = queueableSelection(
+                        PendingSelection.RED_CRAB_FROM,
+                        slotIndex,
+                        "Cangrejo rojo: elige un dado adyacente para mover.");
                 break;
             case JAIBA_AZUL:
-                pendingSelection = PendingSelection.BLUE_CRAB;
-                pendingSelectionActor = slotIndex;
-                result = "Jaiba azul: elige un dado para ajustar ±1.";
+                result = queueableSelection(
+                        PendingSelection.BLUE_CRAB,
+                        slotIndex,
+                        "Jaiba azul: elige un dado para ajustar ±1.");
                 break;
             case CAMARON_FANTASMA:
                 result = peekAdjacentCards(slotIndex);
@@ -980,9 +1033,10 @@ public class GameState {
                 result = "Centolla atrae el próximo dado a esta carta.";
                 break;
             case NAUTILUS:
-                pendingSelection = PendingSelection.NAUTILUS_FIRST;
-                pendingSelectionActor = slotIndex;
-                result = "Nautilus: elige un dado para ajustar ±2.";
+                result = queueableSelection(
+                        PendingSelection.NAUTILUS_FIRST,
+                        slotIndex,
+                        "Nautilus: elige un dado para ajustar ±2.");
                 break;
             case CANGREJO_ARANA:
                 result = reviveFailedCard();
@@ -1013,9 +1067,10 @@ public class GameState {
                 result = biteAdjacentSmallFish(slotIndex);
                 break;
             case PEZ_FANTASMA:
-                pendingSelection = PendingSelection.GHOST_TARGET;
-                pendingSelectionActor = slotIndex;
-                result = "Pez fantasma: elige una carta adyacente boca arriba para ocultar.";
+                result = queueableSelection(
+                        PendingSelection.GHOST_TARGET,
+                        slotIndex,
+                        "Pez fantasma: elige una carta adyacente boca arriba para ocultar.");
                 break;
             case PULPO:
                 result = replacePulpoIfEven(slotIndex, placedValue);
@@ -1375,9 +1430,10 @@ public class GameState {
         if (!hasTarget) {
             return "No hay cartas boca arriba adyacentes para proteger.";
         }
-        pendingSelection = PendingSelection.CLOWNFISH_PROTECT;
-        pendingSelectionActor = slotIndex;
-        return "Pez payaso: elige una carta adyacente boca arriba para proteger.";
+        return queueableSelection(
+                PendingSelection.CLOWNFISH_PROTECT,
+                slotIndex,
+                "Pez payaso: elige una carta adyacente boca arriba para proteger.");
     }
 
     private String protectChosenCard(int slotIndex) {
@@ -1981,9 +2037,10 @@ public class GameState {
         }
         pendingBallenaDice.clear();
         pendingBallenaDice.addAll(pool);
-        pendingSelection = PendingSelection.BLUE_WHALE_PLACE;
-        pendingSelectionActor = slotIndex;
-        return "Ballena azul: coloca cada dado nuevamente en el tablero.";
+        return queueableSelection(
+                PendingSelection.BLUE_WHALE_PLACE,
+                slotIndex,
+                "Ballena azul: coloca cada dado nuevamente en el tablero.");
     }
 
     private String placeBlueWhaleDie(int slotIndex) {
