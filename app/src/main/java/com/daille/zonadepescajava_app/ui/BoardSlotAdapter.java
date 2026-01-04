@@ -14,11 +14,8 @@ import com.daille.zonadepescajava_app.R;
 import com.daille.zonadepescajava_app.databinding.ItemBoardSlotBinding;
 import com.daille.zonadepescajava_app.model.BoardSlot;
 import com.daille.zonadepescajava_app.model.Card;
-import com.daille.zonadepescajava_app.model.Die;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.SlotViewHolder> {
 
@@ -76,10 +73,6 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
             this.imageResolver = imageResolver;
             this.context = context;
             binding.getRoot().setOnClickListener(v -> listener.onSlotTapped(getBindingAdapterPosition()));
-            binding.getRoot().setOnLongClickListener(v -> {
-                listener.onSlotLongPressed(getBindingAdapterPosition());
-                return true;
-            });
         }
 
         void bind(BoardSlot slot) {
@@ -105,31 +98,14 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
                 binding.cardImage.setContentDescription(slot.isFaceUp() ? card.getName() : context.getString(R.string.card_image_content_description));
             }
 
-            binding.dice.setText("Dados: " + buildDiceLabel(slot.getDice()));
+            binding.cardImage.setContentDescription(slot.isFaceUp() && card != null
+                    ? card.getName()
+                    : context.getString(R.string.card_image_content_description));
 
-            StringBuilder status = new StringBuilder();
-            if (slot.getStatus().protectedOnce) status.append("🛡️ Protegido\n");
-            if (slot.getStatus().calamarForcedFaceDown) status.append("🦑 Forzado\n");
-            if (slot.getStatus().sumConditionShift != 0) {
-                status.append("ΔCondición: ").append(slot.getStatus().sumConditionShift);
-            }
-
-            if (status.length() == 0) {
-                status.append("Sin modificadores activos");
-            }
-
-            binding.status.setText(status.toString().trim());
-        }
-
-        private String buildDiceLabel(List<Die> dice) {
-            if (dice == null || dice.isEmpty()) {
-                return "-";
-            }
-            List<String> parts = new ArrayList<>();
-            for (Die die : dice) {
-                parts.add(die.getLabel());
-            }
-            return String.join(" | ", parts);
+            binding.getRoot().setOnLongClickListener(v -> {
+                listener.onSlotLongPressed(getBindingAdapterPosition());
+                return true;
+            });
         }
     }
 }

@@ -11,6 +11,8 @@ import com.daille.zonadepescajava_app.model.BoardSlot;
 import com.daille.zonadepescajava_app.model.DieType;
 import com.daille.zonadepescajava_app.model.GameState;
 import com.daille.zonadepescajava_app.ui.BoardSlotAdapter;
+import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
+import com.daille.zonadepescajava_app.ui.CardImageResolver;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -20,6 +22,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private ActivityMainBinding binding;
     private GameState gameState;
     private BoardSlotAdapter adapter;
+    private CardImageResolver cardImageResolver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,6 +32,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
         setSupportActionBar(binding.toolbar);
         gameState = new GameState();
+        cardImageResolver = new CardImageResolver(this);
         setupBoard();
         setupButtons();
         refreshUi("Juego iniciado. Lanza un dado y toca una carta.");
@@ -90,7 +94,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     @Override
     public void onSlotLongPressed(int position) {
-        gameState.toggleFace(position);
-        refreshUi("Has volteado la carta");
+        BoardSlot slot = gameState.getBoard()[position];
+        CardFullscreenDialog.show(this, cardImageResolver.getImageFor(slot.getCard(), slot.isFaceUp()));
     }
 }
