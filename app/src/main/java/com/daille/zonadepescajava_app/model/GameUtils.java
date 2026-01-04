@@ -46,6 +46,12 @@ public final class GameUtils {
         cards.add(new Card(CardId.NAUTILUS, "Nautilus", CardType.CRUSTACEO, 4,
                 condSumAtLeast(8), "", "", ""));
 
+        cards.add(new Card(CardId.ALMEJAS, "Almejas", CardType.CRUSTACEO, 2,
+                condSumAtLeast(8), "Lanza un dado descartado y colócalo aquí si se activó una habilidad adyacente.", "", ""));
+
+        cards.add(new Card(CardId.CANGREJO_ARANA, "Cangrejo araña", CardType.CRUSTACEO, 3,
+                condSumAtLeast(5), "Devuelve una carta descartada por fallo.", "", ""));
+
         // ==== Peces pequeños ====
         cards.add(new Card(CardId.SARDINA, "Sardina", CardType.PEZ, 2,
                 condSumExact(6), "", "", "Otorga +1 punto por cada pez pequeño."));
@@ -94,6 +100,20 @@ public final class GameUtils {
         cards.add(new Card(CardId.PIRANA, "Piraña", CardType.PEZ, 7,
                 (slotIndex, g) -> condSumAtLeast(8).isSatisfied(slotIndex, g) && atLeastOneIs(slotIndex, g, 6), "", "", ""));
 
+        cards.add(new Card(CardId.PEZ_FANTASMA, "Pez Fantasma", CardType.PEZ, 5,
+                (slotIndex, g) -> condSumGreaterThan(6).isSatisfied(slotIndex, g) && !hasAdjacentFaceUp(slotIndex, g),
+                "Vuelve boca abajo una carta adyacente y recupera su dado.", "", ""));
+
+        cards.add(new Card(CardId.PULPO, "Pulpo", CardType.PEZ, 4,
+                condSumLessThan(8), "Si el dado es par, reemplaza por otra carta boca arriba.", "", ""));
+
+        cards.add(new Card(CardId.ARENQUE, "Arenque", CardType.PEZ, 2,
+                condSumRange(5, 7), "Busca 2 peces pequeños y colócalos boca abajo.", "", ""));
+
+        cards.add(new Card(CardId.REMORA, "Rémora", CardType.PEZ, 2,
+                (slotIndex, g) -> containsDieType(slotIndex, g, DieType.D4) && containsDieType(slotIndex, g, DieType.D6),
+                "Si está adyacente a un pez grande se adhiere.", "", ""));
+
         // ==== Peces grandes ====
         cards.add(new Card(CardId.TIBURON_BLANCO, "Tiburón Blanco", CardType.PEZ_GRANDE, 7,
                 condSumGreaterThan(10), "", "", ""));
@@ -125,6 +145,13 @@ public final class GameUtils {
         cards.add(new Card(CardId.BALLENA_AZUL, "Ballena azul", CardType.PEZ_GRANDE, 9,
                 condSumRange(11, 13), "", "", ""));
 
+        cards.add(new Card(CardId.MERO_GIGANTE, "Mero gigante", CardType.PEZ_GRANDE, 7,
+                (slotIndex, g) -> condSumAtLeast(10).isSatisfied(slotIndex, g) && diceDistinct(slotIndex, g),
+                "Voltea todas las cartas adyacentes boca abajo.", "", ""));
+
+        cards.add(new Card(CardId.PEZ_LUNA, "Pez luna", CardType.PEZ_GRANDE, 7,
+                condSumAtLeast(13), "Si sale del tablero por marea, libera tu captura de mayor valor.", "", ""));
+
         // ==== Objetos ====
         cards.add(new Card(CardId.BOTA_VIEJA, "Bota Vieja", CardType.OBJETO, 0,
                 condSumLessOrEqual(6), "Aplica −1 a adyacentes.", "", ""));
@@ -146,6 +173,10 @@ public final class GameUtils {
 
         cards.add(new Card(CardId.ANZUELO_ROTO, "Anzuelo Roto", CardType.OBJETO, 0,
                 GameUtils::bothDiceSameValue, "Si fallas con 2 dados pierdes 2.", "", ""));
+
+        cards.add(new Card(CardId.CORRIENTES_PROFUNDAS, "Corrientes profundas", CardType.OBJETO, 2,
+                differenceAtLeast(3),
+                "Activa la marea hacia la derecha si es par, a la izquierda si es impar.", "", ""));
 
         return cards;
     }
@@ -205,6 +236,26 @@ public final class GameUtils {
         return false;
     }
 
+    public static boolean diceDistinct(int slotIndex, GameState g) {
+        BoardSlot s = g.getBoard()[slotIndex];
+        if (s.getDice().size() != 2) return false;
+        return s.getDice().get(0).getValue() != s.getDice().get(1).getValue();
+    }
+
+    public static boolean hasAdjacentFaceUp(int slotIndex, GameState g) {
+        int r = slotIndex / 3, c = slotIndex % 3;
+        int[][] dirs = ADYACENCIA_INCLUYE_DIAGONALES
+                ? new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {-1, 1}, {1, -1}, {1, 1}}
+                : new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+        for (int[] d : dirs) {
+            int rr = r + d[0], cc = c + d[1];
+            if (rr < 0 || rr > 2 || cc < 0 || cc > 2) continue;
+            BoardSlot adj = g.getBoard()[rr * 3 + cc];
+            if (adj.getCard() != null && adj.isFaceUp()) return true;
+        }
+        return false;
+    }
+
     public static Condition condSumRange(int min, int max) {
         return (slotIndex, g) -> {
             int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
@@ -242,6 +293,22 @@ public final class GameUtils {
             int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
             int s = sumWithModifiers(slotIndex, g);
             return s <= (v + shift);
+        };
+    }
+
+    public static Condition condSumLessThan(int value) {
+        return (slotIndex, g) -> {
+            int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
+            int s = sumWithModifiers(slotIndex, g);
+            return s < (value + shift);
+        };
+    }
+
+    public static Condition differenceAtLeast(int diff) {
+        return (slotIndex, state) -> {
+            BoardSlot s = state.getBoard()[slotIndex];
+            if (s.getDice().size() != 2) return false;
+            return Math.abs(s.getDice().get(0).getValue() - s.getDice().get(1).getValue()) >= diff;
         };
     }
 }
