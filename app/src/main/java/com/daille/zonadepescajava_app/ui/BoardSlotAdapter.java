@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.daille.zonadepescajava_app.databinding.ItemBoardSlotBinding;
 import com.daille.zonadepescajava_app.model.BoardSlot;
+import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.Die;
 
 import java.util.ArrayList;
@@ -17,10 +18,18 @@ import java.util.Locale;
 
 public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.SlotViewHolder> {
 
-    private final List<BoardSlot> slots = new ArrayList<>();
+    public interface OnSlotInteractionListener {
+        void onSlotTapped(int position);
 
-    public BoardSlotAdapter(List<BoardSlot> data) {
+        void onSlotLongPressed(int position);
+    }
+
+    private final List<BoardSlot> slots = new ArrayList<>();
+    private final OnSlotInteractionListener listener;
+
+    public BoardSlotAdapter(List<BoardSlot> data, OnSlotInteractionListener listener) {
         slots.addAll(data);
+        this.listener = listener;
     }
 
     @NonNull
@@ -28,7 +37,7 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
     public SlotViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(parent.getContext());
         ItemBoardSlotBinding binding = ItemBoardSlotBinding.inflate(inflater, parent, false);
-        return new SlotViewHolder(binding);
+        return new SlotViewHolder(binding, listener);
     }
 
     @Override
@@ -41,34 +50,45 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
         return slots.size();
     }
 
+    public void update(List<BoardSlot> updated) {
+        slots.clear();
+        slots.addAll(updated);
+        notifyDataSetChanged();
+    }
+
     static class SlotViewHolder extends RecyclerView.ViewHolder {
         private final ItemBoardSlotBinding binding;
 
-        SlotViewHolder(ItemBoardSlotBinding binding) {
+        SlotViewHolder(ItemBoardSlotBinding binding, OnSlotInteractionListener listener) {
             super(binding.getRoot());
             this.binding = binding;
+            binding.getRoot().setOnClickListener(v -> listener.onSlotTapped(getBindingAdapterPosition()));
+            binding.getRoot().setOnLongClickListener(v -> {
+                listener.onSlotLongPressed(getBindingAdapterPosition());
+                return true;
+            });
         }
 
         void bind(BoardSlot slot) {
-            if (slot.getCard() == null) {
+            Card card = slot.getCard();
+            if (card == null) {
                 binding.cardTitle.setText("Vacío");
-                binding.cardType.setVisibility(View.GONE);
-                binding.cardPoints.setVisibility(View.GONE);
+                binding.cardType.setText("Sin carta");
+                binding.cardPoints.setText("");
             } else {
-                binding.cardTitle.setText(slot.isFaceUp() ? slot.getCard().getName() : "Boca abajo");
-                binding.cardType.setVisibility(View.VISIBLE);
-                binding.cardPoints.setVisibility(View.VISIBLE);
-                binding.cardType.setText(String.format(Locale.getDefault(), "Tipo: %s", slot.getCard().getType()));
-                binding.cardPoints.setText(String.format(Locale.getDefault(), "Pts: %d", slot.getCard().getPoints()));
+                binding.cardTitle.setText(slot.isFaceUp() ? card.getName() : "Boca abajo");
+                binding.cardType.setText(String.format(Locale.getDefault(), "%s • %s",
+                        card.getType().name(), slot.isFaceUp() ? card.getCondition().getClass().getSimpleName() : "?"));
+                binding.cardPoints.setText(String.format(Locale.getDefault(), "%d pts", card.getPoints()));
             }
 
             binding.dice.setText("Dados: " + buildDiceLabel(slot.getDice()));
 
             StringBuilder status = new StringBuilder();
-            if (slot.isProtectedOnce()) status.append("🛡️ Protegido\n");
-            if (slot.isCalamarForcedFaceDown()) status.append("🦑 Forzado por Calamar\n");
-            if (slot.getSumConditionShift() != 0) {
-                status.append("ΔCondSuma: ").append(slot.getSumConditionShift());
+            if (slot.getStatus().protectedOnce) status.append("🛡️ Protegido\n");
+            if (slot.getStatus().calamarForcedFaceDown) status.append("🦑 Forzado\n");
+            if (slot.getStatus().sumConditionShift != 0) {
+                status.append("ΔCondición: ").append(slot.getStatus().sumConditionShift);
             }
 
             if (status.length() == 0) {

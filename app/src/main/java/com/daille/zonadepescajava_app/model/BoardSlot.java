@@ -5,44 +5,44 @@ import java.util.Collections;
 import java.util.List;
 
 public class BoardSlot {
-    private final Card card;
-    private final boolean faceUp;
-    private final List<Die> dice;
-    private final boolean protectedOnce;
-    private final boolean calamarForcedFaceDown;
-    private final int sumConditionShift;
-
-    public BoardSlot(Card card, boolean faceUp, List<Die> dice, boolean protectedOnce,
-                     boolean calamarForcedFaceDown, int sumConditionShift) {
-        this.card = card;
-        this.faceUp = faceUp;
-        this.dice = new ArrayList<>(dice);
-        this.protectedOnce = protectedOnce;
-        this.calamarForcedFaceDown = calamarForcedFaceDown;
-        this.sumConditionShift = sumConditionShift;
-    }
+    private Card card;
+    private boolean faceUp;
+    private final List<Die> dice = new ArrayList<>();
+    private SlotStatus status = new SlotStatus();
 
     public Card getCard() {
         return card;
+    }
+
+    public void setCard(Card card) {
+        this.card = card;
     }
 
     public boolean isFaceUp() {
         return faceUp;
     }
 
+    public void setFaceUp(boolean faceUp) {
+        this.faceUp = faceUp;
+    }
+
     public List<Die> getDice() {
         return Collections.unmodifiableList(dice);
     }
 
-    public boolean isProtectedOnce() {
-        return protectedOnce;
+    public void addDie(Die die) {
+        dice.add(die);
     }
 
-    public boolean isCalamarForcedFaceDown() {
-        return calamarForcedFaceDown;
+    public void clearDice() {
+        dice.clear();
     }
 
-    public int getSumConditionShift() {
-        return sumConditionShift;
+    public SlotStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(SlotStatus status) {
+        this.status = status;
     }
 }

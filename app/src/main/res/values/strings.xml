@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">Zona de Pesca Android</string>
-    <string name="description">Recreación móvil del prototipo Zona de Pesca. El tablero muestra cartas de ejemplo, su tipo, puntos y los dados asociados para emular la vista de mesa del proyecto de escritorio.</string>
+    <string name="description">Emulación móvil de Zona de Pesca: lanza dados desde la reserva, tócalos sobre las cartas para intentar la captura y usa pulsación prolongada para voltear cartas boca arriba o abajo.</string>
 </resources>
