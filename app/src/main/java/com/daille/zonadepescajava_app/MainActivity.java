@@ -24,6 +24,7 @@ import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 import com.daille.zonadepescajava_app.ui.CardImageResolver;
 import com.daille.zonadepescajava_app.ui.DiceImageResolver;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -112,6 +113,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         refreshUi(result);
         Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
+        if (gameState.isAwaitingPezVelaDecision()) {
+            promptPezVelaDecision();
+        }
+        if (gameState.isAwaitingPezVelaResultChoice()) {
+            promptPezVelaResultChoice();
+        }
+        if (gameState.isAwaitingArenqueChoice()) {
+            promptArenqueChoice();
+        }
         if (gameState.isAwaitingAtunDecision()) {
             promptAtunDecision();
         }
@@ -216,6 +226,83 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setNegativeButton("Conservar", (dialog, which) -> {
                     String msg = gameState.chooseAtunReroll(false);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptPezVelaDecision() {
+        if (!gameState.isAwaitingPezVelaDecision()) return;
+        String current = gameState.getPezVelaOriginalDie() != null
+                ? gameState.getPezVelaOriginalDie().getLabel()
+                : "actual";
+        new AlertDialog.Builder(this)
+                .setTitle("Habilidad del Pez Vela")
+                .setMessage("Resultado actual: " + current + ". ¿Relanzar?")
+                .setPositiveButton("Relanzar", (dialog, which) -> {
+                    String msg = gameState.choosePezVelaReroll(true);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    if (gameState.isAwaitingPezVelaResultChoice()) {
+                        promptPezVelaResultChoice();
+                    }
+                })
+                .setNegativeButton("Conservar", (dialog, which) -> {
+                    String msg = gameState.choosePezVelaReroll(false);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptPezVelaResultChoice() {
+        if (!gameState.isAwaitingPezVelaResultChoice()) return;
+        String previous = gameState.getPezVelaOriginalDie() != null
+                ? gameState.getPezVelaOriginalDie().getLabel()
+                : "previo";
+        String rerolled = gameState.getPezVelaRerolledDie() != null
+                ? gameState.getPezVelaRerolledDie().getLabel()
+                : "nuevo";
+        new AlertDialog.Builder(this)
+                .setTitle("Habilidad del Pez Vela")
+                .setMessage("Elige qué resultado conservar")
+                .setPositiveButton("Nuevo (" + rerolled + ")", (dialog, which) -> {
+                    String msg = gameState.choosePezVelaResult(true);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Anterior (" + previous + ")", (dialog, which) -> {
+                    String msg = gameState.choosePezVelaResult(false);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptArenqueChoice() {
+        if (!gameState.isAwaitingArenqueChoice()) return;
+        List<String> names = gameState.getPendingArenqueNames();
+        if (names.isEmpty()) return;
+        boolean[] checked = new boolean[names.size()];
+        CharSequence[] items = names.toArray(new CharSequence[0]);
+        new AlertDialog.Builder(this)
+                .setTitle("Elige hasta 2 peces pequeños")
+                .setMultiChoiceItems(items, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
+                .setPositiveButton("Aceptar", (dialog, which) -> {
+                    List<Integer> selected = new ArrayList<>();
+                    for (int i = 0; i < checked.length; i++) {
+                        if (checked[i]) selected.add(i);
+                    }
+                    String msg = gameState.chooseArenqueFish(selected);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancelar", (dialog, which) -> {
+                    String msg = gameState.chooseArenqueFish(java.util.Collections.emptyList());
                     refreshUi(msg);
                     Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
                 })
