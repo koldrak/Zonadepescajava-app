@@ -34,6 +34,14 @@ public class BoardSlot {
         dice.add(die);
     }
 
+    public void setDie(int index, Die die) {
+        dice.set(index, die);
+    }
+
+    public Die removeDie(int index) {
+        return dice.remove(index);
+    }
+
     public void clearDice() {
         dice.clear();
     }
