@@ -1,6 +1,13 @@
 package com.daille.zonadepescajava_app;
 
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -13,6 +20,7 @@ import com.daille.zonadepescajava_app.model.GameState;
 import com.daille.zonadepescajava_app.ui.BoardSlotAdapter;
 import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 import com.daille.zonadepescajava_app.ui.CardImageResolver;
+import com.daille.zonadepescajava_app.ui.DiceImageResolver;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -23,6 +31,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private GameState gameState;
     private BoardSlotAdapter adapter;
     private CardImageResolver cardImageResolver;
+    private DiceImageResolver diceImageResolver;
+    private Handler animationHandler;
+    private Runnable rollingRunnable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -33,6 +44,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setSupportActionBar(binding.toolbar);
         gameState = new GameState();
         cardImageResolver = new CardImageResolver(this);
+        diceImageResolver = new DiceImageResolver(this);
+        animationHandler = new Handler(Looper.getMainLooper());
         setupBoard();
         setupButtons();
         refreshUi("Juego iniciado. Lanza un dado y toca una carta.");
@@ -50,9 +63,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.rollD6.setOnClickListener(v -> onRoll(DieType.D6));
         binding.rollD8.setOnClickListener(v -> onRoll(DieType.D8));
         binding.rollD12.setOnClickListener(v -> onRoll(DieType.D12));
+
+        setButtonIcon(binding.rollD4, DieType.D4);
+        setButtonIcon(binding.rollD6, DieType.D6);
+        setButtonIcon(binding.rollD8, DieType.D8);
+        setButtonIcon(binding.rollD12, DieType.D12);
     }
 
     private void onRoll(DieType type) {
+        startRollingAnimation(type);
         String msg = gameState.rollFromReserve(type);
         refreshUi(msg);
     }
@@ -66,6 +85,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.selection.setText(gameState.getSelectedDie() == null
                 ? "Selecciona un dado de la reserva"
                 : "Dado preparado: " + gameState.getSelectedDie().getLabel());
+
+        updateSelectedDiePreview();
+        renderDiceCollection(binding.reserveDiceContainer, gameState.getReserve());
+        renderDiceCollection(binding.lostDiceContainer, gameState.getLostDice());
 
         binding.reserve.setText("Reserva: " + buildReserveText());
         binding.lost.setText(String.format(Locale.getDefault(), "Perdidos: %d", gameState.getLostDice().size()));
@@ -100,5 +123,86 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             image = cardImageResolver.getCardBack();
         }
         CardFullscreenDialog.show(this, image);
+    }
+
+    private void setButtonIcon(com.google.android.material.button.MaterialButton button, DieType type) {
+        Bitmap bmp = diceImageResolver.getTypePreview(type);
+        if (bmp != null) {
+            button.setIcon(new BitmapDrawable(getResources(), bmp));
+            button.setIconPadding(12);
+        }
+    }
+
+    private void updateSelectedDiePreview() {
+        if (gameState.getSelectedDie() == null) {
+            binding.selectedDieImage.setVisibility(View.GONE);
+            return;
+        }
+
+        Bitmap face = diceImageResolver.getFace(gameState.getSelectedDie());
+        if (face != null) {
+            binding.selectedDieImage.setVisibility(View.VISIBLE);
+            binding.selectedDieImage.setImageBitmap(face);
+        } else {
+            binding.selectedDieImage.setVisibility(View.GONE);
+        }
+    }
+
+    private void renderDiceCollection(View container, Iterable<?> dice) {
+        if (!(container instanceof ViewGroup)) return;
+        ViewGroup group = (ViewGroup) container;
+        group.removeAllViews();
+
+        for (Object item : dice) {
+            Bitmap bmp = null;
+            String contentDescription = "";
+
+            if (item instanceof DieType) {
+                DieType type = (DieType) item;
+                bmp = diceImageResolver.getTypePreview(type);
+                contentDescription = type.getLabel();
+            } else if (item instanceof com.daille.zonadepescajava_app.model.Die) {
+                com.daille.zonadepescajava_app.model.Die die = (com.daille.zonadepescajava_app.model.Die) item;
+                bmp = diceImageResolver.getFace(die);
+                contentDescription = die.getLabel();
+            }
+
+            ImageView chip = new ImageView(this);
+            chip.setLayoutParams(new ViewGroup.MarginLayoutParams(96, 96));
+            ((ViewGroup.MarginLayoutParams) chip.getLayoutParams()).setMargins(4, 0, 4, 0);
+            if (bmp != null) {
+                chip.setImageBitmap(bmp);
+            }
+            chip.setContentDescription(contentDescription);
+            group.addView(chip);
+        }
+    }
+
+    private void startRollingAnimation(DieType type) {
+        if (animationHandler == null) return;
+        if (rollingRunnable != null) {
+            animationHandler.removeCallbacks(rollingRunnable);
+        }
+
+        rollingRunnable = new Runnable() {
+            private int frames = 12;
+
+            @Override
+            public void run() {
+                if (frames-- <= 0) {
+                    animationHandler.removeCallbacks(this);
+                    updateSelectedDiePreview();
+                    return;
+                }
+                Bitmap preview = diceImageResolver.randomFace(type);
+                if (preview != null) {
+                    binding.selectedDieImage.setVisibility(View.VISIBLE);
+                    binding.selectedDieImage.setImageBitmap(preview);
+                }
+                animationHandler.postDelayed(this, 70);
+            }
+        };
+
+        animationHandler.post(rollingRunnable);
     }
 }
