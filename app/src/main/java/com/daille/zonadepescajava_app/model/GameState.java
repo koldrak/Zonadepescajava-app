@@ -43,11 +43,15 @@ public class GameState {
     private final List<Die> pendingPercebesDice = new ArrayList<>();
     private final List<Integer> pendingPercebesTargets = new ArrayList<>();
     private final List<Die> pendingBallenaDice = new ArrayList<>();
+    private final List<Card> pendingPulpoOptions = new ArrayList<>();
     private final Deque<PendingSelectionState> pendingSelectionQueue = new ArrayDeque<>();
     private final List<Card> pendingArenquePool = new ArrayList<>();
     private final List<Card> pendingArenqueChosen = new ArrayList<>();
     private boolean awaitingArenqueChoice = false;
     private int arenqueSlotIndex = -1;
+    private boolean awaitingPulpoChoice = false;
+    private int pulpoSlotIndex = -1;
+    private int pulpoPlacedValue = 0;
     private enum PendingSelection {
         NONE,
         RED_CRAB_FROM,
@@ -131,10 +135,14 @@ public class GameState {
         ghostShrimpSecondChoice = -1;
         recentlyRevealedCards.clear();
         pendingBallenaDice.clear();
+        pendingPulpoOptions.clear();
         pendingArenquePool.clear();
         pendingArenqueChosen.clear();
         awaitingArenqueChoice = false;
         arenqueSlotIndex = -1;
+        awaitingPulpoChoice = false;
+        pulpoSlotIndex = -1;
+        pulpoPlacedValue = 0;
 
         reserve.add(DieType.D6);
         reserve.add(DieType.D6);
@@ -227,6 +235,18 @@ public class GameState {
 
     public boolean isAwaitingValueAdjustment() {
         return awaitingValueAdjustment;
+    }
+
+    public boolean isAwaitingPulpoChoice() {
+        return awaitingPulpoChoice;
+    }
+
+    public List<String> getPendingPulpoNames() {
+        List<String> names = new ArrayList<>();
+        for (Card c : pendingPulpoOptions) {
+            names.add(c.getName());
+        }
+        return names;
     }
 
     public int getPendingAdjustmentAmount() {
@@ -344,7 +364,7 @@ public class GameState {
             case GHOST_SHRIMP_SECOND:
                 for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
                     if (board[idx].getCard() != null && !board[idx].isFaceUp()
-                            && idx != pendingSelectionAux) {
+                            && idx != ghostShrimpFirstChoice) {
                         highlight.add(idx);
                     }
                 }
@@ -637,6 +657,9 @@ public class GameState {
         if (awaitingArenqueChoice) {
             return "Selecciona primero los peces pequeños del Arenque.";
         }
+        if (awaitingPulpoChoice) {
+            return "Elige la carta para reemplazar al Pulpo antes de lanzar otro dado.";
+        }
         if (awaitingValueAdjustment) {
             return "Resuelve el ajuste pendiente antes de lanzar otro dado.";
         }
@@ -680,6 +703,9 @@ public class GameState {
         }
         if (awaitingArenqueChoice) {
             return "Selecciona los peces pequeños del Arenque antes de colocar otros dados.";
+        }
+        if (awaitingPulpoChoice) {
+            return "Elige primero la carta que reemplazará al Pulpo.";
         }
         if (awaitingValueAdjustment) {
             return "Resuelve el ajuste pendiente antes de colocar dados.";
@@ -1063,6 +1089,13 @@ public class GameState {
         arenqueSlotIndex = -1;
     }
 
+    private void clearPulpoState() {
+        awaitingPulpoChoice = false;
+        pulpoSlotIndex = -1;
+        pulpoPlacedValue = 0;
+        pendingPulpoOptions.clear();
+    }
+
     private void markRevealed(int slotIndex) {
         Card card = board[slotIndex].getCard();
         if (card != null && !recentlyRevealedCards.contains(card)) {
@@ -1353,6 +1386,8 @@ public class GameState {
         if (facedown < 2) {
             return "No hay suficientes cartas boca abajo adyacentes para el Camarón fantasma.";
         }
+        ghostShrimpFirstChoice = -1;
+        ghostShrimpSecondChoice = -1;
         return queueableSelection(
                 PendingSelection.GHOST_SHRIMP_FIRST,
                 slotIndex,
@@ -1367,6 +1402,7 @@ public class GameState {
         if (target.getCard() == null || target.isFaceUp()) {
             return "La carta debe estar boca abajo.";
         }
+        ghostShrimpFirstChoice = slotIndex;
         pendingSelection = PendingSelection.GHOST_SHRIMP_SECOND;
         pendingSelectionAux = slotIndex;
         return "Elige una segunda carta boca abajo adyacente.";
@@ -1376,14 +1412,18 @@ public class GameState {
         if (!isAdjacentToActor(slotIndex)) {
             return "Elige una carta adyacente al camarón.";
         }
+        if (ghostShrimpFirstChoice < 0 || ghostShrimpFirstChoice >= board.length) {
+            clearPendingSelection();
+            clearGhostShrimpState();
+            return "Las cartas a mirar ya no están disponibles.";
+        }
         BoardSlot target = board[slotIndex];
         if (target.getCard() == null || target.isFaceUp()) {
             return "La carta debe estar boca abajo.";
         }
-        if (slotIndex == pendingSelectionAux) {
+        if (slotIndex == ghostShrimpFirstChoice) {
             return "Debes elegir una carta distinta.";
         }
-        ghostShrimpFirstChoice = pendingSelectionAux;
         ghostShrimpSecondChoice = slotIndex;
         awaitingGhostShrimpDecision = true;
         String firstName = board[ghostShrimpFirstChoice].getCard().getName();
@@ -1848,31 +1888,54 @@ public class GameState {
 
     private String replacePulpoIfEven(int slotIndex, int placedValue) {
         if (placedValue % 2 != 0) return "";
-        List<Card> remaining = new ArrayList<>(deck);
-        deck.clear();
-        Card replacement = null;
-        for (Card c : remaining) {
+        pendingPulpoOptions.clear();
+        for (Card c : deck) {
             if (c.getType() != CardType.OBJETO) {
-                replacement = c;
-                break;
-            } else {
-                deck.push(c);
+                pendingPulpoOptions.add(c);
             }
         }
-        if (replacement == null) {
-            deck.addAll(remaining);
+        if (pendingPulpoOptions.isEmpty()) {
             return "";
         }
-        for (Card c : remaining) {
-            if (c != replacement && !deck.contains(c)) deck.push(c);
+        awaitingPulpoChoice = true;
+        pulpoSlotIndex = slotIndex;
+        pulpoPlacedValue = placedValue;
+        return "Pulpo: elige una carta del cardumen para reemplazarlo.";
+    }
+
+    public String choosePulpoReplacement(int index) {
+        if (!awaitingPulpoChoice) {
+            return "No hay selección pendiente del Pulpo.";
         }
-        BoardSlot slot = board[slotIndex];
+        if (pulpoSlotIndex < 0 || pulpoSlotIndex >= board.length) {
+            clearPulpoState();
+            return "El Pulpo ya no está disponible.";
+        }
+        if (index < 0 || index >= pendingPulpoOptions.size()) {
+            return "Debes elegir una carta válida del cardumen.";
+        }
+        Card replacement = pendingPulpoOptions.get(index);
+        if (!deck.remove(replacement)) {
+            clearPulpoState();
+            shuffleDeck();
+            return "La carta seleccionada ya no está en el mazo.";
+        }
+        BoardSlot slot = board[pulpoSlotIndex];
+        if (slot.getCard() == null) {
+            clearPulpoState();
+            shuffleDeck();
+            return "El Pulpo ya no está en la mesa.";
+        }
         slot.setCard(replacement);
         slot.setFaceUp(true);
-        String reveal = handleOnReveal(slotIndex, placedValue);
-        return reveal.isEmpty()
+        markRevealed(pulpoSlotIndex);
+        String reveal = handleOnReveal(pulpoSlotIndex, pulpoPlacedValue);
+        String result = reveal.isEmpty()
                 ? "Pulpo fue reemplazado por " + replacement.getName() + "."
                 : "Pulpo fue reemplazado por " + replacement.getName() + ". " + reveal;
+        clearPulpoState();
+        shuffleDeck();
+        return result;
     }
 
     private String flipAdjacentFaceUpCardsDown(int slotIndex) {
