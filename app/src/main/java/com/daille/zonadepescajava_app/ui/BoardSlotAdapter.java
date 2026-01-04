@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.daille.zonadepescajava_app.R;
@@ -30,6 +31,7 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
     private final CardImageResolver imageResolver;
     private final DiceImageResolver diceImageResolver;
     private final Context context;
+    private final List<Integer> highlighted = new ArrayList<>();
 
     public BoardSlotAdapter(Context context, List<BoardSlot> data, OnSlotInteractionListener listener) {
         this.context = context;
@@ -49,7 +51,7 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
 
     @Override
     public void onBindViewHolder(@NonNull SlotViewHolder holder, int position) {
-        holder.bind(slots.get(position));
+        holder.bind(slots.get(position), highlighted.contains(position));
     }
 
     @Override
@@ -57,9 +59,13 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
         return slots.size();
     }
 
-    public void update(List<BoardSlot> updated) {
+    public void update(List<BoardSlot> updated, List<Integer> highlights) {
         slots.clear();
         slots.addAll(updated);
+        highlighted.clear();
+        if (highlights != null) {
+            highlighted.addAll(highlights);
+        }
         notifyDataSetChanged();
     }
 
@@ -86,7 +92,7 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
             });
         }
 
-        void bind(BoardSlot slot) {
+        void bind(BoardSlot slot, boolean highlighted) {
             Card card = slot.getCard();
             Bitmap image = imageResolver.getImageFor(card, slot.isFaceUp());
             if (image == null) {
@@ -94,6 +100,13 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
             }
 
             binding.cardImage.setImageBitmap(image);
+
+            int strokePx = highlighted
+                    ? (int) (context.getResources().getDisplayMetrics().density * 6)
+                    : 0;
+            binding.getRoot().setStrokeWidth(strokePx);
+            binding.getRoot().setStrokeColor(
+                    ContextCompat.getColor(context, R.color.selection_highlight));
 
             binding.cardImage.setContentDescription(slot.isFaceUp() && card != null
                     ? card.getName()

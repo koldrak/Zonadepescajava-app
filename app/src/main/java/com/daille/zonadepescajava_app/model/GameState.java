@@ -21,7 +21,24 @@ public class GameState {
     private Integer forcedSlotIndex = null;
     private boolean awaitingLanternChoice = false;
     private int lanternOriginSlot = -1;
-    private enum PendingSelection { NONE, RED_CRAB_FROM, RED_CRAB_TO, BLUE_CRAB, NAUTILUS_FIRST, NAUTILUS_SECOND, GHOST_TARGET }
+    private boolean awaitingAtunDecision = false;
+    private int atunSlotIndex = -1;
+    private int atunDieIndex = -1;
+    private final List<Die> pendingPercebesDice = new ArrayList<>();
+    private final List<Integer> pendingPercebesTargets = new ArrayList<>();
+    private enum PendingSelection {
+        NONE,
+        RED_CRAB_FROM,
+        RED_CRAB_TO,
+        BLUE_CRAB,
+        NAUTILUS_FIRST,
+        NAUTILUS_SECOND,
+        GHOST_TARGET,
+        SALMON_FLIP,
+        CLOWNFISH_PROTECT,
+        PERCEBES_MOVE,
+        ATUN_DESTINATION
+    }
     private PendingSelection pendingSelection = PendingSelection.NONE;
     private int pendingSelectionActor = -1;
     private int pendingSelectionAux = -1;
@@ -50,6 +67,11 @@ public class GameState {
         pendingSelection = PendingSelection.NONE;
         pendingSelectionActor = -1;
         pendingSelectionAux = -1;
+        awaitingAtunDecision = false;
+        atunSlotIndex = -1;
+        atunDieIndex = -1;
+        pendingPercebesDice.clear();
+        pendingPercebesTargets.clear();
 
         reserve.add(DieType.D6);
         reserve.add(DieType.D6);
@@ -106,6 +128,99 @@ public class GameState {
 
     public boolean isAwaitingBoardSelection() {
         return pendingSelection != PendingSelection.NONE;
+    }
+
+    public boolean isAwaitingAtunDecision() {
+        return awaitingAtunDecision;
+    }
+
+    public List<Integer> getHighlightSlots() {
+        List<Integer> highlight = new ArrayList<>();
+        if (pendingSelection == PendingSelection.NONE) {
+            if (awaitingLanternChoice) {
+                for (int i = 0; i < board.length; i++) {
+                    if (board[i].getCard() != null && !board[i].isFaceUp()) {
+                        highlight.add(i);
+                    }
+                }
+            } else if (forcedSlotIndex != null) {
+                highlight.add(forcedSlotIndex);
+            }
+            return highlight;
+        }
+
+        switch (pendingSelection) {
+            case RED_CRAB_FROM:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    if (!board[idx].getDice().isEmpty()) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case RED_CRAB_TO:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    if (idx != pendingSelectionAux && board[idx].getCard() != null && board[idx].getDice().size() < 2) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case BLUE_CRAB:
+                for (int i = 0; i < board.length; i++) {
+                    if (!board[i].getDice().isEmpty()) highlight.add(i);
+                }
+                break;
+            case NAUTILUS_FIRST:
+                for (int i = 0; i < board.length; i++) {
+                    if (!board[i].getDice().isEmpty()) highlight.add(i);
+                }
+                break;
+            case NAUTILUS_SECOND:
+                for (int i = 0; i < board.length; i++) {
+                    if (!board[i].getDice().isEmpty() && i != pendingSelectionAux) highlight.add(i);
+                }
+                break;
+            case GHOST_TARGET:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    if (board[idx].getCard() != null && board[idx].isFaceUp()) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case SALMON_FLIP:
+                for (int i = 0; i < board.length; i++) {
+                    if (board[i].getCard() != null && !board[i].isFaceUp()) {
+                        highlight.add(i);
+                    }
+                }
+                break;
+            case CLOWNFISH_PROTECT:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    if (board[idx].getCard() != null && board[idx].isFaceUp()
+                            && board[idx].getCard().getType() != CardType.OBJETO) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case PERCEBES_MOVE:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    if (board[idx].getCard() != null && board[idx].getDice().size() < 2
+                            && !pendingPercebesTargets.contains(idx)) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case ATUN_DESTINATION:
+                for (int i = 0; i < board.length; i++) {
+                    if (board[i].getCard() != null && board[i].getDice().size() < 2) {
+                        highlight.add(i);
+                    }
+                }
+                break;
+            case NONE:
+            default:
+                break;
+        }
+        return highlight;
     }
 
     public List<Die> getPendingDiceChoices() {
@@ -177,10 +292,48 @@ public class GameState {
             case GHOST_TARGET:
                 result = hideChosenAdjacent(slotIndex);
                 break;
+            case SALMON_FLIP:
+                result = flipChosenFaceDown(slotIndex);
+                break;
+            case CLOWNFISH_PROTECT:
+                result = protectChosenCard(slotIndex);
+                break;
+            case PERCEBES_MOVE:
+                result = movePercebesDie(slotIndex);
+                break;
+            case ATUN_DESTINATION:
+                result = repositionAtunDie(slotIndex);
+                break;
             default:
                 result = "No hay acciones pendientes.";
         }
         return result;
+    }
+
+    public String chooseAtunReroll(boolean reroll) {
+        if (!awaitingAtunDecision) {
+            return "No hay decisión pendiente del Atún.";
+        }
+        if (atunSlotIndex < 0 || atunSlotIndex >= board.length) {
+            clearAtunState();
+            return "El Atún ya no está disponible.";
+        }
+        BoardSlot slot = board[atunSlotIndex];
+        if (slot.getDice().isEmpty() || atunDieIndex < 0 || atunDieIndex >= slot.getDice().size()) {
+            clearAtunState();
+            return "No hay dado para reposicionar.";
+        }
+        Die current = slot.getDice().get(atunDieIndex);
+        Die finalDie = current;
+        if (reroll) {
+            finalDie = Die.roll(current.getType(), rng);
+        }
+        slot.setDie(atunDieIndex, finalDie);
+        awaitingAtunDecision = false;
+        pendingSelection = PendingSelection.ATUN_DESTINATION;
+        pendingSelectionActor = atunSlotIndex;
+        return (reroll ? "Atún relanzó el dado " : "Atún conserva el dado ")
+                + "(" + finalDie.getLabel() + "). Elige una carta para reposicionarlo.";
     }
 
     public String chooseDieToLose(int dieIndex) {
@@ -225,6 +378,9 @@ public class GameState {
         if (isAwaitingDieLoss()) {
             return "Debes elegir qué dado perder antes de continuar.";
         }
+        if (awaitingAtunDecision) {
+            return "Decide primero si relanzar el dado del Atún.";
+        }
         if (awaitingLanternChoice) {
             return "Resuelve la selección del Pez Linterna antes de lanzar otro dado.";
         }
@@ -244,6 +400,9 @@ public class GameState {
         }
         if (isAwaitingDieLoss()) {
             return "Debes elegir qué dado perder antes de continuar.";
+        }
+        if (awaitingAtunDecision) {
+            return "Resuelve primero la habilidad del Atún.";
         }
         if (awaitingLanternChoice) {
             return "Debes elegir primero qué carta revelar con el Pez Linterna.";
@@ -568,6 +727,18 @@ public class GameState {
         pendingSelection = PendingSelection.NONE;
         pendingSelectionActor = -1;
         pendingSelectionAux = -1;
+        clearPercebesState();
+    }
+
+    private void clearPercebesState() {
+        pendingPercebesDice.clear();
+        pendingPercebesTargets.clear();
+    }
+
+    private void clearAtunState() {
+        awaitingAtunDecision = false;
+        atunSlotIndex = -1;
+        atunDieIndex = -1;
     }
 
     private String revealAndTrigger(int slotIndex) {
@@ -598,7 +769,7 @@ public class GameState {
                 result = peekAdjacentCards(slotIndex);
                 break;
             case ATUN:
-                result = rerollAndKeepBest(slotIndex);
+                result = startAtunDecision(slotIndex);
                 break;
             case PEZ_GLOBO:
                 result = inflateAnyFishDie();
@@ -632,7 +803,7 @@ public class GameState {
                 result = "Corrientes profundas listas: si igualas su dado, activas marea lateral.";
                 break;
             case PEZ_PAYASO:
-                result = protectAdjacentFish(slotIndex);
+                result = startClownfishProtection(slotIndex);
                 break;
             case PEZ_LINTERNA:
                 result = startLanternSelection(slotIndex);
@@ -822,15 +993,39 @@ public class GameState {
         return "Observaste: " + String.join(", ", names);
     }
 
-    private String rerollAndKeepBest(int slotIndex) {
+    private String startAtunDecision(int slotIndex) {
         BoardSlot slot = board[slotIndex];
         if (slot.getDice().isEmpty()) return "";
-        int idx = slot.getDice().size() - 1;
-        Die oldDie = slot.getDice().get(idx);
-        Die rerolled = Die.roll(oldDie.getType(), rng);
-        int best = Math.max(oldDie.getValue(), rerolled.getValue());
-        slot.setDie(idx, new Die(oldDie.getType(), best));
-        return "Atún relanzó el dado y conservó " + best + ".";
+        awaitingAtunDecision = true;
+        atunSlotIndex = slotIndex;
+        atunDieIndex = slot.getDice().size() - 1;
+        return "Atún: decide si relanzar el dado y elige destino.";
+    }
+
+    private String repositionAtunDie(int slotIndex) {
+        if (atunSlotIndex < 0 || atunSlotIndex >= board.length) {
+            clearPendingSelection();
+            clearAtunState();
+            return "El dado del Atún ya no está disponible.";
+        }
+        BoardSlot origin = board[atunSlotIndex];
+        if (origin.getDice().isEmpty() || atunDieIndex < 0 || atunDieIndex >= origin.getDice().size()) {
+            clearPendingSelection();
+            clearAtunState();
+            return "El dado del Atún ya no está disponible.";
+        }
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null) {
+            return "Elige una carta válida para reposicionar el dado.";
+        }
+        if (target.getDice().size() >= 2) {
+            return "La carta seleccionada ya tiene 2 dados.";
+        }
+        Die moved = origin.removeDie(atunDieIndex);
+        target.addDie(moved);
+        clearPendingSelection();
+        clearAtunState();
+        return "Atún reposicionó el dado en la carta elegida.";
     }
 
     private String inflateAnyFishDie() {
@@ -912,15 +1107,37 @@ public class GameState {
         return "Nautilus ajustó un dado a " + newVal + ".";
     }
 
-    private String protectAdjacentFish(int slotIndex) {
+    private String startClownfishProtection(int slotIndex) {
+        boolean hasTarget = false;
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
-            if (adj.getCard() != null && adj.getCard().getType() == CardType.PEZ) {
-                adj.getStatus().protectedOnce = true;
-                return "Pez payaso protege a un pez adyacente.";
+            if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() != CardType.OBJETO) {
+                hasTarget = true;
+                break;
             }
         }
-        return "";
+        if (!hasTarget) {
+            return "No hay cartas boca arriba adyacentes para proteger.";
+        }
+        pendingSelection = PendingSelection.CLOWNFISH_PROTECT;
+        pendingSelectionActor = slotIndex;
+        return "Pez payaso: elige una carta adyacente boca arriba para proteger.";
+    }
+
+    private String protectChosenCard(int slotIndex) {
+        if (!isAdjacentToActor(slotIndex)) {
+            return "Elige una carta adyacente al pez payaso.";
+        }
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null || !target.isFaceUp()) {
+            return "La carta seleccionada debe estar boca arriba.";
+        }
+        if (target.getCard().getType() == CardType.OBJETO) {
+            return "No puedes proteger objetos.";
+        }
+        target.getStatus().protectedOnce = true;
+        clearPendingSelection();
+        return "Pez payaso protege la carta seleccionada.";
     }
 
     private String swapDieWithFaceUpSingle(int slotIndex) {
@@ -1233,13 +1450,13 @@ public class GameState {
                 }
                 break;
             case PERCEBES:
-                result = spreadDiceToAdjacents(slotIndex) + remoraLog;
+                result = startPercebesMove(slotIndex) + remoraLog;
                 break;
             case CABALLITO_DE_MAR:
                 result = recoverSpecificDie(DieType.D4) + remoraLog;
                 break;
             case SALMON:
-                result = revealSingleFaceDown() + remoraLog;
+                result = startSalmonFlip() + remoraLog;
                 break;
             case PEZ_VOLADOR:
                 result = flipLineFromFlyingFish(slotIndex, diceOnCard) + remoraLog;
@@ -1280,25 +1497,56 @@ public class GameState {
         return "";
     }
 
-    private String spreadDiceToAdjacents(int slotIndex) {
+    private String startPercebesMove(int slotIndex) {
         List<Die> dice = new ArrayList<>(board[slotIndex].getDice());
         board[slotIndex].clearDice();
-        int moved = 0;
-        for (Die d : dice) {
-            boolean placed = false;
-            for (Integer idx : adjacentIndices(slotIndex, true)) {
-                if (board[idx].getCard() != null && board[idx].getDice().size() < 2) {
-                    board[idx].addDie(d);
-                    placed = true;
-                    moved++;
-                    break;
-                }
-            }
-            if (!placed) {
-                board[slotIndex].addDie(d);
+        clearPercebesState();
+        if (dice.isEmpty()) return "";
+
+        List<Integer> available = new ArrayList<>();
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            if (board[idx].getCard() != null && board[idx].getDice().size() < 2) {
+                available.add(idx);
             }
         }
-        return moved == 0 ? "" : "Percebes movió " + moved + " dado(s) a cartas adyacentes.";
+
+        if (available.size() < dice.size()) {
+            for (Die d : dice) board[slotIndex].addDie(d);
+            return "No hay suficientes cartas adyacentes con espacio para mover los dados.";
+        }
+
+        pendingPercebesDice.addAll(dice);
+        pendingSelection = PendingSelection.PERCEBES_MOVE;
+        pendingSelectionActor = slotIndex;
+        return "Percebes: elige una carta adyacente para mover un dado.";
+    }
+
+    private String movePercebesDie(int slotIndex) {
+        if (!adjacentIndices(pendingSelectionActor, true).contains(slotIndex)) {
+            return "Elige una carta adyacente a Percebes.";
+        }
+        if (pendingPercebesTargets.contains(slotIndex)) {
+            return "No puedes mover más de un dado a la misma carta.";
+        }
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null) {
+            return "Esa casilla no tiene carta.";
+        }
+        if (target.getDice().size() >= 2) {
+            return "La carta seleccionada ya tiene 2 dados.";
+        }
+        if (pendingPercebesDice.isEmpty()) {
+            clearPendingSelection();
+            return "No hay dados por mover.";
+        }
+        Die moved = pendingPercebesDice.remove(0);
+        target.addDie(moved);
+        pendingPercebesTargets.add(slotIndex);
+        if (pendingPercebesDice.isEmpty()) {
+            clearPendingSelection();
+            return "Percebes movió todos los dados a cartas adyacentes.";
+        }
+        return "Percebes movió un dado. Elige otra carta adyacente distinta.";
     }
 
     private void captureAdjacentFaceDown(int slotIndex) {
@@ -1332,25 +1580,35 @@ public class GameState {
         return count == 0 ? "" : " Capturaste también " + count + " rémora(s).";
     }
 
-    private String revealSingleFaceDown() {
+    private String startSalmonFlip() {
+        boolean hasFaceDown = false;
         for (BoardSlot s : board) {
             if (s.getCard() != null && !s.isFaceUp()) {
-                String reveal = revealAndTrigger(indexOfSlot(s));
-                String base = "Revelaste " + s.getCard().getName() + ".";
-                if (reveal != null && !reveal.isEmpty()) {
-                    base += " " + reveal;
-                }
-                return base;
+                hasFaceDown = true;
+                break;
             }
         }
-        return "";
+        if (!hasFaceDown) {
+            return "No hay cartas boca abajo para revelar.";
+        }
+        pendingSelection = PendingSelection.SALMON_FLIP;
+        pendingSelectionActor = -1;
+        return "Salmón: selecciona una carta boca abajo para revelarla.";
     }
 
-    private int indexOfSlot(BoardSlot slot) {
-        for (int i = 0; i < board.length; i++) {
-            if (board[i] == slot) return i;
+    private String flipChosenFaceDown(int slotIndex) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getCard() == null || slot.isFaceUp()) {
+            return "Debes elegir una carta boca abajo.";
         }
-        return -1;
+        clearPendingSelection();
+        String reveal = revealAndTrigger(slotIndex);
+        String base = "Revelaste " + slot.getCard().getName() + ".";
+        if (reveal != null && !reveal.isEmpty()) {
+            base += " " + reveal;
+        }
+        recomputeBottleAdjustments();
+        return base;
     }
 
     private String flipLineFromFlyingFish(int slotIndex, List<Die> diceOnCard) {

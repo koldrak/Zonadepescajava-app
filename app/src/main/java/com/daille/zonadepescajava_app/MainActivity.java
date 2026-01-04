@@ -65,7 +65,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void refreshUi(String log) {
-        adapter.update(Arrays.asList(gameState.getBoard()));
+        adapter.update(Arrays.asList(gameState.getBoard()), gameState.getHighlightSlots());
         binding.score.setText(String.format(Locale.getDefault(), "Puntaje: %d", gameState.getScore()));
         binding.deckInfo.setText(String.format(Locale.getDefault(), "Mazo restante: %d", gameState.getDeckSize()));
         binding.captures.setText(String.format(Locale.getDefault(), "Capturas: %d", gameState.getCaptures().size()));
@@ -112,6 +112,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         refreshUi(result);
         Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
+        if (gameState.isAwaitingAtunDecision()) {
+            promptAtunDecision();
+        }
         if (gameState.isAwaitingDieLoss()) {
             promptDieLossChoice();
         }
@@ -194,6 +197,25 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setTitle("Elige qué dado perder")
                 .setItems(labels, (dialog, which) -> {
                     String msg = gameState.chooseDieToLose(which);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptAtunDecision() {
+        if (!gameState.isAwaitingAtunDecision()) return;
+        new AlertDialog.Builder(this)
+                .setTitle("Habilidad del Atún")
+                .setMessage("¿Quieres relanzar el dado recién lanzado?")
+                .setPositiveButton("Relanzar", (dialog, which) -> {
+                    String msg = gameState.chooseAtunReroll(true);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Conservar", (dialog, which) -> {
+                    String msg = gameState.chooseAtunReroll(false);
                     refreshUi(msg);
                     Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
                 })
