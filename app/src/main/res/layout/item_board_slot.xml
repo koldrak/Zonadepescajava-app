@@ -15,6 +15,14 @@
         android:orientation="vertical"
         android:padding="12dp">
 
+        <ImageView
+            android:id="@+id/cardImage"
+            android:layout_width="match_parent"
+            android:layout_height="180dp"
+            android:scaleType="centerCrop"
+            android:contentDescription="@string/app_name"
+            tools:src="@drawable/ic_launcher_foreground" />
+
         <TextView
             android:id="@+id/cardTitle"
             android:layout_width="match_parent"
@@ -37,13 +45,15 @@
             android:textAppearance="@style/TextAppearance.Material3.BodySmall"
             tools:text="Pts: 4" />
 
-        <TextView
-            android:id="@+id/dice"
+        <LinearLayout
+            android:id="@+id/diceRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-            tools:text="Dados: D6=4" />
+            android:layout_marginTop="8dp"
+            android:gravity="start"
+            android:orientation="horizontal"
+            android:baselineAligned="false"
+            tools:ignore="UseCompoundDrawables" />
 
         <TextView
             android:id="@+id/status"
