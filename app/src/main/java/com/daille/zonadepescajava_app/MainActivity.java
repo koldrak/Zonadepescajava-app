@@ -80,7 +80,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         renderDiceCollection(binding.reserveDiceContainer, gameState.getReserve(), true);
         renderDiceCollection(binding.lostDiceContainer, gameState.getLostDice(), false);
 
-        binding.reserve.setText("Reserva: " + buildReserveText());
         binding.lost.setText(String.format(Locale.getDefault(), "Perdidos: %d", gameState.getLostDice().size()));
         binding.log.setText(log);
         showRevealedCards();
