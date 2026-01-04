@@ -1,77 +1,96 @@
 package com.daille.zonadepescajava_app;
 
 import android.os.Bundle;
-
-import com.google.android.material.snackbar.Snackbar;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-
-import android.view.View;
-
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
-import androidx.navigation.ui.AppBarConfiguration;
-import androidx.navigation.ui.NavigationUI;
+import androidx.recyclerview.widget.GridLayoutManager;
 
 import com.daille.zonadepescajava_app.databinding.ActivityMainBinding;
+import com.daille.zonadepescajava_app.model.BoardSlot;
+import com.daille.zonadepescajava_app.model.DieType;
+import com.daille.zonadepescajava_app.model.GameState;
+import com.daille.zonadepescajava_app.ui.BoardSlotAdapter;
 
-import android.view.Menu;
-import android.view.MenuItem;
+import java.util.Arrays;
+import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.OnSlotInteractionListener {
 
-    private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
+    private GameState gameState;
+    private BoardSlotAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
         setSupportActionBar(binding.toolbar);
+        gameState = new GameState();
+        setupBoard();
+        setupButtons();
+        refreshUi("Juego iniciado. Lanza un dado y toca una carta.");
+    }
 
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
+    private void setupBoard() {
+        gameState.newGame();
+        adapter = new BoardSlotAdapter(Arrays.asList(gameState.getBoard()), this);
+        binding.boardRecycler.setLayoutManager(new GridLayoutManager(this, 3));
+        binding.boardRecycler.setAdapter(adapter);
+    }
 
-        binding.fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAnchorView(R.id.fab)
-                        .setAction("Action", null).show();
+    private void setupButtons() {
+        binding.rollD4.setOnClickListener(v -> onRoll(DieType.D4));
+        binding.rollD6.setOnClickListener(v -> onRoll(DieType.D6));
+        binding.rollD8.setOnClickListener(v -> onRoll(DieType.D8));
+        binding.rollD12.setOnClickListener(v -> onRoll(DieType.D12));
+    }
+
+    private void onRoll(DieType type) {
+        String msg = gameState.rollFromReserve(type);
+        refreshUi(msg);
+    }
+
+    private void refreshUi(String log) {
+        adapter.update(Arrays.asList(gameState.getBoard()));
+        binding.score.setText(String.format(Locale.getDefault(), "Puntaje: %d", gameState.getScore()));
+        binding.deckInfo.setText(String.format(Locale.getDefault(), "Mazo restante: %d", gameState.getDeckSize()));
+        binding.captures.setText(String.format(Locale.getDefault(), "Capturas: %d", gameState.getCaptures().size()));
+
+        binding.selection.setText(gameState.getSelectedDie() == null
+                ? "Selecciona un dado de la reserva"
+                : "Dado preparado: " + gameState.getSelectedDie().getLabel());
+
+        binding.reserve.setText("Reserva: " + buildReserveText());
+        binding.lost.setText(String.format(Locale.getDefault(), "Perdidos: %d", gameState.getLostDice().size()));
+        binding.log.setText(log);
+    }
+
+    private String buildReserveText() {
+        int d4 = 0, d6 = 0, d8 = 0, d12 = 0;
+        for (DieType t : gameState.getReserve()) {
+            switch (t) {
+                case D4: d4++; break;
+                case D6: d6++; break;
+                case D8: d8++; break;
+                case D12: d12++; break;
             }
-        });
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
         }
-
-        return super.onOptionsItemSelected(item);
+        return String.format(Locale.getDefault(), "D4 x%d • D6 x%d • D8 x%d • D12 x%d", d4, d6, d8, d12);
     }
 
     @Override
-    public boolean onSupportNavigateUp() {
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        return NavigationUI.navigateUp(navController, appBarConfiguration)
-                || super.onSupportNavigateUp();
+    public void onSlotTapped(int position) {
+        String result = gameState.placeSelectedDie(position);
+        refreshUi(result);
+        Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onSlotLongPressed(int position) {
+        gameState.toggleFace(position);
+        refreshUi("Has volteado la carta");
     }
 }
