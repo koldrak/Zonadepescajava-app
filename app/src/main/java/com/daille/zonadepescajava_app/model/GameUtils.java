@@ -2,9 +2,7 @@ package com.daille.zonadepescajava_app.model;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 
 public final class GameUtils {
@@ -186,32 +184,7 @@ public final class GameUtils {
     }
 
     public static List<Card> buildDeck(Random rng) {
-        Map<CardType, Integer> desiredByType = new EnumMap<>(CardType.class);
-        desiredByType.put(CardType.CRUSTACEO, 11);
-        desiredByType.put(CardType.PEZ, 15);
-        desiredByType.put(CardType.PEZ_GRANDE, 9);
-        desiredByType.put(CardType.OBJETO, 7);
-
-        List<Card> base = createAllCards();
-        List<Card> deck = new ArrayList<>();
-
-        for (Map.Entry<CardType, Integer> entry : desiredByType.entrySet()) {
-            CardType type = entry.getKey();
-            int target = entry.getValue();
-            List<Card> pool = new ArrayList<>();
-            for (Card c : base) {
-                if (c.getType() == type) {
-                    pool.add(c);
-                }
-            }
-            if (pool.isEmpty()) {
-                continue;
-            }
-            while (target-- > 0) {
-                deck.add(pool.get(rng.nextInt(pool.size())));
-            }
-        }
-
+        List<Card> deck = new ArrayList<>(createAllCards());
         Collections.shuffle(deck, rng);
         return deck;
     }
