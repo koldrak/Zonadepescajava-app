@@ -226,8 +226,12 @@ public class GameState {
 
     private String capture(int slotIndex) {
         BoardSlot slot = board[slotIndex];
+        List<Die> diceOnCard = new ArrayList<>(slot.getDice());
         captures.add(slot.getCard());
-        String captureLog = handleOnCapture(slotIndex);
+        String captureLog = handleOnCapture(slotIndex, diceOnCard);
+        for (Die d : new ArrayList<>(slot.getDice())) {
+            reserve.add(d.getType());
+        }
         slot.clearDice();
         slot.setCard(deck.isEmpty() ? null : deck.pop());
         slot.setFaceUp(false);
@@ -444,6 +448,12 @@ public class GameState {
                 return adjustLastDie(slotIndex);
             case CAMARON_FANTASMA:
                 return peekAdjacentCards(slotIndex);
+            case ATUN:
+                return rerollAndKeepBest(slotIndex);
+            case PEZ_GLOBO:
+                return inflateAnyFishDie();
+            case MORENA:
+                return moveMorenaDie(slotIndex);
             case CANGREJO_ERMITANO:
                 return replaceAdjacentObject(slotIndex);
             case CENTOLLA:
@@ -464,14 +474,28 @@ public class GameState {
                 return protectAdjacentFish(slotIndex);
             case PEZ_LINTERNA:
                 return revealAndPossiblyMoveDie(slotIndex, placedValue);
+            case KOI:
+                return swapDieWithFaceUpSingle(slotIndex);
             case PEZ_VELA:
                 return rerollLatestDie(slotIndex);
+            case PIRANA:
+                return biteAdjacentSmallFish(slotIndex);
+            case PEZ_FANTASMA:
+                return hideAdjacentFaceUp(slotIndex);
+            case PULPO:
+                return replacePulpoIfEven(slotIndex, placedValue);
             case CALAMAR_GIGANTE:
                 return flipAdjacentFaceUpCardsDown(slotIndex);
             case MANTA_GIGANTE:
                 return recoverSpecificDie(DieType.D8);
             case ARENQUE:
                 return seedAdjacentSmallFish(slotIndex);
+            case REMORA:
+                return attachToBigFish(slotIndex);
+            case TIBURON_BLANCO:
+                return devourAdjacentFaceUp(slotIndex);
+            case MERO_GIGANTE:
+                return flipAdjacentCardsDown(slotIndex);
             case PEZ_LUNA:
                 return "Si la marea lo expulsa, liberarás tu captura de mayor valor.";
             default:
@@ -558,6 +582,39 @@ public class GameState {
         return "Observaste: " + String.join(", ", names);
     }
 
+    private String rerollAndKeepBest(int slotIndex) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getDice().isEmpty()) return "";
+        int idx = slot.getDice().size() - 1;
+        Die oldDie = slot.getDice().get(idx);
+        Die rerolled = Die.roll(oldDie.getType(), rng);
+        int best = Math.max(oldDie.getValue(), rerolled.getValue());
+        slot.setDie(idx, new Die(oldDie.getType(), best));
+        return "Atún relanzó el dado y conservó " + best + ".";
+    }
+
+    private String inflateAnyFishDie() {
+        for (BoardSlot s : board) {
+            if (s.getCard() == null) continue;
+            if (s.getCard().getType() == CardType.PEZ || s.getCard().getType() == CardType.PEZ_GRANDE) {
+                for (int i = 0; i < s.getDice().size(); i++) {
+                    Die d = s.getDice().get(i);
+                    int max = d.getType().getSides();
+                    if (d.getValue() < max) {
+                        s.setDie(i, new Die(d.getType(), max));
+                        return "Pez globo infló un dado a " + max + ".";
+                    }
+                }
+            }
+        }
+        return "";
+    }
+
+    private String moveMorenaDie(int slotIndex) {
+        String result = moveOneDieBetweenAdjacents(slotIndex);
+        return result.isEmpty() ? "" : "Morena movió un dado adyacente.";
+    }
+
     private String replaceAdjacentObject(int slotIndex) {
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
@@ -600,6 +657,22 @@ public class GameState {
         return "";
     }
 
+    private String swapDieWithFaceUpSingle(int slotIndex) {
+        BoardSlot origin = board[slotIndex];
+        if (origin.getDice().isEmpty()) return "";
+        for (BoardSlot target : board) {
+            if (target == origin) continue;
+            if (target.getCard() != null && target.isFaceUp() && target.getDice().size() == 1) {
+                Die fromOrigin = origin.removeDie(origin.getDice().size() - 1);
+                Die targetDie = target.removeDie(0);
+                origin.addDie(targetDie);
+                target.addDie(fromOrigin);
+                return "Koi intercambió un dado con otra carta.";
+            }
+        }
+        return "";
+    }
+
     private String revealAndPossiblyMoveDie(int slotIndex, int placedValue) {
         BoardSlot origin = board[slotIndex];
         BoardSlot target = null;
@@ -622,6 +695,62 @@ public class GameState {
             log.append(", era un objeto: el dado se pierde.");
         }
         return log.toString();
+    }
+
+    private String biteAdjacentSmallFish(int slotIndex) {
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() == CardType.PEZ) {
+                Card removed = adj.getCard();
+                failedDiscards.add(removed);
+                adj.setCard(deck.isEmpty() ? null : deck.pop());
+                adj.setFaceUp(false);
+                adj.setStatus(new SlotStatus());
+                return "Piraña descartó a " + removed.getName() + ".";
+            }
+        }
+        return "";
+    }
+
+    private String hideAdjacentFaceUp(int slotIndex) {
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp()) {
+                for (Die d : new ArrayList<>(adj.getDice())) {
+                    reserve.add(d.getType());
+                }
+                adj.clearDice();
+                adj.setFaceUp(false);
+                return "Pez fantasma ocultó una carta y recuperó sus dados.";
+            }
+        }
+        return "";
+    }
+
+    private String replacePulpoIfEven(int slotIndex, int placedValue) {
+        if (placedValue % 2 != 0) return "";
+        List<Card> remaining = new ArrayList<>(deck);
+        deck.clear();
+        Card replacement = null;
+        for (Card c : remaining) {
+            if (c.getType() != CardType.OBJETO) {
+                replacement = c;
+                break;
+            } else {
+                deck.push(c);
+            }
+        }
+        if (replacement == null) {
+            deck.addAll(remaining);
+            return "";
+        }
+        for (Card c : remaining) {
+            if (c != replacement && !deck.contains(c)) deck.push(c);
+        }
+        BoardSlot slot = board[slotIndex];
+        slot.setCard(replacement);
+        slot.setFaceUp(true);
+        return "Pulpo fue reemplazado por " + replacement.getName() + ".";
     }
 
     private String rerollLatestDie(int slotIndex) {
@@ -699,28 +828,90 @@ public class GameState {
         }
     }
 
-    private String handleOnCapture(int slotIndex) {
+    private String attachToBigFish(int slotIndex) {
+        BoardSlot slot = board[slotIndex];
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.getCard().getType() == CardType.PEZ_GRANDE) {
+                adj.getStatus().attachedRemoras.add(slot.getCard());
+                for (Die d : new ArrayList<>(slot.getDice())) {
+                    reserve.add(d.getType());
+                }
+                slot.clearDice();
+                slot.setCard(deck.isEmpty() ? null : deck.pop());
+                slot.setFaceUp(false);
+                slot.setStatus(new SlotStatus());
+                return "Rémora se adhirió a un pez grande.";
+            }
+        }
+        return "";
+    }
+
+    private String devourAdjacentFaceUp(int slotIndex) {
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp()) {
+                List<Die> dice = new ArrayList<>(adj.getDice());
+                failedDiscards.add(adj.getCard());
+                adj.clearDice();
+                adj.setCard(deck.isEmpty() ? null : deck.pop());
+                adj.setFaceUp(false);
+                adj.setStatus(new SlotStatus());
+                BoardSlot shark = board[slotIndex];
+                for (Die d : dice) {
+                    if (shark.getDice().size() < 2) {
+                        shark.addDie(d);
+                    } else {
+                        reserve.add(d.getType());
+                    }
+                }
+                return "Tiburón blanco devoró una carta adyacente.";
+            }
+        }
+        return "";
+    }
+
+    private String flipAdjacentCardsDown(int slotIndex) {
+        int flipped = 0;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp()) {
+                adj.setFaceUp(false);
+                flipped++;
+            }
+        }
+        return flipped == 0 ? "" : "Mero gigante volteó " + flipped + " carta(s).";
+    }
+
+    private String handleOnCapture(int slotIndex, List<Die> diceOnCard) {
         Card captured = board[slotIndex].getCard();
         if (captured == null) return "";
+        String remoraLog = collectAttachedRemoras(slotIndex);
         switch (captured.getId()) {
             case LANGOSTA_ESPINOSA:
-                return recoverIfD4Used(slotIndex);
+                return recoverIfD4Used(slotIndex) + remoraLog;
             case RED_ENREDADA:
                 captureAdjacentFaceDown(slotIndex);
-                return "Red enredada arrastra una carta adyacente.";
+                return "Red enredada arrastra una carta adyacente." + remoraLog;
             case LATA_OXIDADA:
                 if (!lostDice.isEmpty()) {
                     Die recovered = lostDice.remove(lostDice.size() - 1);
                     reserve.add(recovered.getType());
-                    return "Recuperaste un dado perdido.";
+                    return "Recuperaste un dado perdido." + remoraLog;
                 }
-                return "";
+                return remoraLog;
             case PERCEBES:
-                return spreadDiceToAdjacents(slotIndex);
+                return spreadDiceToAdjacents(slotIndex) + remoraLog;
             case CABALLITO_DE_MAR:
-                return recoverSpecificDie(DieType.D4);
+                return recoverSpecificDie(DieType.D4) + remoraLog;
+            case SALMON:
+                return revealSingleFaceDown() + remoraLog;
+            case PEZ_VOLADOR:
+                return flipLineFromFlyingFish(slotIndex, diceOnCard) + remoraLog;
+            case BALLENA_AZUL:
+                return repositionAllDice(diceOnCard) + remoraLog;
             default:
-                return "";
+                return remoraLog;
         }
     }
 
@@ -776,6 +967,70 @@ public class GameState {
                 break;
             }
         }
+    }
+
+    private String collectAttachedRemoras(int slotIndex) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getStatus().attachedRemoras.isEmpty()) return "";
+        int count = 0;
+        for (Card c : slot.getStatus().attachedRemoras) {
+            captures.add(c);
+            count++;
+        }
+        slot.getStatus().attachedRemoras.clear();
+        return count == 0 ? "" : " Capturaste también " + count + " rémora(s).";
+    }
+
+    private String revealSingleFaceDown() {
+        for (BoardSlot s : board) {
+            if (s.getCard() != null && !s.isFaceUp()) {
+                s.setFaceUp(true);
+                return "Revelaste " + s.getCard().getName() + ".";
+            }
+        }
+        return "";
+    }
+
+    private String flipLineFromFlyingFish(int slotIndex, List<Die> diceOnCard) {
+        if (diceOnCard.size() < 2) return "";
+        Die even = null, odd = null;
+        for (Die d : diceOnCard) {
+            if (d.getValue() % 2 == 0) even = d; else odd = d;
+        }
+        if (even == null || odd == null) return "";
+        boolean vertical = even.getValue() > odd.getValue();
+        int row = slotIndex / 3, col = slotIndex % 3;
+        int flipped = 0;
+        for (int i = 0; i < 3; i++) {
+            int idx = vertical ? i * 3 + col : row * 3 + i;
+            BoardSlot target = board[idx];
+            if (target.getCard() != null && !target.isFaceUp()) {
+                target.setFaceUp(true);
+                flipped++;
+            }
+        }
+        return flipped == 0 ? "" : "Pez volador reveló " + flipped + " carta(s).";
+    }
+
+    private String repositionAllDice(List<Die> diceOnCard) {
+        List<Die> pool = new ArrayList<>();
+        for (BoardSlot s : board) {
+            if (s.getDice().isEmpty()) continue;
+            pool.addAll(s.getDice());
+            s.clearDice();
+        }
+        int placed = 0;
+        for (BoardSlot s : board) {
+            if (s.getCard() == null) continue;
+            while (s.getDice().size() < 2 && !pool.isEmpty()) {
+                s.addDie(pool.remove(0));
+                placed++;
+            }
+        }
+        for (Die remaining : pool) {
+            reserve.add(remaining.getType());
+        }
+        return placed == 0 ? "" : "Ballena azul reposicionó dados en el tablero.";
     }
 
     private void releaseHighestCapture() {
