@@ -6,13 +6,14 @@ import android.view.LayoutInflater;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.daille.zonadepescajava_app.R;
 import com.daille.zonadepescajava_app.databinding.ItemBoardSlotBinding;
 import com.daille.zonadepescajava_app.model.BoardSlot;
 import com.daille.zonadepescajava_app.model.Card;
+import com.daille.zonadepescajava_app.model.Die;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,6 +28,7 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
     private final List<BoardSlot> slots = new ArrayList<>();
     private final OnSlotInteractionListener listener;
     private final CardImageResolver imageResolver;
+    private final DiceImageResolver diceImageResolver;
     private final Context context;
 
     public BoardSlotAdapter(Context context, List<BoardSlot> data, OnSlotInteractionListener listener) {
@@ -34,6 +36,7 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
         slots.addAll(data);
         this.listener = listener;
         this.imageResolver = new CardImageResolver(context);
+        this.diceImageResolver = new DiceImageResolver(context);
     }
 
     @NonNull
@@ -41,7 +44,7 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
     public SlotViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(parent.getContext());
         ItemBoardSlotBinding binding = ItemBoardSlotBinding.inflate(inflater, parent, false);
-        return new SlotViewHolder(binding, listener, imageResolver, context);
+        return new SlotViewHolder(binding, listener, imageResolver, diceImageResolver, context);
     }
 
     @Override
@@ -63,14 +66,17 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
     static class SlotViewHolder extends RecyclerView.ViewHolder {
         private final ItemBoardSlotBinding binding;
         private final CardImageResolver imageResolver;
+        private final DiceImageResolver diceImageResolver;
         private final Context context;
         private final OnSlotInteractionListener listener;
 
         SlotViewHolder(ItemBoardSlotBinding binding, OnSlotInteractionListener listener,
-                       CardImageResolver imageResolver, Context context) {
+                       CardImageResolver imageResolver, DiceImageResolver diceImageResolver,
+                       Context context) {
             super(binding.getRoot());
             this.binding = binding;
             this.imageResolver = imageResolver;
+            this.diceImageResolver = diceImageResolver;
             this.context = context;
             this.listener = listener;
             binding.getRoot().setOnClickListener(v -> listener.onSlotTapped(getBindingAdapterPosition()));
@@ -97,6 +103,25 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
                 listener.onSlotLongPressed(getBindingAdapterPosition());
                 return true;
             });
+
+            List<Die> dice = slot.getDice();
+            binding.cardDiceContainer.setVisibility(dice.isEmpty() ? ViewGroup.GONE : ViewGroup.VISIBLE);
+
+            if (dice.size() > 0) {
+                Bitmap dieOne = diceImageResolver.getFace(dice.get(0));
+                binding.dieSlotOne.setVisibility(ViewGroup.VISIBLE);
+                binding.dieSlotOne.setImageBitmap(dieOne);
+            } else {
+                binding.dieSlotOne.setVisibility(ViewGroup.GONE);
+            }
+
+            if (dice.size() > 1) {
+                Bitmap dieTwo = diceImageResolver.getFace(dice.get(1));
+                binding.dieSlotTwo.setVisibility(ViewGroup.VISIBLE);
+                binding.dieSlotTwo.setImageBitmap(dieTwo);
+            } else {
+                binding.dieSlotTwo.setVisibility(ViewGroup.GONE);
+            }
         }
     }
 }
