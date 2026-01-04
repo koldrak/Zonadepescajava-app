@@ -9,11 +9,13 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 
 import com.daille.zonadepescajava_app.databinding.ActivityMainBinding;
 import com.daille.zonadepescajava_app.model.BoardSlot;
+import com.daille.zonadepescajava_app.model.Die;
 import com.daille.zonadepescajava_app.model.DieType;
 import com.daille.zonadepescajava_app.model.GameState;
 import com.daille.zonadepescajava_app.ui.BoardSlotAdapter;
@@ -22,6 +24,7 @@ import com.daille.zonadepescajava_app.ui.CardImageResolver;
 import com.daille.zonadepescajava_app.ui.DiceImageResolver;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.OnSlotInteractionListener {
@@ -93,6 +96,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         String result = gameState.placeSelectedDie(position);
         refreshUi(result);
         Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
+        if (gameState.isAwaitingDieLoss()) {
+            promptDieLossChoice();
+        }
     }
 
     @Override
@@ -157,6 +163,26 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             chip.setContentDescription(contentDescription);
             group.addView(chip);
         }
+    }
+
+    private void promptDieLossChoice() {
+        if (!gameState.isAwaitingDieLoss()) return;
+        java.util.List<Die> options = gameState.getPendingDiceChoices();
+        if (options.isEmpty()) return;
+        CharSequence[] labels = new CharSequence[options.size()];
+        for (int i = 0; i < options.size(); i++) {
+            labels[i] = options.get(i).getLabel();
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Elige qué dado perder")
+                .setItems(labels, (dialog, which) -> {
+                    String msg = gameState.chooseDieToLose(which);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                })
+                .setCancelable(false)
+                .show();
     }
 
     private void startRollingAnimation(DieType type) {
