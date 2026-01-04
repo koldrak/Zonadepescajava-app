@@ -95,6 +95,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     @Override
     public void onSlotLongPressed(int position) {
         BoardSlot slot = gameState.getBoard()[position];
-        CardFullscreenDialog.show(this, cardImageResolver.getImageFor(slot.getCard(), slot.isFaceUp()));
+        android.graphics.Bitmap image = cardImageResolver.getImageFor(slot.getCard(), slot.isFaceUp());
+        if (image == null) {
+            image = cardImageResolver.getCardBack();
+        }
+        CardFullscreenDialog.show(this, image);
     }
 }

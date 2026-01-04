@@ -2,7 +2,6 @@ package com.daille.zonadepescajava_app.ui;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.drawable.ColorDrawable;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
 
@@ -78,25 +77,11 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
         void bind(BoardSlot slot) {
             Card card = slot.getCard();
             Bitmap image = imageResolver.getImageFor(card, slot.isFaceUp());
-            if (image != null) {
-                binding.cardImage.setImageBitmap(image);
-            } else {
-                int color = ContextCompat.getColor(binding.getRoot().getContext(), android.R.color.darker_gray);
-                binding.cardImage.setImageDrawable(new ColorDrawable(color));
+            if (image == null) {
+                image = imageResolver.getCardBack();
             }
 
-            if (card == null) {
-                binding.cardTitle.setText("Vacío");
-                binding.cardType.setText("Sin carta");
-                binding.cardPoints.setText("");
-                binding.cardImage.setContentDescription(context.getString(R.string.card_image_content_description));
-            } else {
-                binding.cardTitle.setText(slot.isFaceUp() ? card.getName() : "Boca abajo");
-                binding.cardType.setText(String.format(Locale.getDefault(), "%s • %s",
-                        card.getType().name(), slot.isFaceUp() ? card.getCondition().getClass().getSimpleName() : "?"));
-                binding.cardPoints.setText(String.format(Locale.getDefault(), "%d pts", card.getPoints()));
-                binding.cardImage.setContentDescription(slot.isFaceUp() ? card.getName() : context.getString(R.string.card_image_content_description));
-            }
+            binding.cardImage.setImageBitmap(image);
 
             binding.cardImage.setContentDescription(slot.isFaceUp() && card != null
                     ? card.getName()

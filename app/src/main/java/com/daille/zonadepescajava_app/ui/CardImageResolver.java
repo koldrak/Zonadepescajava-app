@@ -39,18 +39,18 @@ public class CardImageResolver {
     }
 
     public Bitmap getImageFor(Card card, boolean faceUp) {
-        if (!faceUp) {
-            return loadBitmap(CARD_BACK_FILE);
-        }
-
-        if (card == null) {
-            return loadBitmap(CARD_BACK_FILE);
+        if (!faceUp || card == null) {
+            return getCardBack();
         }
 
         String mapped = resolveFrontFile(card);
         Bitmap bmp = loadBitmap(mapped);
         if (bmp != null) return bmp;
 
+        return getCardBack();
+    }
+
+    public Bitmap getCardBack() {
         return loadBitmap(CARD_BACK_FILE);
     }
 

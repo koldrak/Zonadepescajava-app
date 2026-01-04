@@ -15,55 +15,6 @@
         android:layout_height="match_parent"
         android:contentDescription="@string/card_image_content_description"
         android:scaleType="centerCrop"
-        tools:src="@drawable/img/cartabocaabajo" />
+        tools:src="@drawable/cartabocaabajo" />
 
-        <ImageView
-            android:id="@+id/cardImage"
-            android:layout_width="match_parent"
-            android:layout_height="180dp"
-            android:adjustViewBounds="true"
-            android:contentDescription="@string/card_image_content_description"
-            android:scaleType="centerCrop"
-            tools:src="@drawable/img/cartabocaabajo" />
-
-        <TextView
-            android:id="@+id/cardTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-            android:textStyle="bold"
-            tools:text="Calamar" />
-
-        <TextView
-            android:id="@+id/cardType"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-            tools:text="Tipo: Depredador" />
-
-        <TextView
-            android:id="@+id/cardPoints"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-            tools:text="Pts: 4" />
-
-        <TextView
-            android:id="@+id/dice"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-            tools:text="Dados: D6=4" />
-
-        <TextView
-            android:id="@+id/status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-            tools:text="🛡️ Protegido" />
-
-    </LinearLayout>
-
-</com.google.android.material.card.MaterialCardView>
+</com.daille.zonadepescajava_app.ui.SquareCardView>
