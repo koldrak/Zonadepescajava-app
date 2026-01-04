@@ -11,6 +11,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 
 import com.daille.zonadepescajava_app.databinding.ActivityMainBinding;
@@ -30,6 +31,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.OnSlotInteractionListener {
 
     private ActivityMainBinding binding;
+    private GameViewModel viewModel;
     private GameState gameState;
     private BoardSlotAdapter adapter;
     private CardImageResolver cardImageResolver;
@@ -44,16 +46,19 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setContentView(binding.getRoot());
 
         setSupportActionBar(binding.toolbar);
-        gameState = new GameState();
+        viewModel = new ViewModelProvider(this).get(GameViewModel.class);
+        gameState = viewModel.getGameState();
         cardImageResolver = new CardImageResolver(this);
         diceImageResolver = new DiceImageResolver(this);
         animationHandler = new Handler(Looper.getMainLooper());
+        boolean startedNewGame = viewModel.startNewGameIfNeeded();
         setupBoard();
-        refreshUi("Juego iniciado. Lanza un dado y toca una carta.");
+        refreshUi(startedNewGame
+                ? "Juego iniciado. Lanza un dado y toca una carta."
+                : "Partida restaurada tras cambio de orientación.");
     }
 
     private void setupBoard() {
-        gameState.newGame();
         adapter = new BoardSlotAdapter(this, Arrays.asList(gameState.getBoard()), this);
         binding.boardRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.boardRecycler.setAdapter(adapter);
