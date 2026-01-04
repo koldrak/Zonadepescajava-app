@@ -25,12 +25,21 @@ public class GameState {
     private boolean awaitingAtunDecision = false;
     private int atunSlotIndex = -1;
     private int atunDieIndex = -1;
+    private boolean awaitingValueAdjustment = false;
+    private int adjustmentSlotIndex = -1;
+    private int adjustmentDieIndex = -1;
+    private int adjustmentAmount = 0;
+    private CardId adjustmentSource = null;
     private boolean awaitingPezVelaDecision = false;
     private boolean awaitingPezVelaResultChoice = false;
     private int pezVelaSlotIndex = -1;
     private int pezVelaDieIndex = -1;
     private Die pezVelaOriginalDie = null;
     private Die pezVelaRerolledDie = null;
+    private boolean awaitingGhostShrimpDecision = false;
+    private int ghostShrimpFirstChoice = -1;
+    private int ghostShrimpSecondChoice = -1;
+    private final List<Card> recentlyRevealedCards = new ArrayList<>();
     private final List<Die> pendingPercebesDice = new ArrayList<>();
     private final List<Integer> pendingPercebesTargets = new ArrayList<>();
     private final List<Die> pendingBallenaDice = new ArrayList<>();
@@ -46,7 +55,10 @@ public class GameState {
         BLUE_CRAB,
         NAUTILUS_FIRST,
         NAUTILUS_SECOND,
+        BLOWFISH,
         GHOST_TARGET,
+        GHOST_SHRIMP_FIRST,
+        GHOST_SHRIMP_SECOND,
         SALMON_FLIP,
         CLOWNFISH_PROTECT,
         PERCEBES_MOVE,
@@ -99,6 +111,11 @@ public class GameState {
         awaitingAtunDecision = false;
         atunSlotIndex = -1;
         atunDieIndex = -1;
+        awaitingValueAdjustment = false;
+        adjustmentSlotIndex = -1;
+        adjustmentDieIndex = -1;
+        adjustmentAmount = 0;
+        adjustmentSource = null;
         clearPezVelaState();
         pendingPercebesDice.clear();
         pendingPercebesTargets.clear();
@@ -109,6 +126,10 @@ public class GameState {
         pezVelaDieIndex = -1;
         pezVelaOriginalDie = null;
         pezVelaRerolledDie = null;
+        awaitingGhostShrimpDecision = false;
+        ghostShrimpFirstChoice = -1;
+        ghostShrimpSecondChoice = -1;
+        recentlyRevealedCards.clear();
         pendingBallenaDice.clear();
         pendingArenquePool.clear();
         pendingArenqueChosen.clear();
@@ -204,6 +225,43 @@ public class GameState {
         return names;
     }
 
+    public boolean isAwaitingValueAdjustment() {
+        return awaitingValueAdjustment;
+    }
+
+    public int getPendingAdjustmentAmount() {
+        return adjustmentAmount;
+    }
+
+    public CardId getPendingAdjustmentSource() {
+        return adjustmentSource;
+    }
+
+    public boolean isAwaitingGhostShrimpDecision() {
+        return awaitingGhostShrimpDecision;
+    }
+
+    public String getGhostShrimpPeekNames() {
+        if (!awaitingGhostShrimpDecision
+                || ghostShrimpFirstChoice < 0
+                || ghostShrimpSecondChoice < 0
+                || ghostShrimpFirstChoice >= board.length
+                || ghostShrimpSecondChoice >= board.length) {
+            return "";
+        }
+        Card first = board[ghostShrimpFirstChoice].getCard();
+        Card second = board[ghostShrimpSecondChoice].getCard();
+        String firstName = first != null ? first.getName() : "?";
+        String secondName = second != null ? second.getName() : "?";
+        return firstName + " y " + secondName;
+    }
+
+    public List<Card> consumeRecentlyRevealedCards() {
+        List<Card> copy = new ArrayList<>(recentlyRevealedCards);
+        recentlyRevealedCards.clear();
+        return copy;
+    }
+
     public List<Integer> getHighlightSlots() {
         List<Integer> highlight = new ArrayList<>();
         if (pendingSelection == PendingSelection.NONE) {
@@ -264,9 +322,29 @@ public class GameState {
                     if (!board[i].getDice().isEmpty() && i != pendingSelectionAux) highlight.add(i);
                 }
                 break;
+            case BLOWFISH:
+                for (int i = 0; i < board.length; i++) {
+                    if (!board[i].getDice().isEmpty()) highlight.add(i);
+                }
+                break;
             case GHOST_TARGET:
                 for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
                     if (board[idx].getCard() != null && board[idx].isFaceUp()) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case GHOST_SHRIMP_FIRST:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    if (board[idx].getCard() != null && !board[idx].isFaceUp()) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case GHOST_SHRIMP_SECOND:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    if (board[idx].getCard() != null && !board[idx].isFaceUp()
+                            && idx != pendingSelectionAux) {
                         highlight.add(idx);
                     }
                 }
@@ -389,8 +467,17 @@ public class GameState {
             case NAUTILUS_SECOND:
                 result = retuneChosenDie(slotIndex);
                 break;
+            case BLOWFISH:
+                result = inflateChosenDie(slotIndex);
+                break;
             case GHOST_TARGET:
                 result = hideChosenAdjacent(slotIndex);
+                break;
+            case GHOST_SHRIMP_FIRST:
+                result = chooseGhostShrimpFirst(slotIndex);
+                break;
+            case GHOST_SHRIMP_SECOND:
+                result = chooseGhostShrimpSecond(slotIndex);
                 break;
             case SALMON_FLIP:
                 result = flipChosenFaceDown(slotIndex);
@@ -550,8 +637,17 @@ public class GameState {
         if (awaitingArenqueChoice) {
             return "Selecciona primero los peces pequeños del Arenque.";
         }
+        if (awaitingValueAdjustment) {
+            return "Resuelve el ajuste pendiente antes de lanzar otro dado.";
+        }
+        if (awaitingGhostShrimpDecision) {
+            return "Decide primero si intercambiar las cartas vistas por el Camarón fantasma.";
+        }
         if (pendingSelection == PendingSelection.BLUE_WHALE_PLACE && !pendingBallenaDice.isEmpty()) {
             return "Coloca los dados pendientes de la Ballena azul antes de continuar.";
+        }
+        if (selectedDie != null) {
+            return "Coloca el dado ya lanzado antes de lanzar otro.";
         }
         if (!reserve.remove(type)) {
             return "No hay más dados " + type.getLabel();
@@ -585,6 +681,12 @@ public class GameState {
         if (awaitingArenqueChoice) {
             return "Selecciona los peces pequeños del Arenque antes de colocar otros dados.";
         }
+        if (awaitingValueAdjustment) {
+            return "Resuelve el ajuste pendiente antes de colocar dados.";
+        }
+        if (awaitingGhostShrimpDecision) {
+            return "Decide si intercambiar las cartas vistas por el Camarón fantasma antes de continuar.";
+        }
         if (pendingSelection == PendingSelection.BLUE_WHALE_PLACE && !pendingBallenaDice.isEmpty()) {
             return "Primero coloca los dados pendientes de la Ballena azul.";
         }
@@ -609,6 +711,7 @@ public class GameState {
         StringBuilder extraLog = new StringBuilder();
         if (!slot.isFaceUp()) {
             slot.setFaceUp(true);
+            markRevealed(slotIndex);
             String reveal = handleOnReveal(slotIndex, placedValue);
             if (!reveal.isEmpty()) {
                 extraLog.append(" ").append(reveal);
@@ -666,6 +769,7 @@ public class GameState {
             return "";
         }
         target.setFaceUp(true);
+        markRevealed(slotIndex);
         String reveal = handleOnReveal(slotIndex, die.getValue());
         recomputeBottleAdjustments();
         return reveal == null ? "" : reveal;
@@ -959,6 +1063,13 @@ public class GameState {
         arenqueSlotIndex = -1;
     }
 
+    private void markRevealed(int slotIndex) {
+        Card card = board[slotIndex].getCard();
+        if (card != null && !recentlyRevealedCards.contains(card)) {
+            recentlyRevealedCards.add(card);
+        }
+    }
+
     private String queueableSelection(PendingSelection selection, int actor, int aux, String message) {
         if (pendingSelection == PendingSelection.NONE) {
             pendingSelection = selection;
@@ -994,6 +1105,7 @@ public class GameState {
         BoardSlot target = board[slotIndex];
         if (target.getCard() == null || target.isFaceUp()) return "";
         target.setFaceUp(true);
+        markRevealed(slotIndex);
         String result = handleOnReveal(slotIndex, 0);
         return result;
     }
@@ -1016,13 +1128,13 @@ public class GameState {
                         "Jaiba azul: elige un dado para ajustar ±1.");
                 break;
             case CAMARON_FANTASMA:
-                result = peekAdjacentCards(slotIndex);
+                result = startGhostShrimpPeek(slotIndex);
                 break;
             case ATUN:
                 result = startAtunDecision(slotIndex);
                 break;
             case PEZ_GLOBO:
-                result = inflateAnyFishDie();
+                result = startBlowfishInflate(slotIndex);
                 break;
             case MORENA:
                 result = moveMorenaDie(slotIndex);
@@ -1069,10 +1181,7 @@ public class GameState {
                 result = biteAdjacentSmallFish(slotIndex);
                 break;
             case PEZ_FANTASMA:
-                result = queueableSelection(
-                        PendingSelection.GHOST_TARGET,
-                        slotIndex,
-                        "Pez fantasma: elige una carta adyacente boca arriba para ocultar.");
+                result = startGhostFishSelection(slotIndex);
                 break;
             case PULPO:
                 result = replacePulpoIfEven(slotIndex, placedValue);
@@ -1225,31 +1334,124 @@ public class GameState {
             return "Elige una carta con un dado para ajustar.";
         }
         int idx = slot.getDice().size() - 1;
-        Die die = slot.getDice().get(idx);
-        int value = die.getValue();
-        int sides = die.getType().getSides();
-        if (value + 1 <= sides) {
-            value += 1;
-        } else if (value - 1 >= 1) {
-            value -= 1;
-        }
-        slot.setDie(idx, new Die(die.getType(), value));
-        clearPendingSelection();
-        return "Jaiba azul ajustó el dado a " + value + ".";
+        return startValueAdjustment(
+                slotIndex,
+                idx,
+                1,
+                CardId.JAIBA_AZUL,
+                "Jaiba azul: elige si sumar o restar 1 al dado seleccionado.");
     }
 
-    private String peekAdjacentCards(int slotIndex) {
-        List<Integer> adjs = adjacentIndices(slotIndex, true);
-        List<String> names = new ArrayList<>();
-        for (Integer idx : adjs) {
-            if (names.size() >= 2) break;
+    private String startGhostShrimpPeek(int slotIndex) {
+        int facedown = 0;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
             if (adj.getCard() != null && !adj.isFaceUp()) {
-                names.add(adj.getCard().getName());
+                facedown++;
             }
         }
-        if (names.isEmpty()) return "";
-        return "Observaste: " + String.join(", ", names);
+        if (facedown < 2) {
+            return "No hay suficientes cartas boca abajo adyacentes para el Camarón fantasma.";
+        }
+        return queueableSelection(
+                PendingSelection.GHOST_SHRIMP_FIRST,
+                slotIndex,
+                "Camarón fantasma: elige la primera carta boca abajo adyacente.");
+    }
+
+    private String chooseGhostShrimpFirst(int slotIndex) {
+        if (!isAdjacentToActor(slotIndex)) {
+            return "Elige una carta adyacente al camarón.";
+        }
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null || target.isFaceUp()) {
+            return "La carta debe estar boca abajo.";
+        }
+        pendingSelection = PendingSelection.GHOST_SHRIMP_SECOND;
+        pendingSelectionAux = slotIndex;
+        return "Elige una segunda carta boca abajo adyacente.";
+    }
+
+    private String chooseGhostShrimpSecond(int slotIndex) {
+        if (!isAdjacentToActor(slotIndex)) {
+            return "Elige una carta adyacente al camarón.";
+        }
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null || target.isFaceUp()) {
+            return "La carta debe estar boca abajo.";
+        }
+        if (slotIndex == pendingSelectionAux) {
+            return "Debes elegir una carta distinta.";
+        }
+        ghostShrimpFirstChoice = pendingSelectionAux;
+        ghostShrimpSecondChoice = slotIndex;
+        awaitingGhostShrimpDecision = true;
+        String firstName = board[ghostShrimpFirstChoice].getCard().getName();
+        String secondName = board[ghostShrimpSecondChoice].getCard().getName();
+        clearPendingSelection();
+        return "Camarón fantasma vio " + firstName + " y " + secondName + ". ¿Intercambiarlas?";
+    }
+
+    public String resolveGhostShrimpSwap(boolean swap) {
+        if (!awaitingGhostShrimpDecision) {
+            return "No hay decisión pendiente del Camarón fantasma.";
+        }
+        if (ghostShrimpFirstChoice < 0 || ghostShrimpSecondChoice < 0) {
+            clearGhostShrimpState();
+            return "Las cartas a intercambiar ya no están disponibles.";
+        }
+        if (swap) {
+            swapSlots(ghostShrimpFirstChoice, ghostShrimpSecondChoice);
+            recomputeBottleAdjustments();
+            clearGhostShrimpState();
+            return "Intercambiaste las cartas vistas por el Camarón fantasma.";
+        }
+        clearGhostShrimpState();
+        return "Decidiste mantener las cartas en su lugar.";
+    }
+
+    private void clearGhostShrimpState() {
+        awaitingGhostShrimpDecision = false;
+        ghostShrimpFirstChoice = -1;
+        ghostShrimpSecondChoice = -1;
+    }
+
+    private void swapSlots(int first, int second) {
+        if (first < 0 || second < 0 || first >= board.length || second >= board.length) return;
+        BoardSlot slotA = board[first];
+        BoardSlot slotB = board[second];
+
+        Card cardA = slotA.getCard();
+        Card cardB = slotB.getCard();
+        boolean faceA = slotA.isFaceUp();
+        boolean faceB = slotB.isFaceUp();
+        List<Die> diceA = new ArrayList<>(slotA.getDice());
+        List<Die> diceB = new ArrayList<>(slotB.getDice());
+        SlotStatus statusA = copyStatus(slotA.getStatus());
+        SlotStatus statusB = copyStatus(slotB.getStatus());
+
+        slotA.setCard(cardB);
+        slotA.setFaceUp(faceB);
+        slotA.clearDice();
+        for (Die d : diceB) slotA.addDie(d);
+        slotA.setStatus(statusB);
+
+        slotB.setCard(cardA);
+        slotB.setFaceUp(faceA);
+        slotB.clearDice();
+        for (Die d : diceA) slotB.addDie(d);
+        slotB.setStatus(statusA);
+    }
+
+    private SlotStatus copyStatus(SlotStatus status) {
+        SlotStatus copy = new SlotStatus();
+        copy.protectedOnce = status.protectedOnce;
+        copy.calamarForcedFaceDown = status.calamarForcedFaceDown;
+        copy.sumConditionShift = status.sumConditionShift;
+        copy.attachedRemoras = new ArrayList<>(status.attachedRemoras);
+        copy.hookPenaltyUsed = status.hookPenaltyUsed;
+        copy.langostaRecovered = status.langostaRecovered;
+        return copy;
     }
 
     private String startAtunDecision(int slotIndex) {
@@ -1300,21 +1502,37 @@ public class GameState {
                 : "Atún reposicionó el dado en la carta elegida. " + reveal;
     }
 
-    private String inflateAnyFishDie() {
+    private String startBlowfishInflate(int slotIndex) {
+        boolean hasDice = false;
         for (BoardSlot s : board) {
-            if (s.getCard() == null) continue;
-            if (s.getCard().getType() == CardType.PEZ || s.getCard().getType() == CardType.PEZ_GRANDE) {
-                for (int i = 0; i < s.getDice().size(); i++) {
-                    Die d = s.getDice().get(i);
-                    int max = d.getType().getSides();
-                    if (d.getValue() < max) {
-                        s.setDie(i, new Die(d.getType(), max));
-                        return "Pez globo infló un dado a " + max + ".";
-                    }
-                }
+            if (!s.getDice().isEmpty()) {
+                hasDice = true;
+                break;
             }
         }
-        return "";
+        if (!hasDice) {
+            return "No hay dados en la zona de pesca para inflar.";
+        }
+        return queueableSelection(
+                PendingSelection.BLOWFISH,
+                slotIndex,
+                "Pez globo: elige un dado para inflarlo a su valor máximo.");
+    }
+
+    private String inflateChosenDie(int slotIndex) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getDice().isEmpty()) {
+            return "Elige una carta con un dado para inflar.";
+        }
+        int idx = slot.getDice().size() - 1;
+        Die die = slot.getDice().get(idx);
+        int max = die.getType().getSides();
+        if (die.getValue() == max) {
+            return "El dado seleccionado ya muestra su valor máximo.";
+        }
+        slot.setDie(idx, new Die(die.getType(), max));
+        clearPendingSelection();
+        return "Pez globo infló un dado a " + max + ".";
     }
 
     private String moveMorenaDie(int slotIndex) {
@@ -1401,23 +1619,91 @@ public class GameState {
             return "Elige una carta con dado para ajustar.";
         }
         int idx = slot.getDice().size() - 1;
-        Die d = slot.getDice().get(idx);
-        int sides = d.getType().getSides();
-        int newVal = d.getValue();
-        if (newVal + 2 <= sides) {
-            newVal += 2;
-        } else if (newVal - 2 >= 1) {
-            newVal -= 2;
+        if (pendingSelection == PendingSelection.NAUTILUS_SECOND && slotIndex == pendingSelectionAux) {
+            return "Elige un dado diferente al primero.";
         }
-        slot.setDie(idx, new Die(d.getType(), newVal));
+        return startValueAdjustment(
+                slotIndex,
+                idx,
+                2,
+                CardId.NAUTILUS,
+                "Nautilus: elige si sumar o restar 2 al dado seleccionado.");
+    }
 
-        if (pendingSelection == PendingSelection.NAUTILUS_FIRST) {
-            pendingSelection = PendingSelection.NAUTILUS_SECOND;
-            pendingSelectionAux = slotIndex;
-            return "Nautilus ajustó un dado a " + newVal + ". Elige un segundo dado.";
+    private String startValueAdjustment(int slotIndex, int dieIndex,
+                                        int amount, CardId source, String prompt) {
+        if (awaitingValueAdjustment) {
+            return "Finaliza el ajuste pendiente antes de iniciar otro.";
         }
-        clearPendingSelection();
-        return "Nautilus ajustó un dado a " + newVal + ".";
+        adjustmentSlotIndex = slotIndex;
+        adjustmentDieIndex = dieIndex;
+        adjustmentAmount = amount;
+        adjustmentSource = source;
+        awaitingValueAdjustment = true;
+        return prompt;
+    }
+
+    public String chooseValueAdjustment(boolean increase) {
+        if (!awaitingValueAdjustment) {
+            return "No hay ajustes pendientes.";
+        }
+        if (adjustmentSlotIndex < 0 || adjustmentSlotIndex >= board.length) {
+            clearValueAdjustmentState();
+            return "El dado a ajustar ya no está disponible.";
+        }
+        BoardSlot slot = board[adjustmentSlotIndex];
+        if (slot.getDice().isEmpty() || adjustmentDieIndex < 0 || adjustmentDieIndex >= slot.getDice().size()) {
+            clearValueAdjustmentState();
+            return "El dado a ajustar ya no está disponible.";
+        }
+        Die die = slot.getDice().get(adjustmentDieIndex);
+        int delta = increase ? adjustmentAmount : -adjustmentAmount;
+        int newVal = die.getValue() + delta;
+        if (newVal < 1 || newVal > die.getType().getSides()) {
+            return "No puedes ajustar el dado más allá de sus caras. Elige la otra opción.";
+        }
+        slot.setDie(adjustmentDieIndex, new Die(die.getType(), newVal));
+        String actor = adjustmentSource == CardId.NAUTILUS ? "Nautilus" : "Jaiba azul";
+        boolean fromNautilus = adjustmentSource == CardId.NAUTILUS;
+        String result = actor + " ajustó el dado a " + newVal + ".";
+
+        awaitingValueAdjustment = false;
+
+        if (fromNautilus && pendingSelection == PendingSelection.NAUTILUS_FIRST) {
+            boolean hasOtherDie = false;
+            for (int i = 0; i < board.length; i++) {
+                if (!board[i].getDice().isEmpty() && i != adjustmentSlotIndex) {
+                    hasOtherDie = true;
+                    break;
+                }
+            }
+            if (hasOtherDie) {
+                pendingSelection = PendingSelection.NAUTILUS_SECOND;
+                pendingSelectionAux = adjustmentSlotIndex;
+                clearValueAdjustmentState();
+                return result + " Elige un segundo dado.";
+            }
+            clearPendingSelection();
+            clearValueAdjustmentState();
+            return result + " No hay un segundo dado disponible.";
+        }
+
+        if (fromNautilus && pendingSelection == PendingSelection.NAUTILUS_SECOND) {
+            clearPendingSelection();
+        } else if (adjustmentSource == CardId.JAIBA_AZUL) {
+            clearPendingSelection();
+        }
+
+        clearValueAdjustmentState();
+        return result;
+    }
+
+    private void clearValueAdjustmentState() {
+        adjustmentSlotIndex = -1;
+        adjustmentDieIndex = -1;
+        adjustmentAmount = 0;
+        adjustmentSource = null;
+        awaitingValueAdjustment = false;
     }
 
     private String startClownfishProtection(int slotIndex) {
@@ -1522,6 +1808,23 @@ public class GameState {
             }
         }
         return "";
+    }
+
+    private String startGhostFishSelection(int slotIndex) {
+        boolean hasTarget = false;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            if (board[idx].getCard() != null && board[idx].isFaceUp()) {
+                hasTarget = true;
+                break;
+            }
+        }
+        if (!hasTarget) {
+            return "No hay cartas boca arriba adyacentes para ocultar.";
+        }
+        return queueableSelection(
+                PendingSelection.GHOST_TARGET,
+                slotIndex,
+                "Pez fantasma: elige una carta adyacente boca arriba para ocultar.");
     }
 
     private String hideChosenAdjacent(int slotIndex) {

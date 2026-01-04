@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 
 import com.daille.zonadepescajava_app.databinding.ActivityMainBinding;
 import com.daille.zonadepescajava_app.model.BoardSlot;
+import com.daille.zonadepescajava_app.model.CardId;
 import com.daille.zonadepescajava_app.model.Die;
 import com.daille.zonadepescajava_app.model.DieType;
 import com.daille.zonadepescajava_app.model.GameState;
@@ -82,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.reserve.setText("Reserva: " + buildReserveText());
         binding.lost.setText(String.format(Locale.getDefault(), "Perdidos: %d", gameState.getLostDice().size()));
         binding.log.setText(log);
+        showRevealedCards();
     }
 
     private String buildReserveText() {
@@ -100,6 +102,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     @Override
     public void onSlotTapped(int position) {
         String result;
+        if (gameState.isAwaitingValueAdjustment()) {
+            promptValueAdjustmentChoice();
+            return;
+        }
+        if (gameState.isAwaitingGhostShrimpDecision()) {
+            promptGhostShrimpDecision();
+            return;
+        }
         if (gameState.isAwaitingDieLoss()) {
             promptDieLossChoice();
             return;
@@ -113,11 +123,17 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         refreshUi(result);
         Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
+        if (gameState.isAwaitingValueAdjustment()) {
+            promptValueAdjustmentChoice();
+        }
         if (gameState.isAwaitingPezVelaDecision()) {
             promptPezVelaDecision();
         }
         if (gameState.isAwaitingPezVelaResultChoice()) {
             promptPezVelaResultChoice();
+        }
+        if (gameState.isAwaitingGhostShrimpDecision()) {
+            promptGhostShrimpDecision();
         }
         if (gameState.isAwaitingArenqueChoice()) {
             promptArenqueChoice();
@@ -152,6 +168,17 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             binding.selectedDieImage.setImageBitmap(face);
         } else {
             binding.selectedDieImage.setVisibility(View.GONE);
+        }
+    }
+
+    private void showRevealedCards() {
+        List<com.daille.zonadepescajava_app.model.Card> revealed = gameState.consumeRecentlyRevealedCards();
+        for (com.daille.zonadepescajava_app.model.Card card : revealed) {
+            Bitmap image = cardImageResolver.getImageFor(card, true);
+            if (image == null) {
+                image = cardImageResolver.getCardBack();
+            }
+            CardFullscreenDialog.show(this, image);
         }
     }
 
@@ -226,6 +253,55 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setNegativeButton("Conservar", (dialog, which) -> {
                     String msg = gameState.chooseAtunReroll(false);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptValueAdjustmentChoice() {
+        if (!gameState.isAwaitingValueAdjustment()) return;
+        int amount = gameState.getPendingAdjustmentAmount();
+        String creature = gameState.getPendingAdjustmentSource() == CardId.NAUTILUS
+                ? "Nautilus"
+                : "Jaiba azul";
+        new AlertDialog.Builder(this)
+                .setTitle("Ajuste de " + creature)
+                .setMessage("¿Quieres sumar o restar " + amount + " al dado seleccionado?")
+                .setPositiveButton("Sumar", (dialog, which) -> {
+                    String msg = gameState.chooseValueAdjustment(true);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    if (gameState.isAwaitingValueAdjustment()) {
+                        promptValueAdjustmentChoice();
+                    }
+                })
+                .setNegativeButton("Restar", (dialog, which) -> {
+                    String msg = gameState.chooseValueAdjustment(false);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    if (gameState.isAwaitingValueAdjustment()) {
+                        promptValueAdjustmentChoice();
+                    }
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptGhostShrimpDecision() {
+        if (!gameState.isAwaitingGhostShrimpDecision()) return;
+        String seen = gameState.getGhostShrimpPeekNames();
+        new AlertDialog.Builder(this)
+                .setTitle("Camarón fantasma")
+                .setMessage("Viste: " + seen + ". ¿Intercambiar sus posiciones?")
+                .setPositiveButton("Intercambiar", (dialog, which) -> {
+                    String msg = gameState.resolveGhostShrimpSwap(true);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Conservar", (dialog, which) -> {
+                    String msg = gameState.resolveGhostShrimpSwap(false);
                     refreshUi(msg);
                     Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
                 })
