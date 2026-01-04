@@ -178,7 +178,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/startNewGame"
-                style="@style/Widget.Material3.Button.FilledTonally"
+                style="@style/Widget.Material3.Button.FilledTonalButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Nueva partida" />
