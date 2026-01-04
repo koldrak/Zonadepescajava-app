@@ -942,23 +942,17 @@ public class GameState {
                     case RIGHT: targetC = c + 1; break;
                 }
                 if (targetR < 0 || targetR > 2 || targetC < 0 || targetC > 2) {
-                        if (src.getCard() != null) {
-                            if (src.getDice().isEmpty()) {
-                                toShuffle.add(src.getCard());
-                            } else {
-                                if (src.getCard().getId() == CardId.PEZ_LUNA) {
-                                    releaseHighestCapture();
-                                }
-                                failedDiscards.add(src.getCard());
-                                List<Die> dice = new ArrayList<>(src.getDice());
-                                if (!dice.isEmpty()) {
-                                    lostFromBoard.add(dice.remove(0));
-                                    for (Die remaining : dice) {
-                                        reserve.add(remaining.getType());
-                                    }
-                                }
+                    if (src.getCard() != null) {
+                        if (src.getDice().isEmpty()) {
+                            toShuffle.add(src.getCard());
+                        } else {
+                            if (src.getCard().getId() == CardId.PEZ_LUNA) {
+                                releaseHighestCapture();
                             }
+                            failedDiscards.add(src.getCard());
+                            collectDiceLostToCurrents(src, lostFromBoard);
                         }
+                    }
                     continue;
                 }
                 int targetIdx = targetR * 3 + targetC;
@@ -991,7 +985,32 @@ public class GameState {
             board[i] = newBoard[i];
         }
         recomputeBottleAdjustments();
-        return "Corrientes: el tablero se desplazó";
+        String baseLog = "Corrientes: el tablero se desplazó";
+        if (lostFromBoard.isEmpty()) {
+            return baseLog;
+        }
+        return baseLog + " y perdiste " + formatDiceList(lostFromBoard) + ".";
+    }
+
+    private void collectDiceLostToCurrents(BoardSlot src, List<Die> lostFromBoard) {
+        List<Die> dice = new ArrayList<>(src.getDice());
+        if (dice.isEmpty()) {
+            return;
+        }
+        lostFromBoard.add(dice.remove(0));
+        for (Die remaining : dice) {
+            reserve.add(remaining.getType());
+        }
+        src.clearDice();
+    }
+
+    private String formatDiceList(List<Die> dice) {
+        if (dice.isEmpty()) return "";
+        List<String> labels = new ArrayList<>();
+        for (Die d : dice) {
+            labels.add(d.getLabel());
+        }
+        return String.join(", ", labels);
     }
 
     private String applyDeepCurrentIfTriggered(int placedValue) {
