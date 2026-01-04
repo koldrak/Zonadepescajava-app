@@ -25,6 +25,8 @@ public class GameState {
     private boolean awaitingAtunDecision = false;
     private int atunSlotIndex = -1;
     private int atunDieIndex = -1;
+    private boolean awaitingBlueCrabDecision = false;
+    private int blueCrabSlotIndex = -1;
     private boolean awaitingValueAdjustment = false;
     private int adjustmentSlotIndex = -1;
     private int adjustmentDieIndex = -1;
@@ -115,6 +117,8 @@ public class GameState {
         awaitingAtunDecision = false;
         atunSlotIndex = -1;
         atunDieIndex = -1;
+        awaitingBlueCrabDecision = false;
+        blueCrabSlotIndex = -1;
         awaitingValueAdjustment = false;
         adjustmentSlotIndex = -1;
         adjustmentDieIndex = -1;
@@ -189,6 +193,10 @@ public class GameState {
         return selectedDie;
     }
 
+    public boolean isGameOver() {
+        return gameOver;
+    }
+
     public boolean isAwaitingDieLoss() {
         return pendingDieLossSlot != null;
     }
@@ -203,6 +211,10 @@ public class GameState {
 
     public boolean isAwaitingAtunDecision() {
         return awaitingAtunDecision;
+    }
+
+    public boolean isAwaitingBlueCrabDecision() {
+        return awaitingBlueCrabDecision;
     }
 
     public boolean isAwaitingPezVelaDecision() {
@@ -538,9 +550,12 @@ public class GameState {
             return "El Atún ya no está disponible.";
         }
         BoardSlot slot = board[atunSlotIndex];
-        if (slot.getDice().isEmpty() || atunDieIndex < 0 || atunDieIndex >= slot.getDice().size()) {
+        if (slot.getDice().isEmpty()) {
             clearAtunState();
             return "No hay dado para reposicionar.";
+        }
+        if (atunDieIndex < 0 || atunDieIndex >= slot.getDice().size()) {
+            atunDieIndex = slot.getDice().size() - 1;
         }
         Die current = slot.getDice().get(atunDieIndex);
         Die finalDie = current;
@@ -553,6 +568,26 @@ public class GameState {
         pendingSelectionActor = atunSlotIndex;
         return (reroll ? "Atún relanzó el dado " : "Atún conserva el dado ")
                 + "(" + finalDie.getLabel() + "). Elige una carta para reposicionarlo.";
+    }
+
+    public String chooseBlueCrabUse(boolean useAbility) {
+        if (!awaitingBlueCrabDecision) {
+            return "No hay decisión pendiente de la Jaiba azul.";
+        }
+        if (blueCrabSlotIndex < 0 || blueCrabSlotIndex >= board.length) {
+            clearBlueCrabState();
+            return "La Jaiba azul ya no está disponible.";
+        }
+        if (!useAbility) {
+            clearBlueCrabState();
+            return "Omitiste la habilidad de la Jaiba azul.";
+        }
+        String msg = queueableSelection(
+                PendingSelection.BLUE_CRAB,
+                blueCrabSlotIndex,
+                "Jaiba azul: elige un dado para ajustar ±1.");
+        clearBlueCrabState();
+        return msg;
     }
 
     public String choosePezVelaReroll(boolean reroll) {
@@ -648,6 +683,9 @@ public class GameState {
         if (awaitingAtunDecision) {
             return "Decide primero si relanzar el dado del Atún.";
         }
+        if (awaitingBlueCrabDecision) {
+            return "Resuelve la decisión de la Jaiba azul antes de continuar.";
+        }
         if (awaitingPezVelaDecision || awaitingPezVelaResultChoice) {
             return "Resuelve la decisión del Pez Vela antes de lanzar otro dado.";
         }
@@ -691,6 +729,9 @@ public class GameState {
         }
         if (awaitingAtunDecision) {
             return "Resuelve primero la habilidad del Atún.";
+        }
+        if (awaitingBlueCrabDecision) {
+            return "Resuelve primero la habilidad de la Jaiba azul.";
         }
         if (awaitingPezVelaDecision || awaitingPezVelaResultChoice) {
             return "Resuelve primero la habilidad del Pez Vela.";
@@ -1143,6 +1184,11 @@ public class GameState {
         atunDieIndex = -1;
     }
 
+    private void clearBlueCrabState() {
+        awaitingBlueCrabDecision = false;
+        blueCrabSlotIndex = -1;
+    }
+
     private void clearPezVelaState() {
         awaitingPezVelaDecision = false;
         awaitingPezVelaResultChoice = false;
@@ -1174,10 +1220,9 @@ public class GameState {
                         "Cangrejo rojo: elige un dado adyacente para mover.");
                 break;
             case JAIBA_AZUL:
-                result = queueableSelection(
-                        PendingSelection.BLUE_CRAB,
-                        slotIndex,
-                        "Jaiba azul: elige un dado para ajustar ±1.");
+                awaitingBlueCrabDecision = true;
+                blueCrabSlotIndex = slotIndex;
+                result = "Jaiba azul: ¿quieres ajustar un dado ±1?";
                 break;
             case CAMARON_FANTASMA:
                 result = startGhostShrimpPeek(slotIndex);
@@ -1540,10 +1585,13 @@ public class GameState {
             return "El dado del Atún ya no está disponible.";
         }
         BoardSlot origin = board[atunSlotIndex];
-        if (origin.getDice().isEmpty() || atunDieIndex < 0 || atunDieIndex >= origin.getDice().size()) {
+        if (origin.getDice().isEmpty()) {
             clearPendingSelection();
             clearAtunState();
             return "El dado del Atún ya no está disponible.";
+        }
+        if (atunDieIndex < 0 || atunDieIndex >= origin.getDice().size()) {
+            atunDieIndex = origin.getDice().size() - 1;
         }
         BoardSlot target = board[slotIndex];
         if (target.getCard() == null) {
