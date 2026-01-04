@@ -37,6 +37,7 @@ public class GameState {
     private final Deque<PendingSelectionState> pendingSelectionQueue = new ArrayDeque<>();
     private final List<Card> pendingArenquePool = new ArrayList<>();
     private final List<Card> pendingArenqueChosen = new ArrayList<>();
+    private boolean awaitingArenqueChoice = false;
     private int arenqueSlotIndex = -1;
     private enum PendingSelection {
         NONE,
@@ -111,6 +112,7 @@ public class GameState {
         pendingBallenaDice.clear();
         pendingArenquePool.clear();
         pendingArenqueChosen.clear();
+        awaitingArenqueChoice = false;
         arenqueSlotIndex = -1;
 
         reserve.add(DieType.D6);
