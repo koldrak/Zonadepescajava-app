@@ -99,7 +99,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     @Override
     public void onSlotTapped(int position) {
         String result;
-        if (gameState.isAwaitingLanternChoice()) {
+        if (gameState.isAwaitingDieLoss()) {
+            promptDieLossChoice();
+            return;
+        }
+        if (gameState.isAwaitingBoardSelection()) {
+            result = gameState.handleBoardSelection(position);
+        } else if (gameState.isAwaitingLanternChoice()) {
             result = gameState.chooseLanternTarget(position);
         } else {
             result = gameState.placeSelectedDie(position);

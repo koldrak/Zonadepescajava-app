@@ -21,6 +21,10 @@ public class GameState {
     private Integer forcedSlotIndex = null;
     private boolean awaitingLanternChoice = false;
     private int lanternOriginSlot = -1;
+    private enum PendingSelection { NONE, RED_CRAB_FROM, RED_CRAB_TO, BLUE_CRAB, NAUTILUS_FIRST, NAUTILUS_SECOND, GHOST_TARGET }
+    private PendingSelection pendingSelection = PendingSelection.NONE;
+    private int pendingSelectionActor = -1;
+    private int pendingSelectionAux = -1;
 
     private enum CurrentDirection { UP, DOWN, LEFT, RIGHT }
 
@@ -43,6 +47,9 @@ public class GameState {
         forcedSlotIndex = null;
         awaitingLanternChoice = false;
         lanternOriginSlot = -1;
+        pendingSelection = PendingSelection.NONE;
+        pendingSelectionActor = -1;
+        pendingSelectionAux = -1;
 
         reserve.add(DieType.D6);
         reserve.add(DieType.D6);
@@ -97,6 +104,10 @@ public class GameState {
         return awaitingLanternChoice;
     }
 
+    public boolean isAwaitingBoardSelection() {
+        return pendingSelection != PendingSelection.NONE;
+    }
+
     public List<Die> getPendingDiceChoices() {
         if (pendingDieLossSlot == null) {
             return java.util.Collections.emptyList();
@@ -132,8 +143,44 @@ public class GameState {
         }
         awaitingLanternChoice = false;
         lanternOriginSlot = -1;
+        String chained = handleOnReveal(slotIndex, 0);
+        if (!chained.isEmpty()) {
+            log.append(" ").append(chained);
+        }
         recomputeBottleAdjustments();
         return log.toString();
+    }
+
+    public String handleBoardSelection(int slotIndex) {
+        if (!isAwaitingBoardSelection()) {
+            return "No hay acciones pendientes.";
+        }
+        if (slotIndex < 0 || slotIndex >= board.length) {
+            return "Selecciona una casilla válida.";
+        }
+
+        String result;
+        switch (pendingSelection) {
+            case RED_CRAB_FROM:
+                result = chooseRedCrabOrigin(slotIndex);
+                break;
+            case RED_CRAB_TO:
+                result = chooseRedCrabDestination(slotIndex);
+                break;
+            case BLUE_CRAB:
+                result = adjustSelectedDie(slotIndex);
+                break;
+            case NAUTILUS_FIRST:
+            case NAUTILUS_SECOND:
+                result = retuneChosenDie(slotIndex);
+                break;
+            case GHOST_TARGET:
+                result = hideChosenAdjacent(slotIndex);
+                break;
+            default:
+                result = "No hay acciones pendientes.";
+        }
+        return result;
     }
 
     public String chooseDieToLose(int dieIndex) {
@@ -200,6 +247,9 @@ public class GameState {
         }
         if (awaitingLanternChoice) {
             return "Debes elegir primero qué carta revelar con el Pez Linterna.";
+        }
+        if (isAwaitingBoardSelection()) {
+            return "Resuelve la acción pendiente antes de colocar otro dado.";
         }
         if (forcedSlotIndex != null && slotIndex != forcedSlotIndex) {
             return "El próximo dado debe colocarse en la carta obligatoria.";
@@ -413,17 +463,23 @@ public class GameState {
                     case RIGHT: targetC = c + 1; break;
                 }
                 if (targetR < 0 || targetR > 2 || targetC < 0 || targetC > 2) {
-                    if (src.getCard() != null) {
-                        if (src.getDice().isEmpty()) {
-                            toShuffle.add(src.getCard());
-                        } else {
-                            if (src.getCard().getId() == CardId.PEZ_LUNA) {
-                                releaseHighestCapture();
+                        if (src.getCard() != null) {
+                            if (src.getDice().isEmpty()) {
+                                toShuffle.add(src.getCard());
+                            } else {
+                                if (src.getCard().getId() == CardId.PEZ_LUNA) {
+                                    releaseHighestCapture();
+                                }
+                                failedDiscards.add(src.getCard());
+                                List<Die> dice = new ArrayList<>(src.getDice());
+                                if (!dice.isEmpty()) {
+                                    lostFromBoard.add(dice.remove(0));
+                                    for (Die remaining : dice) {
+                                        reserve.add(remaining.getType());
+                                    }
+                                }
                             }
-                            failedDiscards.add(src.getCard());
-                            lostFromBoard.addAll(src.getDice());
                         }
-                    }
                     continue;
                 }
                 int targetIdx = targetR * 3 + targetC;
@@ -508,16 +564,35 @@ public class GameState {
         }
     }
 
+    private void clearPendingSelection() {
+        pendingSelection = PendingSelection.NONE;
+        pendingSelectionActor = -1;
+        pendingSelectionAux = -1;
+    }
+
+    private String revealAndTrigger(int slotIndex) {
+        if (slotIndex < 0 || slotIndex >= board.length) return "";
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null || target.isFaceUp()) return "";
+        target.setFaceUp(true);
+        String result = handleOnReveal(slotIndex, 0);
+        return result;
+    }
+
     private String handleOnReveal(int slotIndex, int placedValue) {
         BoardSlot slot = board[slotIndex];
         if (slot.getCard() == null) return "";
         String result;
         switch (slot.getCard().getId()) {
             case CANGREJO_ROJO:
-                result = moveOneDieBetweenAdjacents(slotIndex);
+                pendingSelection = PendingSelection.RED_CRAB_FROM;
+                pendingSelectionActor = slotIndex;
+                result = "Cangrejo rojo: elige un dado adyacente para mover.";
                 break;
             case JAIBA_AZUL:
-                result = adjustLastDie(slotIndex);
+                pendingSelection = PendingSelection.BLUE_CRAB;
+                pendingSelectionActor = slotIndex;
+                result = "Jaiba azul: elige un dado para ajustar ±1.";
                 break;
             case CAMARON_FANTASMA:
                 result = peekAdjacentCards(slotIndex);
@@ -539,7 +614,9 @@ public class GameState {
                 result = "Centolla atrae el próximo dado a esta carta.";
                 break;
             case NAUTILUS:
-                result = retuneTwoDice();
+                pendingSelection = PendingSelection.NAUTILUS_FIRST;
+                pendingSelectionActor = slotIndex;
+                result = "Nautilus: elige un dado para ajustar ±2.";
                 break;
             case CANGREJO_ARANA:
                 result = reviveFailedCard();
@@ -570,7 +647,9 @@ public class GameState {
                 result = biteAdjacentSmallFish(slotIndex);
                 break;
             case PEZ_FANTASMA:
-                result = hideAdjacentFaceUp(slotIndex);
+                pendingSelection = PendingSelection.GHOST_TARGET;
+                pendingSelectionActor = slotIndex;
+                result = "Pez fantasma: elige una carta adyacente boca arriba para ocultar.";
                 break;
             case PULPO:
                 result = replacePulpoIfEven(slotIndex, placedValue);
@@ -659,6 +738,41 @@ public class GameState {
         return "Cangrejo rojo movió un dado entre cartas adyacentes.";
     }
 
+    private boolean isAdjacentToActor(int slotIndex) {
+        return pendingSelectionActor >= 0 && adjacentIndices(pendingSelectionActor, true).contains(slotIndex);
+    }
+
+    private String chooseRedCrabOrigin(int slotIndex) {
+        if (!isAdjacentToActor(slotIndex) || board[slotIndex].getDice().isEmpty()) {
+            return "Elige una carta adyacente con dado para mover.";
+        }
+        pendingSelectionAux = slotIndex;
+        pendingSelection = PendingSelection.RED_CRAB_TO;
+        return "Selecciona la carta adyacente destino (máx. 2 dados).";
+    }
+
+    private String chooseRedCrabDestination(int slotIndex) {
+        if (!isAdjacentToActor(slotIndex)) {
+            return "Debes elegir otra carta adyacente al cangrejo.";
+        }
+        if (slotIndex == pendingSelectionAux) {
+            return "Debes elegir una carta distinta como destino.";
+        }
+        BoardSlot origin = board[pendingSelectionAux];
+        BoardSlot target = board[slotIndex];
+        if (target.getDice().size() >= 2) {
+            return "El destino ya tiene 2 dados.";
+        }
+        if (origin.getDice().isEmpty()) {
+            clearPendingSelection();
+            return "No hay dados para mover.";
+        }
+        Die moved = origin.removeDie(origin.getDice().size() - 1);
+        target.addDie(moved);
+        clearPendingSelection();
+        return "Cangrejo rojo movió un dado entre cartas adyacentes.";
+    }
+
     private String adjustLastDie(int slotIndex) {
         BoardSlot slot = board[slotIndex];
         if (slot.getDice().isEmpty()) return "";
@@ -672,6 +786,25 @@ public class GameState {
             value += 1;
         }
         slot.setDie(idx, new Die(last.getType(), value));
+        return "Jaiba azul ajustó el dado a " + value + ".";
+    }
+
+    private String adjustSelectedDie(int slotIndex) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getDice().isEmpty()) {
+            return "Elige una carta con un dado para ajustar.";
+        }
+        int idx = slot.getDice().size() - 1;
+        Die die = slot.getDice().get(idx);
+        int value = die.getValue();
+        int sides = die.getType().getSides();
+        if (value + 1 <= sides) {
+            value += 1;
+        } else if (value - 1 >= 1) {
+            value -= 1;
+        }
+        slot.setDie(idx, new Die(die.getType(), value));
+        clearPendingSelection();
         return "Jaiba azul ajustó el dado a " + value + ".";
     }
 
@@ -754,6 +887,31 @@ public class GameState {
         return adjusted == 0 ? "" : "Nautilus ajustó el valor de " + adjusted + " dado(s).";
     }
 
+    private String retuneChosenDie(int slotIndex) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getDice().isEmpty()) {
+            return "Elige una carta con dado para ajustar.";
+        }
+        int idx = slot.getDice().size() - 1;
+        Die d = slot.getDice().get(idx);
+        int sides = d.getType().getSides();
+        int newVal = d.getValue();
+        if (newVal + 2 <= sides) {
+            newVal += 2;
+        } else if (newVal - 2 >= 1) {
+            newVal -= 2;
+        }
+        slot.setDie(idx, new Die(d.getType(), newVal));
+
+        if (pendingSelection == PendingSelection.NAUTILUS_FIRST) {
+            pendingSelection = PendingSelection.NAUTILUS_SECOND;
+            pendingSelectionAux = slotIndex;
+            return "Nautilus ajustó un dado a " + newVal + ". Elige un segundo dado.";
+        }
+        clearPendingSelection();
+        return "Nautilus ajustó un dado a " + newVal + ".";
+    }
+
     private String protectAdjacentFish(int slotIndex) {
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
@@ -829,6 +987,25 @@ public class GameState {
         return "";
     }
 
+    private String hideChosenAdjacent(int slotIndex) {
+        if (!isAdjacentToActor(slotIndex)) {
+            return "Elige una carta adyacente al pez fantasma.";
+        }
+        BoardSlot adj = board[slotIndex];
+        if (adj.getCard() == null || !adj.isFaceUp()) {
+            return "La carta elegida debe estar boca arriba.";
+        }
+        for (Die d : new ArrayList<>(adj.getDice())) {
+            reserve.add(d.getType());
+        }
+        adj.clearDice();
+        adj.setFaceUp(false);
+        adj.setStatus(new SlotStatus());
+        recomputeBottleAdjustments();
+        clearPendingSelection();
+        return "Pez fantasma ocultó una carta y recuperó sus dados.";
+    }
+
     private String replacePulpoIfEven(int slotIndex, int placedValue) {
         if (placedValue % 2 != 0) return "";
         List<Card> remaining = new ArrayList<>(deck);
@@ -852,7 +1029,10 @@ public class GameState {
         BoardSlot slot = board[slotIndex];
         slot.setCard(replacement);
         slot.setFaceUp(true);
-        return "Pulpo fue reemplazado por " + replacement.getName() + ".";
+        String reveal = handleOnReveal(slotIndex, placedValue);
+        return reveal.isEmpty()
+                ? "Pulpo fue reemplazado por " + replacement.getName() + "."
+                : "Pulpo fue reemplazado por " + replacement.getName() + ". " + reveal;
     }
 
     private String rerollLatestDie(int slotIndex) {
@@ -1011,14 +1191,23 @@ public class GameState {
 
     private String flipAdjacentCardsDown(int slotIndex) {
         int flipped = 0;
+        StringBuilder chain = new StringBuilder();
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
             if (adj.getCard() != null && !adj.isFaceUp()) {
-                adj.setFaceUp(true);
+                String reveal = revealAndTrigger(idx);
+                if (!reveal.isEmpty()) {
+                    if (chain.length() > 0) chain.append(" ");
+                    chain.append(reveal);
+                }
                 flipped++;
             }
         }
-        return flipped == 0 ? "" : "Mero gigante volteó " + flipped + " carta(s).";
+        String base = flipped == 0 ? "" : "Mero gigante volteó " + flipped + " carta(s).";
+        if (chain.length() > 0) {
+            base = base.isEmpty() ? chain.toString() : base + " " + chain;
+        }
+        return base;
     }
 
     private String handleOnCapture(int slotIndex, List<Die> diceOnCard) {
@@ -1146,11 +1335,22 @@ public class GameState {
     private String revealSingleFaceDown() {
         for (BoardSlot s : board) {
             if (s.getCard() != null && !s.isFaceUp()) {
-                s.setFaceUp(true);
-                return "Revelaste " + s.getCard().getName() + ".";
+                String reveal = revealAndTrigger(indexOfSlot(s));
+                String base = "Revelaste " + s.getCard().getName() + ".";
+                if (reveal != null && !reveal.isEmpty()) {
+                    base += " " + reveal;
+                }
+                return base;
             }
         }
         return "";
+    }
+
+    private int indexOfSlot(BoardSlot slot) {
+        for (int i = 0; i < board.length; i++) {
+            if (board[i] == slot) return i;
+        }
+        return -1;
     }
 
     private String flipLineFromFlyingFish(int slotIndex, List<Die> diceOnCard) {
@@ -1163,15 +1363,23 @@ public class GameState {
         boolean vertical = even.getValue() > odd.getValue();
         int row = slotIndex / 3, col = slotIndex % 3;
         int flipped = 0;
+        StringBuilder extraLogs = new StringBuilder();
         for (int i = 0; i < 3; i++) {
             int idx = vertical ? i * 3 + col : row * 3 + i;
             BoardSlot target = board[idx];
             if (target.getCard() != null && !target.isFaceUp()) {
-                target.setFaceUp(true);
+                String reveal = revealAndTrigger(idx);
+                if (!reveal.isEmpty()) {
+                    extraLogs.append(extraLogs.length() == 0 ? reveal : " " + reveal);
+                }
                 flipped++;
             }
         }
-        return flipped == 0 ? "" : "Pez volador reveló " + flipped + " carta(s).";
+        String base = flipped == 0 ? "" : "Pez volador reveló " + flipped + " carta(s).";
+        if (extraLogs.length() > 0) {
+            base = base.isEmpty() ? extraLogs.toString() : base + " " + extraLogs;
+        }
+        return base;
     }
 
     private String repositionAllDice(List<Die> diceOnCard) {
