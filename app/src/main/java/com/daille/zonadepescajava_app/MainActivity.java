@@ -110,6 +110,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             promptGhostShrimpDecision();
             return;
         }
+        if (gameState.isAwaitingPulpoChoice()) {
+            promptPulpoChoice();
+            return;
+        }
         if (gameState.isAwaitingDieLoss()) {
             promptDieLossChoice();
             return;
@@ -134,6 +138,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         if (gameState.isAwaitingGhostShrimpDecision()) {
             promptGhostShrimpDecision();
+        }
+        if (gameState.isAwaitingPulpoChoice()) {
+            promptPulpoChoice();
         }
         if (gameState.isAwaitingArenqueChoice()) {
             promptArenqueChoice();
@@ -302,6 +309,22 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setNegativeButton("Conservar", (dialog, which) -> {
                     String msg = gameState.resolveGhostShrimpSwap(false);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptPulpoChoice() {
+        if (!gameState.isAwaitingPulpoChoice()) return;
+        List<String> names = gameState.getPendingPulpoNames();
+        if (names.isEmpty()) return;
+        CharSequence[] items = names.toArray(new CharSequence[0]);
+        new AlertDialog.Builder(this)
+                .setTitle("Pulpo")
+                .setItems(items, (dialog, which) -> {
+                    String msg = gameState.choosePulpoReplacement(which);
                     refreshUi(msg);
                     Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
                 })
