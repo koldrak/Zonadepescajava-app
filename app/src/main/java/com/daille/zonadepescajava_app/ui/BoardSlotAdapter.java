@@ -64,6 +64,7 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
         private final ItemBoardSlotBinding binding;
         private final CardImageResolver imageResolver;
         private final Context context;
+        private final OnSlotInteractionListener listener;
 
         SlotViewHolder(ItemBoardSlotBinding binding, OnSlotInteractionListener listener,
                        CardImageResolver imageResolver, Context context) {
@@ -71,7 +72,12 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
             this.binding = binding;
             this.imageResolver = imageResolver;
             this.context = context;
+            this.listener = listener;
             binding.getRoot().setOnClickListener(v -> listener.onSlotTapped(getBindingAdapterPosition()));
+            binding.getRoot().setOnLongClickListener(v -> {
+                this.listener.onSlotLongPressed(getBindingAdapterPosition());
+                return true;
+            });
         }
 
         void bind(BoardSlot slot) {
