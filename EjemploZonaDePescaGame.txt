@@ -1,0 +1,2760 @@
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.imageio.ImageIO;
+
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.net.URL;
+import java.text.Normalizer;
+import java.util.*;
+import java.util.List;
+
+/**
+ * Zona de Pesca - Implementación monolítica (un solo archivo).
+ *
+ * Cambios solicitados:
+ * - En lugar de texto (título/tipo/habilidad/etc.) en las celdas, ahora se muestra una imagen PNG.
+ *   * Boca arriba: imagen según la carta (ej: ballenaazul.png)
+ *   * Boca abajo: cartabocaabajo.png
+ *
+ * Las imágenes se cargan desde: src/img  ->  /img/ en el classpath
+ */
+public class ZonaDePescaGame {
+
+    // ====== Configuraciones ======
+    static final boolean ADYACENCIA_INCLUYE_DIAGONALES = true;
+    static final boolean CORRIENTE_CON_1_DADO_PIERDE_ESE_DADO = true;
+    static final boolean REVELAR_SI_RECIBE_DADO_POR_EFECTO = true;
+
+    // ====== IMÁGENES ======
+    private static final String IMG_FOLDER = "/img/";
+    private static final String CARD_BACK_FILE = "cartabocaabajo.png";
+
+    // Tamaño “base” del icono en botones (se recalcula al refrescar, pero esto evita 0x0 al inicio)
+    private static final int FALLBACK_ICON_W = 180;
+    private static final int FALLBACK_ICON_H = 140;
+    private DieButton selectedDieBtn = null; // botón del dado elegido (para animar ahí)
+
+    private javax.swing.Timer rollAnimTimer;
+    private int rollAnimFramesLeft = 0;
+    private boolean rollingAnimation = false;
+    
+    //tamaño panel dados
+    private static final int DICE_BTN_PREF = 92;   // alto preferido de la franja
+    private static final int DICE_ICON_MAX = 78;   // tamaño máximo del PNG dentro del botón
+    private static final int DICE_ICON_MIN = 54;   // mínimo para que no colapse
+
+ // --- Animación en el botón del dado ---
+    private DieType rollingDieType = null;     // qué botón está animando
+    private Integer rollingPreviewValue = null; // cara temporal mientras "rueda"
+
+    // Mapa explícito CardId -> archivo png (recomendado: que los nombres coincidan exactamente)
+    private static final Map<CardId, String> CARD_FRONT_FILE = new EnumMap<>(CardId.class);
+    static {
+        // Crustáceos
+        CARD_FRONT_FILE.put(CardId.CANGREJO_ROJO, "cangrejorojo.png");
+        CARD_FRONT_FILE.put(CardId.JAIBA_AZUL, "jaibaazul.png");
+        CARD_FRONT_FILE.put(CardId.CAMARON_FANTASMA, "camaronfantasma.png");
+        CARD_FRONT_FILE.put(CardId.LANGOSTA_ESPINOSA, "langostaespinosa.png"); 
+        CARD_FRONT_FILE.put(CardId.KRILL, "krill.png"); 
+        CARD_FRONT_FILE.put(CardId.CANGREJO_ERMITANO, "cangrejoermitaño.png"); 
+        CARD_FRONT_FILE.put(CardId.PERCEBES, "percebes.png");
+        CARD_FRONT_FILE.put(CardId.CENTOLLA, "centolla.png");
+        CARD_FRONT_FILE.put(CardId.NAUTILUS, "nautilus.png");
+
+        // Peces pequeños
+        CARD_FRONT_FILE.put(CardId.SARDINA, "sardina.png");
+        CARD_FRONT_FILE.put(CardId.ATUN, "atun.png");
+        CARD_FRONT_FILE.put(CardId.SALMON, "salmon.png");
+        CARD_FRONT_FILE.put(CardId.PEZ_PAYASO, "pezpayaso.png");
+        CARD_FRONT_FILE.put(CardId.PEZ_GLOBO, "pezglobo.png");
+        CARD_FRONT_FILE.put(CardId.MORENA, "morena.png");
+        CARD_FRONT_FILE.put(CardId.CABALLITO_DE_MAR, "caballitodemar.png");
+        CARD_FRONT_FILE.put(CardId.PEZ_LINTERNA, "pezlinterna.png");
+        CARD_FRONT_FILE.put(CardId.KOI, "koi.png");
+        CARD_FRONT_FILE.put(CardId.PEZ_VOLADOR, "pezvolador.png");
+        CARD_FRONT_FILE.put(CardId.PIRANA, "piraña.png");
+
+        // Peces grandes
+        CARD_FRONT_FILE.put(CardId.TIBURON_BLANCO, "tiburonblanco.png");
+        CARD_FRONT_FILE.put(CardId.TIBURON_MARTILLO, "tiburonmartillo.png");
+        CARD_FRONT_FILE.put(CardId.TIBURON_BALLENA, "tiburonballena.png");
+        CARD_FRONT_FILE.put(CardId.PEZ_VELA, "pezvela.png");
+        CARD_FRONT_FILE.put(CardId.CALAMAR_GIGANTE, "calamargigante.png");
+        CARD_FRONT_FILE.put(CardId.MANTA_GIGANTE, "mantagigante.png");
+        CARD_FRONT_FILE.put(CardId.BALLENA_AZUL, "ballenaazul.png");
+
+        // Objetos
+        CARD_FRONT_FILE.put(CardId.BOTA_VIEJA, "botavieja.png");
+        CARD_FRONT_FILE.put(CardId.BOTELLA_PLASTICO, "botellaplastica.png"); // ojo: en tu proyecto está así
+        CARD_FRONT_FILE.put(CardId.RED_ENREDADA, "redenredada.png");
+        CARD_FRONT_FILE.put(CardId.LATA_OXIDADA, "lataoxidada.png");
+        CARD_FRONT_FILE.put(CardId.LIMPIADOR_MARINO, "limpiadormarino.png");
+        CARD_FRONT_FILE.put(CardId.ANZUELO_ROTO, "anzueloroto.png");
+    }
+
+ // Cache de sombras de dados (por tipo/valor/tamaño)
+    private final Map<String, ImageIcon> dieShadowCache = new HashMap<>();
+
+    private BufferedImage iconToBufferedImage(ImageIcon icon, int w, int h) {
+        BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = img.createGraphics();
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        icon.paintIcon(null, g2, 0, 0);
+        g2.dispose();
+        return img;
+    }
+
+    private ImageIcon getDieShadowIcon(DieType type, int value, int size) {
+        String key = "shadow@" + type.sides + ":" + value + "@" + size;
+        ImageIcon cached = dieShadowCache.get(key);
+        if (cached != null) return cached;
+
+        ImageIcon die = getDieIconOrPlaceholder(type, value, size, size);
+        BufferedImage src = iconToBufferedImage(die, size, size);
+
+        // 1) Crear máscara negra con el alpha del PNG
+        BufferedImage shadow = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                int argb = src.getRGB(x, y);
+                int a = (argb >>> 24) & 0xFF;
+                if (a == 0) {
+                    shadow.setRGB(x, y, 0x00000000);
+                } else {
+                    // intensidad de sombra: ajusta 0.55f a gusto (0.35–0.70)
+                    int sa = Math.min(255, (int) (a * 0.55f));
+                    int sArgb = (sa << 24); // negro con alpha sa
+                    shadow.setRGB(x, y, sArgb);
+                }
+            }
+        }
+
+        // 2) Suavizado ligero (blur barato). Si no lo quieres, comenta este bloque.
+        float[] kernel = {
+            1f/16, 2f/16, 1f/16,
+            2f/16, 4f/16, 2f/16,
+            1f/16, 2f/16, 1f/16
+        };
+        java.awt.image.ConvolveOp op = new java.awt.image.ConvolveOp(
+            new java.awt.image.Kernel(3, 3, kernel),
+            java.awt.image.ConvolveOp.EDGE_NO_OP,
+            null
+        );
+        BufferedImage blurred = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        op.filter(shadow, blurred);
+
+        ImageIcon out = new ImageIcon(blurred);
+        dieShadowCache.put(key, out);
+        return out;
+    }
+
+    // Cache de imágenes
+    private final ImageBank imageBank = new ImageBank();
+
+    // ====== UI ======
+    private JFrame frame;
+    private JLabel statusLabel;
+    private JLabel capturesLabel;
+    private JLabel failsLabel;
+
+    private JLabel scoreLabel;
+    private JLabel deckLabel;
+    private JLabel reserveLabel;
+    private JLabel lostLabel;
+
+
+    private JTextArea logArea;
+
+    private BoardButton[] boardButtons = new BoardButton[9];
+
+ // ===== Paneles de dados dinámicos =====
+    private JPanel reserveDicePanel;
+    private JPanel lostDicePanel;
+    
+ // Cache de imágenes originales y escaladas
+    private final Map<String, BufferedImage> originalCache = new HashMap<>();
+    private final Map<String, ImageIcon> scaledCache = new HashMap<>();
+
+    private BufferedImage loadOriginal(String resourcePath) {
+        // resourcePath ejemplo: "/img/ballenaazul.png"
+        if (originalCache.containsKey(resourcePath)) return originalCache.get(resourcePath);
+
+        try {
+            URL url = getClass().getResource(resourcePath);
+            if (url == null) {
+                log("❌ No se encontró recurso: " + resourcePath);
+                originalCache.put(resourcePath, null);
+                return null;
+            }
+            BufferedImage img = ImageIO.read(url);
+            originalCache.put(resourcePath, img);
+            return img;
+        } catch (IOException e) {
+            log("❌ Error leyendo imagen: " + resourcePath + " -> " + e.getMessage());
+            originalCache.put(resourcePath, null);
+            return null;
+        }
+    }
+
+    private ImageIcon getScaledIcon(String resourcePath, int targetW, int targetH) {
+        if (targetW <= 0 || targetH <= 0) return null;
+
+        String key = resourcePath + "@fit@" + targetW + "x" + targetH;
+        ImageIcon cached = scaledCache.get(key);
+        if (cached != null) return cached;
+
+        BufferedImage src = loadOriginal(resourcePath);
+        if (src == null) return null;
+
+        int sw = src.getWidth();
+        int sh = src.getHeight();
+
+        double scale = Math.min((double) targetW / sw, (double) targetH / sh);
+        int w = Math.max(1, (int) Math.round(sw * scale));
+        int h = Math.max(1, (int) Math.round(sh * scale));
+
+        BufferedImage dst = new BufferedImage(targetW, targetH, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = dst.createGraphics();
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        int x = (targetW - w) / 2;
+        int y = (targetH - h) / 2;
+
+        g2.drawImage(src, x, y, w, h, null);
+        g2.dispose();
+
+        ImageIcon icon = new ImageIcon(dst);
+        scaledCache.put(key, icon);
+        return icon;
+    }
+
+ // ===== DADOS COMO IMÁGENES (overlay) =====
+
+ // Si tus dados están en /img/ directamente, deja esto así.
+ // Si los tienes en /img/dados/, cambia a: private static final String DICE_FOLDER = "/img/dados/";
+ private static final String DICE_FOLDER = "/img/";
+
+ // Ajustes visuales del overlay
+ private static final int DIE_OVERLAY_MARGIN = 6;   // margen desde bordes
+ private static final float DIE_OVERLAY_SIZE = 0.34f; // tamaño relativo del dado respecto al botón (0.30–0.40 recomendado)
+
+ // Construye nombre de archivo según el estándar: D61.png, D66.png, D41.png, D1212.png, etc.
+ private String dieFileName(DieType type, int value) {
+     return "D" + type.sides + value + ".png";
+ }
+
+ private ImageIcon getDieIconOrPlaceholder(DieType type, int value, int w, int h) {
+     String resourcePath = DICE_FOLDER + dieFileName(type, value); // ej: /img/D63.png
+     ImageIcon icon = getScaledIcon(resourcePath, w, h);
+     if (icon != null) return icon;
+
+     // Placeholder si falta el PNG (para no “romper” el tablero)
+     return createDiePlaceholderIcon(type, value, w, h);
+ }
+
+ private ImageIcon createDiePlaceholderIcon(DieType type, int value, int w, int h) {
+     w = Math.max(1, w);
+     h = Math.max(1, h);
+
+     BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+     Graphics2D g = img.createGraphics();
+     g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+     // Fondo semitransparente
+     g.setColor(new Color(255, 255, 255, 210));
+     g.fillRoundRect(0, 0, w - 1, h - 1, 14, 14);
+
+     // Borde
+     g.setColor(new Color(30, 30, 30, 180));
+     g.drawRoundRect(0, 0, w - 1, h - 1, 14, 14);
+
+     // Texto
+     String txt = "D" + type.sides + ":" + value;
+     g.setFont(new Font("SansSerif", Font.BOLD, Math.max(10, Math.min(w, h) / 4)));
+     FontMetrics fm = g.getFontMetrics();
+     int tx = (w - fm.stringWidth(txt)) / 2;
+     int ty = (h + fm.getAscent() - fm.getDescent()) / 2;
+
+     g.setColor(new Color(10, 10, 10, 210));
+     g.drawString(txt, Math.max(2, tx), Math.max(fm.getAscent(), ty));
+
+     g.dispose();
+     return new ImageIcon(img);
+ }
+    
+    // ====== Juego ======
+    private final Random rng = new Random();
+    private GameState state = GameState.SELECT_DIE;
+    private final Game game = new Game();
+
+    private Die selectedDie = null;
+    private Integer rolledValue = null;
+   
+
+ // ===== Cola para resolver habilidades "al voltearse" en orden =====
+    private boolean deferFlipResolutions = false;
+    private final Deque<FlipEvent> pendingFlipEvents = new ArrayDeque<>();
+
+    private static class FlipEvent {
+        final int index;
+        final Die dieJustPlaced; // puede ser null si el volteo no fue por "poner/mover" un dado
+        FlipEvent(int index, Die dieJustPlaced) {
+            this.index = index;
+            this.dieJustPlaced = dieJustPlaced;
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new ZonaDePescaGame().start());
+    }
+
+    private void start() {
+        buildUI();
+        game.newGame();
+        refreshAll();
+        log("Juego iniciado. Selecciona un dado para comenzar.");
+    }
+
+    private void showCardPreview(int index) {
+        BoardSlot slot = game.board[index];
+        if (slot == null || slot.card == null) {
+            Toolkit.getDefaultToolkit().beep();
+            return;
+        }
+
+        boolean visible = isVisibleFaceUp(slot);
+
+        String file = (!visible)
+                ? CARD_BACK_FILE
+                : CARD_FRONT_FILE.getOrDefault(slot.card.id, CARD_BACK_FILE);
+
+        String path = IMG_FOLDER + file;  // IMG_FOLDER = "/img/"
+
+        BufferedImage img = loadOriginal(path);
+        if (img == null) {
+            JOptionPane.showMessageDialog(frame,
+                    "No se pudo cargar la imagen:\n" + path,
+                    "Sin imagen", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String title = visible ? slot.card.name : "Carta (boca abajo)";
+        JDialog dlg = new JDialog(frame, title, true);
+
+        JLabel label = new JLabel(new ImageIcon(img));
+        label.setBorder(new EmptyBorder(10,10,10,10));
+
+        JScrollPane sp = new JScrollPane(label);
+        dlg.setContentPane(sp);
+
+        // Tamaño inicial razonable (si es enorme, podrás scrollear)
+        int w = Math.min(img.getWidth() + 60, 1000);
+        int h = Math.min(img.getHeight() + 80, 900);
+        dlg.setSize(new Dimension(w, h));
+        dlg.setLocationRelativeTo(frame);
+        dlg.setVisible(true);
+    }
+
+    static class SquareWrap extends JPanel {
+        private final JComponent child;
+
+        SquareWrap(JComponent child) {
+            super(null); // layout manual
+            this.child = child;
+            add(child);
+        }
+
+        @Override public void doLayout() {
+            int s = Math.min(getWidth(), getHeight());
+            int x = (getWidth() - s) / 2;
+            int y = (getHeight() - s) / 2;
+            child.setBounds(x, y, s, s);
+        }
+
+        @Override public Dimension getPreferredSize() {
+            Dimension d = child.getPreferredSize();
+            int s = Math.max(d.width, d.height);
+            return new Dimension(s, s);
+        }
+    }
+
+    
+    private void buildUI() {
+        frame = new JFrame("Zona de Pesca (Java monolítico)");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLayout(new BorderLayout(10, 10));
+
+     // ===== TOP =====
+        JPanel top = new JPanel(new BorderLayout());
+        top.setBorder(new EmptyBorder(10,10,6,10));
+
+        // 1) Status centrado arriba
+        statusLabel = new JLabel("Paso 1: Elige 1 dado", SwingConstants.CENTER);
+        statusLabel.setFont(statusLabel.getFont().deriveFont(Font.BOLD, 18f));
+        top.add(statusLabel, BorderLayout.NORTH);
+
+        // Labels (los mismos que ya usas en refreshAll)
+        capturesLabel = new JLabel("🐟 Capturas: 0");
+        failsLabel    = new JLabel("❌ Fallos: 0");
+        scoreLabel    = new JLabel("🏆 Puntos: 0");
+        deckLabel     = new JLabel("🂠 Mazo: 0");
+        reserveLabel  = new JLabel("🎲 Reserva: -");   // si después no lo quieres arriba, lo movemos
+        lostLabel     = new JLabel("🗑️ Perdidos: -");
+
+        // 2) Panel de métricas en grilla
+        JPanel stats = new JPanel(new GridBagLayout());
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.insets = new Insets(2, 6, 2, 6);
+        gc.fill = GridBagConstraints.HORIZONTAL;
+
+        // Columna izquierda: Puntos (arriba) / Mazo (abajo)
+        gc.gridx = 0; gc.gridy = 0; gc.weightx = 0; gc.anchor = GridBagConstraints.WEST;
+        stats.add(scoreLabel, gc);
+
+        gc.gridx = 0; gc.gridy = 1;
+        stats.add(deckLabel, gc);
+
+        // Columna centro: Capturas (arriba) / Fallos (abajo)
+        gc.gridx = 1; gc.gridy = 0; gc.anchor = GridBagConstraints.CENTER;
+        stats.add(capturesLabel, gc);
+
+        gc.gridx = 1; gc.gridy = 1;
+        stats.add(failsLabel, gc);
+
+        // Columna derecha: Perdidos (ocupa 2 filas)
+        gc.gridx = 2; gc.gridy = 0; gc.gridheight = 2;
+        gc.weightx = 1;                       // empuja a la derecha y deja espacio
+        gc.anchor = GridBagConstraints.EAST;
+        stats.add(lostLabel, gc);
+
+        // Si quieres mostrar Reserva arriba también (opcional):
+        // Descomenta estas 2 líneas para que aparezca bajo "Perdidos" o donde quieras.
+        // gc.gridx = 2; gc.gridy = 2; gc.gridheight = 1; gc.weightx = 1; gc.anchor = GridBagConstraints.EAST;
+        // stats.add(reserveLabel, gc);
+
+        top.add(stats, BorderLayout.CENTER);
+        frame.add(top, BorderLayout.NORTH);
+
+
+     // Center: board + dice panel (abajo)
+        JPanel center = new JPanel(new BorderLayout(10,10));
+        center.setBorder(new EmptyBorder(0,10,10,10));
+
+        // Board (3x3)
+        JPanel boardPanel = new JPanel(new GridLayout(3,3,6,6));
+
+        for (int i = 0; i < 9; i++) {
+            final int idx = i;
+
+            BoardButton bb = new BoardButton(idx);
+
+            bb.addActionListener(e -> onBoardClick(idx));
+
+            bb.addMouseListener(new java.awt.event.MouseAdapter() {
+                private void maybeShow(java.awt.event.MouseEvent e) {
+                    if (e.isPopupTrigger() || SwingUtilities.isRightMouseButton(e)) {
+                        showCardPreview(idx);
+                    }
+                }
+                @Override public void mousePressed(java.awt.event.MouseEvent e) { maybeShow(e); }
+                @Override public void mouseReleased(java.awt.event.MouseEvent e) { maybeShow(e); }
+            });
+
+            boardButtons[idx] = bb;
+            boardPanel.add(bb);
+        }
+
+        // Tablero cuadrado
+        SquareWrap squareBoard = new SquareWrap(boardPanel);
+        center.add(squareBoard, BorderLayout.CENTER);
+
+     // ===== Panel inferior de dados (dinámico) =====
+        JPanel bottomDiceWrap = new JPanel(new BorderLayout(6,6));
+        bottomDiceWrap.setBorder(new EmptyBorder(8,0,0,0)); // separación con el tablero
+
+        // Centro: Reserva dinámica (1 botón por dado)
+        reserveDicePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 6));
+        JScrollPane reserveScroll = new JScrollPane(reserveDicePanel);
+        reserveScroll.setBorder(null);
+        reserveScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        reserveScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
+
+        JPanel reserveWrap = new JPanel(new BorderLayout());
+        reserveWrap.add(new JLabel("Reserva de dados"), BorderLayout.NORTH);
+        reserveWrap.add(reserveScroll, BorderLayout.CENTER);
+
+        bottomDiceWrap.add(reserveWrap, BorderLayout.CENTER);
+
+        center.add(bottomDiceWrap, BorderLayout.SOUTH);
+
+
+
+        frame.add(center, BorderLayout.CENTER);
+
+
+        // Recalcular miniaturas al redimensionar
+        frame.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentResized(java.awt.event.ComponentEvent e) {
+                SwingUtilities.invokeLater(() -> {
+                    scaledCache.clear();
+                    refreshAll();
+                });
+            }
+        });
+
+        frame.pack();
+        frame.setLocationRelativeTo(null);
+        frame.setVisible(true);
+    }
+
+    // ====== UI handlers ======
+    private void onSelectDie(DieType type) {
+        if (state != GameState.SELECT_DIE) { beep(); return; }
+        if (rollingAnimation) { beep(); return; }
+
+        Die die = game.reserve.pick(type);
+        if (die == null) { beep(); log("No tienes " + type + " disponible en la reserva."); return; }
+
+        selectedDie = die;
+        rolledValue = null;
+
+        // Lanzamiento automático con animación
+        startAutoRollAnimation();
+    }
+
+    private void updateDieButton(JButton btn, DieType type) {
+        int count = game.reserve.count(type);
+
+        boolean isChosen = (selectedDie != null && selectedDie.type == type);
+
+        // Habilitación:
+        // - En SELECT_DIE: habilita si hay dados
+        // - En ROLL/PLACE/END_TURN: deshabilita, pero el elegido lo dejaremos "a color" con disabledIcon
+        boolean canPickNow = (state == GameState.SELECT_DIE && !rollingAnimation && count > 0);
+        btn.setEnabled(canPickNow);
+
+        int bw = btn.getWidth();
+        int bh = btn.getHeight();
+
+        // Si todavía no está layout-eado, usa el preferred para no generar iconos miniatura
+        if (bw <= 0 || bh <= 0) {
+            Dimension pd = btn.getPreferredSize();
+            bw = pd.width;
+            bh = pd.height;
+        }
+
+        // Tamaño del icono: estable, con mínimo y máximo
+        int s = Math.min(bw, bh) - 12;
+        s = Math.max(DICE_ICON_MIN, Math.min(DICE_ICON_MAX, s));
+
+        int faceToShow = type.sides;
+
+        if (isChosen) {
+            if (rollingAnimation && rollingPreviewValue != null) {
+                faceToShow = rollingPreviewValue; // animación
+            } else if (rolledValue != null) {
+                faceToShow = rolledValue;         // resultado final
+            }
+        }
+
+        ImageIcon icon = getDieIconOrPlaceholder(type, faceToShow, s, s);
+        btn.setIcon(icon);
+        btn.setText(null);
+        btn.setToolTipText(type + " disponibles: " + count);
+
+        // ✅ Mantener color cuando esté deshabilitado (ROLL/PLACE) pero sea el elegido
+        if (isChosen && state != GameState.SELECT_DIE) {
+            btn.setDisabledIcon(icon); // no lo “apaga” a gris
+        } else {
+            btn.setDisabledIcon(null); // el resto se comporta normal
+        }
+
+        // ✅ Evitar que quede “hundido” visualmente si se deshabilita justo tras el click
+        ButtonModel m = btn.getModel();
+        m.setArmed(false);
+        m.setPressed(false);
+
+        btn.setHorizontalAlignment(SwingConstants.CENTER);
+        btn.setVerticalAlignment(SwingConstants.CENTER);
+    }
+
+
+
+    private void onBoardClick(int index) {
+        if (state != GameState.PLACE) { beep(); return; }
+        if (selectedDie == null || rolledValue == null) { beep(); return; }
+
+        BoardSlot slot = game.board[index];
+        if (slot.card == null) { beep(); log("Ese espacio está vacío (mazo agotado / no se repone)."); return; }
+
+        if (game.forcedNextPlacementIndex != null && !Objects.equals(game.forcedNextPlacementIndex, index)) {
+            beep();
+            log("Estás obligado a colocar el dado en: " + pos(game.forcedNextPlacementIndex) +
+                    " (" + hiddenSafeLabel(game.forcedNextPlacementIndex) + ")");
+            return;
+        }
+
+        if (slot.dice.size() >= 2) { beep(); log("Esa carta ya tiene 2 dados."); return; }
+
+        // Colocar dado
+        Die placed = selectedDie;
+
+     // Remover el dado usado de la reserva (ahora sí se consume)
+     game.reserve.dice.remove(placed);
+
+     placed.value = rolledValue;
+     selectedDie = null;
+     selectedDieBtn = null;
+     rolledValue = null;
+
+     slot.dice.add(placed);
+
+
+        // Revelar carta si estaba boca abajo
+        if (!slot.faceUp) {
+            slot.faceUp = true;
+            slot.status.calamarForcedFaceDown = false;
+            log("Revelas: " + slot.card.name + " (" + slot.card.type + ")");
+            triggerFlip(index, placed);
+        }
+
+        if (slot.dice.size() == 2) {
+            resolveFishingCheck(index);
+        }
+
+        int placedValue = placed.value;
+        if (placedValue == 1) {
+            resolveCurrents();
+        }
+
+        if (game.forcedNextPlacementIndex != null && Objects.equals(game.forcedNextPlacementIndex, index)) {
+            game.forcedNextPlacementIndex = null;
+        }
+
+        if (game.reserve.totalDice() == 0) {
+            endGame();
+            return;
+        }
+
+        if (game.reserve.totalDice() == 0) {
+            endGame();
+            return;
+        }
+
+        state = GameState.SELECT_DIE;
+        log("Nuevo turno. Elige un dado.");
+        refreshAll();
+
+    }
+
+    private void endGame() {
+        int total = game.scoreTotalWithEndBonuses();
+        int base = game.scoreBaseCaptures();
+        String msg = "Fin de partida (sin dados en reserva).\n" +
+                "Puntaje capturas: " + base + "\n" +
+                "Puntaje total (con bonus final): " + total + "\n" +
+                "Cartas capturadas: " + game.captures.size() + "\n" +
+                "Cartas restantes en mazo: " + game.deck.size();
+        log(msg.replace("\n", " "));
+        JOptionPane.showMessageDialog(frame, msg, "Fin", JOptionPane.INFORMATION_MESSAGE);
+
+        game.newGame();
+        selectedDie = null;
+        rolledValue = null;
+        state = GameState.SELECT_DIE;
+        log("Juego reiniciado. Elige un dado.");
+        refreshAll();
+    }
+
+    // ====== Rules ======
+
+    private void resolveFishingCheck(int index) {
+        BoardSlot slot = game.board[index];
+        if (slot.card == null || slot.dice.size() != 2) return;
+
+        Card c = slot.card;
+        boolean ok = c.condition.isSatisfied(index, game);
+
+        if (ok) {
+            log("✅ Pesca exitosa: " + c.name + " (" + c.points + " pts).");
+            handleSuccessfulCatch(index);
+        } else {
+            log("❌ Falla de pesca: " + c.name + ".");
+            handleFishingFailure(index);
+        }
+    }
+
+    private void handleSuccessfulCatch(int index) {
+        BoardSlot slot = game.board[index];
+        Card c = slot.card;
+
+        onCardLeavingBoard(index);
+        resolveOnCatch(index);
+
+        game.captures.add(c);
+
+        if (c.id == CardId.PERCEBES) {
+            List<Die> diceToMove = new ArrayList<>(slot.dice);
+            slot.dice.clear();
+            List<Integer> adj = adjacentIndexes(index, null);
+            for (Die d : diceToMove) {
+                Integer dest = pickIndex("Percebes: elige destino adyacente para mover " + d.type + "=" + d.value +
+                                " (si no hay espacio, vuelve a reserva)",
+                        adj,
+                        idx -> game.board[idx].card != null && game.board[idx].dice.size() < 2,
+                        true);
+                if (dest == null) {
+                    game.reserve.returnDie(d);
+                    continue;
+                }
+                moveDieObjectToSlot(d, dest);
+            }
+        } else {
+            game.reserve.returnAll(slot.dice);
+            slot.dice.clear();
+        }
+
+        replaceSlotWithNewFacedown(index);
+        if (game.reserve.totalDice() == 0) endGame();
+    }
+
+    private void handleFishingFailure(int index) {
+        BoardSlot slot = game.board[index];
+        Card c = slot.card;
+        game.failedCatches++;
+
+        if (slot.status.protectedOnce) {
+            slot.status.protectedOnce = false;
+            log("🛡️ Protección activada: no pierdes dado por esta falla.");
+            game.reserve.returnAll(slot.dice);
+            slot.dice.clear();
+            onCardLeavingBoard(index);
+            replaceSlotWithNewFacedown(index);
+            return;
+        }
+
+        boolean loseTwo = game.anzueloActive && !game.anzueloConsumed;
+        if (loseTwo) {
+            game.anzueloConsumed = true;
+            log("🪝 Anzuelo Roto: primera falla -> pierdes 2 dados.");
+            for (Die d : slot.dice) game.loseDie(d);
+            slot.dice.clear();
+
+            onCardLeavingBoard(index);
+            replaceSlotWithNewFacedown(index);
+            if (game.reserve.totalDice() == 0) endGame();
+            return;
+        }
+
+        if (slot.dice.size() != 2) {
+            for (Die d : slot.dice) game.loseDie(d);
+            slot.dice.clear();
+        } else {
+            int loseIdx = pickDieIndex("Falla: elige el dado que se pierde definitivamente", slot.dice);
+            if (loseIdx < 0) loseIdx = 0;
+            Die lost = slot.dice.remove(loseIdx);
+            Die returned = slot.dice.remove(0);
+
+            game.loseDie(lost);
+            game.reserve.returnDie(returned);
+        }
+
+        onCardLeavingBoard(index);
+        replaceSlotWithNewFacedown(index);
+        if (game.reserve.totalDice() == 0) endGame();
+    }
+
+    private void resolveCurrents() {
+        log("🌊 Corrientes: el tiro fue 1. El tablero se desplaza un espacio lejos del jugador.");
+
+        int[] top = {0,1,2};
+
+     // 1) Cartas que salen SIN dados deben volver al mazo (y luego se mezcla)
+     List<Card> toReturnToDeck = new ArrayList<>();
+
+     for (int idx : top) {
+         BoardSlot leaving = game.board[idx];
+         if (leaving.card == null) continue;
+
+         // Guardamos la carta antes de limpiarla
+         Card leavingCard = leaving.card;
+
+         if (leaving.dice.isEmpty()) {
+             // ✅ Regla nueva: si NO tiene dados, vuelve al mazo (da lo mismo si estaba boca arriba/abajo o forzada)
+             toReturnToDeck.add(leavingCard);
+             log("🌊 Corrientes: carta sin dados vuelve al mazo -> " + leavingCard.name);
+         } else {
+             // ✅ Si TIENE dados: se considera falla (tu comportamiento actual)
+             log("🌊 Una carta sale con dados: se considera falla (" + leavingCard.name + ").");
+             game.failedCatches++;
+
+             if (leaving.dice.size() == 2) {
+                 int loseIdx = pickDieIndex(
+                     "Corrientes: elige el dado que se pierde (la otra vuelve a reserva) [" + leavingCard.name + "]",
+                     leaving.dice
+                 );
+                 if (loseIdx < 0) loseIdx = 0;
+                 Die lost = leaving.dice.remove(loseIdx);
+                 Die returned = leaving.dice.remove(0);
+                 game.loseDie(lost);
+                 game.reserve.returnDie(returned);
+             } else if (leaving.dice.size() == 1) {
+                 Die only = leaving.dice.remove(0);
+                 if (CORRIENTE_CON_1_DADO_PIERDE_ESE_DADO) game.loseDie(only);
+                 else game.reserve.returnDie(only);
+             } else {
+                 leaving.dice.clear();
+             }
+         }
+
+         // Limpieza de efectos persistentes (botella/anzuelo/etc.)
+         onCardLeavingBoard(idx);
+
+         // Vaciar el slot que salió del tablero
+         leaving.card = null;
+         leaving.faceUp = false;
+         leaving.status = new SlotStatus();
+         leaving.dice.clear();
+     }
+
+     // ✅ Ahora sí: mezclar las cartas sin dados devueltas al mazo
+     shuffleIntoDeck(toReturnToDeck);
+
+        BoardSlot[] old = new BoardSlot[9];
+        for (int i=0;i<9;i++) old[i] = game.board[i].copy();
+
+        for (int r=0;r<3;r++){
+            for (int c=0;c<3;c++){
+                int newIdx = r*3+c;
+                int fromIdx = (r+1)*3+c;
+                if (r == 2) {
+                    game.board[newIdx].clear();
+                } else {
+                    game.board[newIdx] = old[fromIdx].copy();
+                }
+            }
+        }
+
+        for (int c=0;c<3;c++){
+            int idx = 2*3 + c;
+            if (game.board[idx].card == null) {
+                if (!game.deck.isEmpty()) {
+                    game.board[idx].card = game.deck.pop();
+                    game.board[idx].faceUp = false;
+                    game.board[idx].status = new SlotStatus();
+                    game.board[idx].dice.clear();
+                } else {
+                    game.board[idx].card = null;
+                    game.board[idx].faceUp = false;
+                    game.board[idx].status = new SlotStatus();
+                    game.board[idx].dice.clear();
+                }
+            }
+        }
+
+        if (game.forcedNextPlacementIndex != null) {
+            log("Corrientes: se cancela cualquier obligación de colocación (por movimiento del tablero).");
+            game.forcedNextPlacementIndex = null;
+        }
+
+        if (game.reserve.totalDice() == 0) endGame();
+        refreshAll();
+    }
+    private void startAutoRollAnimation() {
+    	rollingDieType = selectedDie.type;
+
+        if (selectedDie == null) return;
+
+        rollingAnimation = true;
+        rollingDieType = selectedDie.type;
+        rollingPreviewValue = null;
+
+        if (rollAnimTimer != null && rollAnimTimer.isRunning()) rollAnimTimer.stop();
+
+        state = GameState.ROLL;
+        rolledValue = null;
+
+        rollAnimFramesLeft = 14;
+        int delayMs = 70;
+
+        rollAnimTimer = new javax.swing.Timer(delayMs, e -> {
+            // Cara "fake" para animación
+            rollingPreviewValue = rng.nextInt(selectedDie.type.sides) + 1;
+
+            // Refresca para que updateDieButton ponga esa cara en el botón
+            refreshAll();
+
+            rollAnimFramesLeft--;
+            if (rollAnimFramesLeft <= 0) {
+                ((javax.swing.Timer) e.getSource()).stop();
+
+                // Cara final real
+                int finalValue = selectedDie.roll(rng);
+                rolledValue = finalValue;
+
+                // Deja de animar, pero mantenemos la cara final en el botón (updateDieButton la mostrará)
+                rollingAnimation = false;
+                rollingPreviewValue = null;
+
+                log("Lanzaste " + selectedDie.type + ": " + rolledValue);
+
+                state = GameState.PLACE;
+                refreshAll();
+            }
+        });
+
+        rollAnimTimer.setInitialDelay(0);
+        rollAnimTimer.start();
+
+        refreshAll();
+    }
+
+
+ // Mete cartas de vuelta al mazo y mezcla todo
+    private void shuffleIntoDeck(List<Card> returned) {
+        if (returned == null || returned.isEmpty()) return;
+
+        // Pasamos el mazo actual + las retornadas a una lista y mezclamos
+        List<Card> tmp = new ArrayList<>(game.deck);
+        tmp.addAll(returned);
+        Collections.shuffle(tmp, rng);
+
+        // Reconstruimos el deck (push/pop) con el nuevo orden mezclado
+        game.deck.clear();
+        for (Card c : tmp) {
+            game.deck.push(c);
+        }
+    }
+    
+    private void triggerFlip(int index, Die dieJustPlaced) {
+        if (deferFlipResolutions) {
+            pendingFlipEvents.addLast(new FlipEvent(index, dieJustPlaced));
+        } else {
+            resolveOnFlip(index, dieJustPlaced);
+        }
+    }
+
+    private void flushPendingFlipEvents() {
+        while (!pendingFlipEvents.isEmpty()) {
+            FlipEvent ev = pendingFlipEvents.removeFirst();
+            BoardSlot s = game.board[ev.index];
+            if (s == null || s.card == null) continue; // si la carta ya no existe, se ignora
+            resolveOnFlip(ev.index, ev.dieJustPlaced);
+        }
+    }    
+    
+    private void resolveOnFlip(int index, Die dieJustPlaced) {
+        BoardSlot slot = game.board[index];
+        if (slot.card == null) return;
+        Card c = slot.card;
+
+        switch (c.id) {
+
+            // ===== Crustáceos =====
+            case CANGREJO_ROJO -> {
+                List<Integer> fishAdj = adjacentIndexes(index, CardType.PEZ_ANY);
+                if (fishAdj.size() < 2) { log("Cangrejo Rojo: no hay suficientes peces adyacentes."); return; }
+                Integer from = pickIndex("Cangrejo Rojo: elige pez ORIGEN (con al menos 1 dado)",
+                        fishAdj, idx -> game.board[idx].dice.size() >= 1);
+                if (from == null) return;
+                Integer to = pickIndex("Cangrejo Rojo: elige pez DESTINO (con espacio)",
+                        fishAdj, idx -> game.board[idx].dice.size() < 2);
+                if (to == null) return;
+                moveOneDie(from, to);
+            }
+            case JAIBA_AZUL -> {
+                if (slot.dice.isEmpty()) return;
+                Die d = slot.dice.get(slot.dice.size()-1);
+                int min = 1;
+                int max = d.type.sides;
+                Object[] options = {"-1", "+1", "No ajustar"};
+                int choice = JOptionPane.showOptionDialog(frame,
+                        "Jaiba Azul: ajusta el dado recién colocado a un numero par agregandole o restandole 1 (" + d.type + "=" + d.value + ") ±1",
+                        "Jaiba Azul", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+                        null, options, options[2]);
+                if (choice == 0) d.value = Math.max(min, d.value - 1);
+                else if (choice == 1) d.value = Math.min(max, d.value + 1);
+                log("Jaiba Azul: dado queda en " + d.value);
+            }
+            case CAMARON_FANTASMA -> {
+                List<Integer> adj = adjacentIndexes(index, null);
+                List<Integer> facedown = new ArrayList<>();
+                for (int a : adj) {
+                    BoardSlot s = game.board[a];
+                    if (s.card != null && !isVisibleFaceUp(s)) facedown.add(a);
+                }
+                if (facedown.isEmpty()) { log("Camarón Fantasma: no hay cartas boca abajo adyacentes."); return; }
+                Collections.shuffle(facedown, rng);
+                int count = Math.min(2, facedown.size());
+                StringBuilder sb = new StringBuilder("Camarón Fantasma: miras " + count + " carta(s):\n");
+                for (int i=0;i<count;i++){
+                    BoardSlot s = game.board[facedown.get(i)];
+                    sb.append("- ").append(s.card.name).append(" (").append(s.card.type).append(")\n");
+                }
+                JOptionPane.showMessageDialog(frame, sb.toString(), "Camarón Fantasma", JOptionPane.INFORMATION_MESSAGE);
+                log("Camarón Fantasma: miraste " + count + " carta(s).");
+            }
+            case CANGREJO_ERMITANO -> {
+                List<Integer> objs = adjacentIndexes(index, CardType.OBJETO);
+                Integer target = pickIndex("Cangrejo Ermitaño: elige un objeto adyacente boca arriba para descartarlo (o cancelar)",
+                        objs, idx -> isVisibleFaceUp(game.board[idx]), true);
+                if (target == null) return;
+                discardAndReplenish(target, "Cangrejo Ermitaño descarta objeto adyacente");
+            }
+            case CENTOLLA -> {
+                game.forcedNextPlacementIndex = index;
+                log("Centolla: tu próximo dado debe ir obligatoriamente a esta carta (si sigue en el tablero).");
+            }
+            case NAUTILUS -> {
+                int changes = 0;
+                while (changes < 2) {
+                    List<DieRef> all = allDiceOnBoard();
+                    if (all.isEmpty()) { log("Nautilus: no hay dados en el tablero para ajustar."); return; }
+                    DieRef chosen = pickDieRef("Nautilus: elige un dado para ajustar (±2). Cambio " + (changes+1) + "/2", all, true);
+                    if (chosen == null) break;
+
+                    Die d = chosen.die;
+                    Object[] options = {"-2", "+2", "Cancelar"};
+                    int choice = JOptionPane.showOptionDialog(frame,
+                            "Nautilus: ajustar " + d.type + "=" + d.value + " en " + pos(chosen.slotIndex) + " (" + hiddenSafeLabel(chosen.slotIndex) + ")",
+                            "Nautilus", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[2]);
+                    if (choice == 2 || choice == JOptionPane.CLOSED_OPTION) break;
+
+                    int delta = (choice == 0) ? -2 : 2;
+                    int nv = d.value + delta;
+                    if (nv < 1 || nv > d.type.sides) {
+                        log("Nautilus: ajuste inválido (fuera de caras). No se aplica.");
+                        continue;
+                    }
+                    d.value = nv;
+                    log("Nautilus: ajustas dado a " + d.value);
+                    changes++;
+                }
+            }
+
+            // ===== Peces pequeños =====
+            case ATUN -> {
+                if (dieJustPlaced == null) return;
+                int choice = JOptionPane.showConfirmDialog(frame,
+                        "Atún: ¿quieres relanzar el dado colocado y reposicionarlo?",
+                        "Atún", JOptionPane.YES_NO_OPTION);
+                if (choice != JOptionPane.YES_OPTION) return;
+
+                dieJustPlaced.value = dieJustPlaced.roll(rng);
+                log("Atún: relanzaste el dado, ahora vale " + dieJustPlaced.value);
+
+                List<Integer> candidates = allPlaceableSlots();
+                Integer dest = pickIndex("Atún: elige dónde reposicionar el dado (puede ser la misma carta)", candidates,
+                        idx -> game.board[idx].card != null && game.board[idx].dice.size() < 2);
+                if (dest == null) return;
+
+                if (dest != index) {
+                    slot.dice.remove(dieJustPlaced);
+                    moveDieObjectToSlot(dieJustPlaced, dest);
+                    log("Atún: reposicionaste el dado a " + pos(dest) + " (" + hiddenSafeLabel(dest) + ")");
+                }
+            }
+            case PEZ_PAYASO -> {
+                List<Integer> fishAdj = adjacentIndexes(index, CardType.PEZ_ANY);
+                Integer target = pickIndex("Pez Payaso: elige un pez adyacente para proteger (1 falla sin pérdida)",
+                        fishAdj, idx -> game.board[idx].card != null);
+                if (target == null) return;
+                game.board[target].status.protectedOnce = true;
+                log("Pez Payaso: proteges a " + pos(target) + " (" + hiddenSafeLabel(target) + ")");
+            }
+            case PEZ_GLOBO -> {
+                List<Integer> fishSlots = new ArrayList<>();
+                for (int i=0;i<9;i++){
+                    if (game.board[i].card != null && game.board[i].card.type.isFish() && !game.board[i].dice.isEmpty()) fishSlots.add(i);
+                }
+                if (fishSlots.isEmpty()) { log("Pez Globo: no hay dados sobre peces para inflar."); return; }
+                Integer target = pickIndex("Pez Globo: elige un pez con dados para inflar 1 dado a su máximo",
+                        fishSlots, idx -> true);
+                if (target == null) return;
+                BoardSlot ts = game.board[target];
+                int di = pickDieIndex("Pez Globo: elige qué dado inflar", ts.dice);
+                if (di < 0) return;
+                Die d = ts.dice.get(di);
+                d.value = d.type.sides;
+                log("Pez Globo: inflas " + d.type + " al máximo (" + d.value + ") en " + pos(target));
+            }
+            case MORENA -> {
+                List<Integer> fishAdj = adjacentIndexes(index, CardType.PEZ_ANY);
+                if (fishAdj.size() < 2) { log("Morena: no hay suficientes peces adyacentes."); return; }
+                Integer from = pickIndex("Morena: elige pez ORIGEN (con al menos 1 dado)",
+                        fishAdj, idx -> game.board[idx].dice.size() >= 1);
+                if (from == null) return;
+                Integer to = pickIndex("Morena: elige pez DESTINO (con espacio)",
+                        fishAdj, idx -> game.board[idx].dice.size() < 2);
+                if (to == null) return;
+                moveOneDie(from, to);
+            }
+            case PEZ_LINTERNA -> {
+                // Versión corregida (en tu pegado venía roto por llaves/ifs duplicados)
+                if (dieJustPlaced == null) return;
+
+                List<Integer> candidates = new ArrayList<>();
+                for (int i=0;i<9;i++){
+                    BoardSlot s = game.board[i];
+                    if (s.card != null && !isVisibleFaceUp(s) && s.dice.size() < 2
+                            && (s.card.type.isFish() || s.card.type == CardType.OBJETO)) {
+                        candidates.add(i);
+                    }
+                }
+
+                if (candidates.isEmpty()) { log("Pez Linterna: no hay cartas boca abajo elegibles para revelar."); return; }
+
+                Integer target = pickIndex("Pez Linterna: elige 1 carta boca abajo para revelar", candidates, idx -> true);
+                if (target == null) return;
+
+                BoardSlot ts = game.board[target];
+                ts.faceUp = true;
+                ts.status.calamarForcedFaceDown = false;
+                log("Pez Linterna revela: " + ts.card.name + " (" + ts.card.type + ")");
+                triggerFlip(target, null);
+
+                if (ts.card.type == CardType.PEZ_GRANDE) {
+                    if (slot.dice.remove(dieJustPlaced)) {
+                        moveDieObjectToSlot(dieJustPlaced, target);
+                        log("Pez Linterna: mueves el dado a " + ts.card.name);
+                    }
+                } else if (ts.card.type == CardType.OBJETO) {
+                    if (slot.dice.remove(dieJustPlaced)) {
+                        game.loseDie(dieJustPlaced);
+                        log("Pez Linterna: revelaste un objeto -> pierdes el dado.");
+                    }
+                }
+            }
+            case PIRANA -> {
+                List<Integer> fishAdj = adjacentIndexes(index, CardType.PEZ_ANY);
+                List<Integer> upFish = new ArrayList<>();
+                for (int a : fishAdj) {
+                    if (game.board[a].card != null && isVisibleFaceUp(game.board[a])) upFish.add(a);
+                }
+                if (upFish.isEmpty()) { log("Piraña: no hay peces adyacentes boca arriba para descartar."); return; }
+                Integer target = pickIndex("Piraña: elige 1 pez adyacente boca arriba para descartar y reemplazar",
+                        upFish, idx -> true);
+                if (target == null) return;
+
+                BoardSlot victim = game.board[target];
+                game.reserve.returnAll(victim.dice);
+                victim.dice.clear();
+
+                discardAndReplenish(target, "Piraña descarta " + victim.card.name);
+            }
+            case TIBURON_BLANCO -> {
+                List<Integer> adj = adjacentIndexes(index, null);
+                List<Integer> up = new ArrayList<>();
+                for (int a : adj) {
+                    if (game.board[a].card != null && isVisibleFaceUp(game.board[a])) up.add(a);
+                }
+                if (up.isEmpty()) { log("Tiburón Blanco: no hay cartas adyacentes boca arriba."); return; }
+
+                Integer target = pickIndex("Tiburón Blanco: elige la carta adyacente boca arriba a eliminar",
+                        up, idx -> true);
+                if (target == null) return;
+
+                BoardSlot victim = game.board[target];
+
+                if (!victim.dice.isEmpty() && slot.dice.size() < 2) {
+                    Die taken;
+                    if (victim.dice.size() == 1) {
+                        taken = victim.dice.remove(0);
+                    } else {
+                        taken = (victim.dice.get(0).value >= victim.dice.get(1).value) ? victim.dice.remove(0) : victim.dice.remove(1);
+                        if (!victim.dice.isEmpty()) game.reserve.returnDie(victim.dice.remove(0));
+                    }
+                    slot.dice.add(taken);
+                    log("Tiburón Blanco: absorbes un dado (" + taken.type + "=" + taken.value + ").");
+                } else {
+                    game.reserve.returnAll(victim.dice);
+                    victim.dice.clear();
+                }
+
+                discardAndReplenish(target, "Tiburón Blanco elimina " + victim.card.name);
+            }
+            case PEZ_VELA -> {
+                if (slot.dice.isEmpty()) return;
+                Die d = slot.dice.get(slot.dice.size()-1);
+                int before = d.value;
+                int newv = d.roll(rng);
+                Object[] options = {"Quedarme con " + before, "Quedarme con " + newv};
+                int choice = JOptionPane.showOptionDialog(frame,
+                        "Pez Vela: relanzaste -> " + newv + ". ¿Con cuál te quedas?",
+                        "Pez Vela", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+                if (choice == 1) d.value = newv;
+                log("Pez Vela: dado queda en " + d.value);
+            }
+            case CALAMAR_GIGANTE -> {
+                List<Integer> adj = adjacentIndexes(index, null);
+                if (adj.isEmpty()) return;
+                for (int a : adj) {
+                    BoardSlot s = game.board[a];
+                    if (s.card == null) continue;
+                    s.faceUp = false;
+                    s.status.calamarForcedFaceDown = true;
+                }
+                log("Calamar Gigante: volteas boca abajo las cartas adyacentes (conservan dados).");
+            }
+            case MANTA_GIGANTE -> {
+                if (game.lost.count(DieType.D8) <= 0) {
+                    log("Manta Gigante: no has perdido ningún D8.");
+                    return;
+                }
+                Die recovered = game.lost.takeOne(DieType.D8);
+                if (recovered != null) {
+                    game.reserve.returnDie(recovered);
+                    log("Manta Gigante: recuperas un D8 perdido.");
+                }
+            }
+            case BALLENA_AZUL -> {
+                log("Ballena azul: puedes reposicionar todos los dados (manteniendo valores).");
+                repositionAllDiceInteractive();
+            }
+
+            // ===== Objetos =====
+            case BOTELLA_PLASTICO -> {
+                List<Integer> adjFish = adjacentIndexes(index, CardType.PEZ_ANY);
+                if (adjFish.isEmpty()) { log("Botella: no hay peces adyacentes para afectar."); return; }
+                Integer target = pickIndex("Botella de Plástico: elige 1 pez adyacente para aumentar su condición de suma en +3",
+                        adjFish, idx -> game.board[idx].card != null);
+                if (target == null) return;
+
+                if (slot.status.bottleTargetIndex != null) {
+                    BoardSlot prev = game.board[slot.status.bottleTargetIndex];
+                    prev.status.sumConditionShift -= 3;
+                }
+
+                slot.status.bottleTargetIndex = target;
+                game.board[target].status.sumConditionShift += 3;
+                log("Botella: la condición de suma de " + pos(target) + " (" + hiddenSafeLabel(target) + ") se incrementa en +3.");
+            }
+            case ANZUELO_ROTO -> {
+                game.anzueloActive = true;
+                log("Anzuelo Roto: activo. La primera falla global perderá 2 dados.");
+            }
+            case BOTA_VIEJA -> {
+                log("Bota Vieja: mientras esté boca arriba, las cartas adyacentes tienen −1 a la suma en sus comprobaciones.");
+            }
+            default -> { /* sin efecto al voltearse */ }
+        }
+    }
+
+    private void resolveOnCatch(int index) {
+        BoardSlot slot = game.board[index];
+        if (slot.card == null) return;
+        Card c = slot.card;
+
+        switch (c.id) {
+            case LANGOSTA_ESPINOSA -> {
+                if (slot.status.langostaUsedOnce) return;
+                boolean usedD4 = false;
+                for (Die d : slot.dice) if (d.type == DieType.D4) usedD4 = true;
+                if (!usedD4) return;
+
+                if (game.lost.totalDice() <= 0) { log("Langosta: no hay dados perdidos para recuperar."); return; }
+                Die recovered = pickLostDie("Langosta: elige 1 dado perdido para recuperar", null);
+                if (recovered != null) {
+                    game.reserve.returnDie(recovered);
+                    slot.status.langostaUsedOnce = true;
+                    log("Langosta: recuperas un dado perdido.");
+                }
+            }
+            case SALMON -> {
+                List<Integer> facedown = new ArrayList<>();
+                for (int i=0;i<9;i++){
+                    BoardSlot s = game.board[i];
+                    if (s.card != null && !isVisibleFaceUp(s)) facedown.add(i);
+                }
+                if (facedown.isEmpty()) { log("Salmón: no hay cartas boca abajo para revelar."); return; }
+                Integer t = pickIndex("Salmón: elige 1 carta boca abajo para revelar", facedown, idx -> true);
+                if (t == null) return;
+                BoardSlot ts = game.board[t];
+                ts.faceUp = true;
+                ts.status.calamarForcedFaceDown = false;
+                log("Salmón revela: " + ts.card.name + " (" + ts.card.type + ")");
+                triggerFlip(t, null);
+            }
+            case CABALLITO_DE_MAR -> {
+                if (game.lost.count(DieType.D4) <= 0) { log("Caballito de Mar: no has perdido el D4."); return; }
+                Die recovered = game.lost.takeOne(DieType.D4);
+                if (recovered != null) {
+                    game.reserve.returnDie(recovered);
+                    log("Caballito de Mar: recuperas el D4.");
+                }
+            }
+            case KOI -> {
+                List<Integer> candidates = new ArrayList<>();
+                for (int i=0;i<9;i++){
+                    BoardSlot s = game.board[i];
+                    if (s.card != null && isVisibleFaceUp(s) && s.card.type.isFish() && s.dice.size() == 1) candidates.add(i);
+                }
+                if (candidates.isEmpty()) { log("Koi: no hay peces boca arriba con 1 dado para intercambiar."); return; }
+                Integer target = pickIndex("Koi: elige 1 pez boca arriba con 1 dado para intercambiar",
+                        candidates, idx -> true);
+                if (target == null) return;
+                if (slot.dice.size() != 2) return;
+
+                BoardSlot ts = game.board[target];
+                int koiDieIdx = pickDieIndex("Koi: elige cuál de tus dados intercambiar", slot.dice);
+                if (koiDieIdx < 0) return;
+
+                Die koiDie = slot.dice.get(koiDieIdx);
+                Die targetDie = ts.dice.get(0);
+
+                slot.dice.set(koiDieIdx, targetDie);
+                ts.dice.set(0, koiDie);
+
+                if (!isVisibleFaceUp(ts) && REVELAR_SI_RECIBE_DADO_POR_EFECTO) {
+                    ts.faceUp = true;
+                    ts.status.calamarForcedFaceDown = false;
+                    triggerFlip(target, null);
+                }
+
+                log("Koi: intercambiaste un dado con " + safeName(ts));
+            }
+            case PEZ_VOLADOR -> {
+                if (slot.dice.size() != 2) return;
+                int a = slot.dice.get(0).value;
+                int b = slot.dice.get(1).value;
+                int even = (a % 2 == 0) ? a : b;
+                int odd  = (a % 2 != 0) ? a : b;
+                boolean vertical = even > odd;
+
+                int r = index / 3;
+                int ccol = index % 3;
+
+                List<Integer> line = new ArrayList<>();
+                if (vertical) {
+                    for (int rr=0; rr<3; rr++) line.add(rr*3 + ccol);
+                    log("Pez Volador: par > impar -> revelas la columna.");
+                } else {
+                    for (int cc=0; cc<3; cc++) line.add(r*3 + cc);
+                    log("Pez Volador: impar >= par -> revelas la fila.");
+                }
+
+                for (int idx : line) {
+                    BoardSlot s = game.board[idx];
+                    if (s.card == null) continue;
+                    if (!isVisibleFaceUp(s)) {
+                        s.faceUp = true;
+                        s.status.calamarForcedFaceDown = false;
+                        triggerFlip(idx, null);
+                    }
+                }
+            }
+            case RED_ENREDADA -> {
+                List<Integer> adj = adjacentIndexes(index, null);
+                List<Integer> facedown = new ArrayList<>();
+                for (int a : adj) {
+                    BoardSlot s = game.board[a];
+                    if (s.card != null && !isVisibleFaceUp(s)) facedown.add(a);
+                }
+                if (facedown.isEmpty()) { log("Red Enredada: no hay cartas adyacentes boca abajo para capturar extra."); return; }
+                Integer t = pickIndex("Red Enredada: elige 1 carta adyacente boca abajo para capturar además",
+                        facedown, idx -> true);
+                if (t == null) return;
+
+                BoardSlot extra = game.board[t];
+                onCardLeavingBoard(t);
+                game.captures.add(extra.card);
+                game.reserve.returnAll(extra.dice);
+                extra.dice.clear();
+                replaceSlotWithNewFacedown(t);
+                log("Red Enredada: capturaste además " + extra.card.name + ".");
+            }
+            case LATA_OXIDADA -> {
+                if (game.lost.totalDice() <= 0) { log("Lata Oxidada: no hay dados perdidos."); return; }
+                Die recovered = pickLostDie("Lata Oxidada: elige 1 dado perdido para recuperar", null);
+                if (recovered != null) {
+                    game.reserve.returnDie(recovered);
+                    log("Lata Oxidada: recuperas un dado perdido.");
+                }
+            }
+            default -> { /* sin efecto al pescar */ }
+        }
+    }
+
+    // ===== Helpers for leaving board / replace =====
+    
+    
+    
+    private void onCardLeavingBoard(int slotIndex) {
+        BoardSlot slot = game.board[slotIndex];
+        if (slot.card == null) return;
+
+        if (slot.card.id == CardId.BOTELLA_PLASTICO && slot.status.bottleTargetIndex != null) {
+            Integer tgt = slot.status.bottleTargetIndex;
+            if (tgt >= 0 && tgt < 9 && game.board[tgt].card != null) {
+                game.board[tgt].status.sumConditionShift -= 3;
+            }
+            slot.status.bottleTargetIndex = null;
+        }
+
+        if (slot.card.id == CardId.ANZUELO_ROTO) {
+            boolean stillAny = false;
+            for (int i=0;i<9;i++){
+                if (i==slotIndex) continue;
+                if (game.board[i].card != null && game.board[i].card.id == CardId.ANZUELO_ROTO && isVisibleFaceUp(game.board[i])) {
+                    stillAny = true; break;
+                }
+            }
+            if (!stillAny) game.anzueloActive = false;
+        }
+    }
+
+    private void replaceSlotWithNewFacedown(int index) {
+        BoardSlot slot = game.board[index];
+        slot.card = null;
+        slot.faceUp = false;
+        slot.status = new SlotStatus();
+        slot.dice.clear();
+
+        if (!game.deck.isEmpty()) {
+            slot.card = game.deck.pop();
+            slot.faceUp = false;
+            slot.status = new SlotStatus();
+            slot.dice.clear();
+        } else {
+            slot.card = null;
+        }
+        refreshAll();
+    }
+
+    private void discardAndReplenish(int target, String reason) {
+        BoardSlot s = game.board[target];
+        if (s.card == null) return;
+
+        log(reason + " en " + pos(target) + ".");
+        onCardLeavingBoard(target);
+
+        game.reserve.returnAll(s.dice);
+        s.dice.clear();
+
+        replaceSlotWithNewFacedown(target);
+    }
+
+    // ===== Movement / reposition =====
+    private void moveOneDie(int from, int to) {
+        BoardSlot a = game.board[from];
+        BoardSlot b = game.board[to];
+        if (a.dice.isEmpty() || b.dice.size() >= 2) return;
+
+        Die d = a.dice.remove(a.dice.size()-1);
+        moveDieObjectToSlot(d, to);
+
+        log("Mueves un dado a " + pos(to) + ".");
+    }
+
+    private void moveDieObjectToSlot(Die d, int toIndex) {
+        BoardSlot dest = game.board[toIndex];
+        if (dest.card == null) {
+            game.reserve.returnDie(d);
+            return;
+        }
+        if (dest.dice.size() >= 2) {
+            game.reserve.returnDie(d);
+            return;
+        }
+
+        // Importante: medir visibilidad ANTES de agregar el dado
+        boolean wasVisible = isVisibleFaceUp(dest);
+
+        dest.dice.add(d);
+
+        // Si estaba "no visible" (boca abajo o forzada por Calamar), ahora debe revelarse por recibir dado
+        if (!wasVisible && REVELAR_SI_RECIBE_DADO_POR_EFECTO) {
+            dest.faceUp = true;
+            dest.status.calamarForcedFaceDown = false;
+            log("Revelas (por recibir dado): " + dest.card.name + " en " + pos(toIndex));
+
+            // En vez de resolver al tiro, usa triggerFlip (encola si Ballena Azul está reposicionando)
+            triggerFlip(toIndex, d);
+        }
+    }
+
+    private void repositionAllDiceInteractive() {
+        // Solo Ballena Azul usa este método en tu código actual
+        boolean prevDefer = deferFlipResolutions;
+
+        // Iniciamos modo "defer" si no estaba activo
+        if (!prevDefer) {
+            deferFlipResolutions = true;
+        }
+
+        // Cada dado puede moverse solo 1 vez en esta habilidad
+        Set<Die> movedThisEffect = Collections.newSetFromMap(new IdentityHashMap<>());
+
+        while (true) {
+            List<DieRef> all = allDiceOnBoard();
+
+            // Filtrar: solo dados que NO se han movido aún
+            List<DieRef> eligible = new ArrayList<>();
+            for (DieRef r : all) {
+                if (!movedThisEffect.contains(r.die)) eligible.add(r);
+            }
+
+            if (eligible.isEmpty()) {
+                log("Ballena azul: ya no quedan dados disponibles para reposicionar (cada dado solo 1 vez).");
+                break;
+            }
+
+            DieRef chosen = pickDieRef(
+                    "Ballena azul: elige un dado a mover (cada dado solo 1 vez). Cancelar = terminar",
+                    eligible,
+                    true
+            );
+            if (chosen == null) break;
+
+            // Candidatos destino (recalcular cada vez)
+            List<Integer> dests = new ArrayList<>();
+            for (int i = 0; i < 9; i++) {
+                if (game.board[i].card == null) continue;
+
+                // permitir misma casilla (para "no mover") o casillas con espacio
+                if (i == chosen.slotIndex || game.board[i].dice.size() < 2) {
+                    dests.add(i);
+                }
+            }
+
+            Integer dest = pickIndex(
+                    "Ballena azul: elige destino para " + chosen.die.type + "=" + chosen.die.value,
+                    dests,
+                    null,
+                    true
+            );
+            if (dest == null) break;
+
+            // Si elige el mismo lugar, no cuenta como movimiento
+            if (dest == chosen.slotIndex) {
+                log("Ballena azul: no moviste el dado (mismo lugar).");
+                continue;
+            }
+
+            // Mover el dado
+            game.board[chosen.slotIndex].dice.remove(chosen.die);
+            moveDieObjectToSlot(chosen.die, dest);
+
+            movedThisEffect.add(chosen.die);
+
+            log("Ballena azul: moviste un dado a " + pos(dest) + ".");
+            refreshAll();
+        }
+
+        // Al terminar la fase de reposicionamiento, resolver en ORDEN todas las habilidades por volteo
+        if (!prevDefer) {
+            log("Ballena azul: resolviendo habilidades activadas por volteo (en orden)...");
+            flushPendingFlipEvents();
+            deferFlipResolutions = false;
+        }
+
+        refreshAll();
+    }
+
+
+    // ===== UI refresh =====
+    private void refreshAll() {
+        String s;
+        switch (state) {
+            case SELECT_DIE -> s = "Paso 1: Elige 1 dado";
+            case ROLL -> s = "Paso 2: Lanzando";
+            case PLACE -> s = "Paso 3: Coloca el dado en una carta";
+            default -> s = "-";
+        }
+        statusLabel.setText(s);
+
+
+        capturesLabel.setText("🐟 Capturas: " + game.countCapturedFish());
+        failsLabel.setText("❌ Fallos: " + game.failedCatches);
+        scoreLabel.setText("🏆 Puntos: " + game.scoreBaseCaptures());
+
+        deckLabel.setText("🂠 Mazo: " + game.deck.size());
+        reserveLabel.setText("🎲 Reserva: " + game.reserve.summary());
+        lostLabel.setText("🗑️ Perdidos: " + game.lost.summary());
+
+        refreshDicePanels();
+
+        // Board: ahora iconos PNG
+        for (int i=0;i<9;i++){
+            BoardSlot slot = game.board[i];
+            BoardButton bb = boardButtons[i];
+            updateBoardButton(i, slot, bb);
+        }
+
+        frame.repaint();
+    }
+    class DieButton extends JButton {
+        final Die die;
+
+        DieButton(Die die) {
+            this.die = die;
+            setFocusPainted(false);
+            setMargin(new Insets(4,4,4,4));
+            setPreferredSize(new Dimension(DICE_BTN_PREF, DICE_BTN_PREF));
+            setMinimumSize(new Dimension(DICE_BTN_PREF, DICE_BTN_PREF));
+            setHorizontalAlignment(SwingConstants.CENTER);
+            setVerticalAlignment(SwingConstants.CENTER);
+        }
+    }
+
+    private void updateBoardButton(int index, BoardSlot slot, BoardButton bb) {
+        bb.setText(null);
+        bb.setHorizontalAlignment(SwingConstants.CENTER);
+        bb.setVerticalAlignment(SwingConstants.CENTER);
+
+        if (slot.card == null) {
+            bb.setIcon(null);
+            bb.setText("Vacío");
+            bb.setDiceOverlay(Collections.emptyList());
+            return;
+        }
+
+        boolean visible = isVisibleFaceUp(slot);
+
+        String file;
+        if (!visible) {
+            file = "cartabocaabajo.png";
+        } else {
+            file = CARD_FRONT_FILE.getOrDefault(slot.card.id, "cartabocaabajo.png");
+        }
+
+        String path = "/img/" + file;
+
+        int w = bb.getWidth() - 8;
+        int h = bb.getHeight() - 8;
+
+        if (w <= 0 || h <= 0) {
+            w = 180;
+            h = 140;
+        }
+
+        bb.setIcon(getScaledIcon(path, w, h));
+
+        // Overlay de dados (imágenes) encima de la carta
+        bb.setDiceOverlay(slot.dice);
+    }
+
+    private void onPickSpecificDie(DieButton btn) {
+        if (state != GameState.SELECT_DIE) { beep(); return; }
+        if (rollingAnimation) { beep(); return; }
+
+        // Seleccionamos el dado, pero NO lo removemos del panel todavía
+        selectedDie = btn.die;
+        selectedDieBtn = btn;
+        rolledValue = null;
+
+        // Lanzamiento automático con animación
+        startAutoRollAnimation();
+    }
+
+    private void refreshDicePanels() {
+        if (reserveDicePanel == null) return;
+
+        // ===== RESERVA =====
+        reserveDicePanel.removeAll();
+
+        List<Die> reserveList = new ArrayList<>(game.reserve.dice);
+        reserveList.sort(Comparator.comparingInt(d -> d.type.sides));
+
+        boolean canPickNow = (state == GameState.SELECT_DIE && !rollingAnimation);
+
+        for (Die d : reserveList) {
+            DieButton b = new DieButton(d);
+
+            boolean isChosen = (selectedDie != null && d == selectedDie);
+
+            int s = DICE_ICON_MAX;
+            int faceToShow = d.type.sides; // neutro
+
+            // ✅ si es el elegido, mostramos animación o resultado final en ESTE botón
+            if (isChosen) {
+                if (rollingAnimation && rollingPreviewValue != null && rollingDieType == d.type) {
+                    faceToShow = rollingPreviewValue; // animación
+                } else if (rolledValue != null) {
+                    faceToShow = rolledValue; // final
+                }
+            }
+
+            ImageIcon icon = getDieIconOrPlaceholder(d.type, faceToShow, s, s);
+            b.setIcon(icon);
+            b.setText(null);
+
+            // ✅ habilitar solo cuando se puede elegir
+            b.setEnabled(canPickNow);
+
+            // ✅ mantener color cuando está deshabilitado y es el elegido (evita gris Swing)
+            if (isChosen && !canPickNow) {
+                b.setDisabledIcon(icon);
+            } else {
+                b.setDisabledIcon(null);
+            }
+
+            // Listener (solo tendrá efecto real en SELECT_DIE por tu onPickSpecificDie)
+            b.addActionListener(e -> onPickSpecificDie(b));
+
+            b.setToolTipText(isChosen
+                    ? ("Seleccionado: " + d.type + ((rolledValue != null) ? (" = " + rolledValue) : ""))
+                    : ("Tomar " + d.type));
+
+            // Evita que quede “hundido” visualmente
+            ButtonModel m = b.getModel();
+            m.setArmed(false);
+            m.setPressed(false);
+
+            reserveDicePanel.add(b);
+        }
+
+        reserveDicePanel.revalidate();
+        reserveDicePanel.repaint();
+
+        // ===== PERDIDOS =====
+        if (lostDicePanel != null) {
+            lostDicePanel.removeAll();
+
+            List<Die> lostList = new ArrayList<>(game.lost.dice);
+            lostList.sort(Comparator.comparingInt(d -> d.type.sides));
+
+            for (Die d : lostList) {
+                DieButton b = new DieButton(d);
+                int s = DICE_ICON_MAX;
+
+                // si también los quieres a color, puedo ajustarlo después
+                ImageIcon icon = getDieIconOrPlaceholder(d.type, d.type.sides, s, s);
+                b.setIcon(icon);
+                b.setEnabled(false);
+                b.setToolTipText("Perdido: " + d.type);
+                lostDicePanel.add(b);
+            }
+
+            lostDicePanel.revalidate();
+            lostDicePanel.repaint();
+        }
+    }
+
+
+    private String buildSlotTooltip(int index, BoardSlot slot, boolean visible) {
+        StringBuilder sb = new StringBuilder("<html>");
+        sb.append("<b>").append(pos(index)).append("</b><br>");
+        if (slot.card == null) {
+            sb.append("Vacío");
+            sb.append("</html>");
+            return sb.toString();
+        }
+
+        if (!visible) {
+            sb.append("Boca abajo<br>");
+        } else {
+            sb.append(escape(slot.card.name)).append("<br>");
+            sb.append("Tipo: ").append(escape(slot.card.type.display)).append("<br>");
+            sb.append("Pts: ").append(slot.card.points).append("<br>");
+        }
+
+        sb.append("Dados: ").append(escape(renderDiceInline(slot.dice))).append("<br>");
+
+        if (slot.status.protectedOnce) sb.append("🛡️ Protegido<br>");
+        if (slot.status.calamarForcedFaceDown) sb.append("🦑 Forzado por Calamar<br>");
+        if (slot.status.sumConditionShift != 0) sb.append("ΔCondSuma: ").append(slot.status.sumConditionShift).append("<br>");
+
+        sb.append("</html>");
+        return sb.toString();
+    }
+
+    private String getFrontFileFor(Card card) {
+        if (card == null) return null;
+
+        String mapped = CARD_FRONT_FILE.get(card.id);
+        if (mapped != null) {
+            // probamos el mapeo primero, pero si no existe en recursos, probamos alternativas
+            if (imageBank.exists(mapped)) return mapped;
+            // alternativos típicos (por tus nombres reales)
+            for (String alt : buildAltCandidates(mapped, card)) {
+                if (imageBank.exists(alt)) return alt;
+            }
+            return mapped; // aunque no exista, para que se vea "SIN IMG"
+        }
+
+        // fallback por id normalizado
+        String byId = normalizeNoAccents(card.id.name()).toLowerCase().replace("_", "") + ".png";
+        if (imageBank.exists(byId)) return byId;
+
+        // fallback por nombre de carta
+        String byName = normalizeNoAccents(card.name).toLowerCase().replace(" ", "") + ".png";
+        return byName;
+    }
+
+    private List<String> buildAltCandidates(String primary, Card card) {
+        List<String> res = new ArrayList<>();
+
+        // Caso Krill.png con K mayúscula
+        if ("krill.png".equals(primary)) res.add("Krill.png");
+
+        // Caso cangrejoermitaño.png (con ñ) que aparece en tu proyecto
+        if ("cangrejoermitano.png".equals(primary)) {
+            res.add("cangrejoermitaño.png");
+        }
+
+        // Caso "Langosta Espinosa.png" con espacio y mayúsculas (tu proyecto lo muestra así)
+        if ("langostaespinosa.png".equals(primary)) {
+            res.add("Langosta Espinosa.png");
+            res.add("LangostaEspinosa.png");
+        }
+
+        // también probamos variantes por nombre original
+        if (card != null && card.name != null) {
+            res.add(card.name + ".png");
+            res.add(card.name.toLowerCase() + ".png");
+            res.add(normalizeNoAccents(card.name) + ".png");
+            res.add(normalizeNoAccents(card.name).toLowerCase() + ".png");
+            res.add(normalizeNoAccents(card.name).replace(" ", "") + ".png");
+            res.add(normalizeNoAccents(card.name).toLowerCase().replace(" ", "") + ".png");
+        }
+
+        // si primary trae acentos, también probamos sin acentos
+        res.add(normalizeNoAccents(primary));
+        res.add(normalizeNoAccents(primary).toLowerCase());
+
+        return res;
+    }
+
+    private static String normalizeNoAccents(String s) {
+        if (s == null) return "";
+        String norm = Normalizer.normalize(s, Normalizer.Form.NFD);
+        return norm.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+    }
+
+    private boolean isVisibleFaceUp(BoardSlot slot) {
+        if (slot.status.calamarForcedFaceDown) return false;
+        if (!slot.dice.isEmpty()) return true;
+        return slot.faceUp;
+    }
+
+    private String renderDiceInline(List<Die> dice) {
+        if (dice.isEmpty()) return "-";
+        StringBuilder sb = new StringBuilder();
+        for (int i=0;i<dice.size();i++){
+            Die d = dice.get(i);
+            if (i>0) sb.append(" | ");
+            sb.append(d.type).append("=").append(d.value);
+        }
+        return sb.toString();
+    }
+
+    // ===== Dialog helpers =====
+
+    private String hiddenSafeLabel(int idx) {
+        BoardSlot s = game.board[idx];
+        if (s == null || s.card == null) return "Vacío";
+        return isVisibleFaceUp(s) ? s.card.name : "Boca abajo";
+    }
+
+    private Integer pickIndex(String title, List<Integer> candidates, IndexPredicate predicate) {
+        return pickIndex(title, candidates, predicate, false);
+    }
+
+    private Integer pickIndex(String title, List<Integer> candidates, IndexPredicate predicate, boolean allowCancel) {
+        List<Integer> filtered = new ArrayList<>();
+        for (Integer i : candidates) if (predicate == null || predicate.ok(i)) filtered.add(i);
+        if (filtered.isEmpty()) return null;
+
+        String[] options = new String[filtered.size() + (allowCancel ? 1 : 0)];
+        for (int k=0;k<filtered.size();k++){
+            int idx = filtered.get(k);
+            options[k] = pos(idx) + " - " + hiddenSafeLabel(idx);
+        }
+
+        if (allowCancel) options[options.length-1] = "Cancelar";
+
+        int choice = JOptionPane.showOptionDialog(frame, title, "Elegir",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+                null, options, options[0]);
+
+        if (choice == JOptionPane.CLOSED_OPTION) return null;
+        if (allowCancel && choice == options.length-1) return null;
+        return filtered.get(choice);
+    }
+
+    private int pickDieIndex(String title, List<Die> dice) {
+        if (dice == null || dice.isEmpty()) return -1;
+        String[] options = new String[dice.size()];
+        for (int i=0;i<dice.size();i++){
+            Die d = dice.get(i);
+            options[i] = i + ": " + d.type + "=" + d.value;
+        }
+        int choice = JOptionPane.showOptionDialog(frame, title, "Elegir dado",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+                null, options, options[0]);
+        if (choice == JOptionPane.CLOSED_OPTION) return -1;
+        return choice;
+    }
+
+    private Die pickLostDie(String title, DieType prefer) {
+        List<Die> candidates = new ArrayList<>(game.lost.dice);
+        if (prefer != null) candidates.removeIf(d -> d.type != prefer);
+        if (candidates.isEmpty()) return null;
+
+        String[] options = new String[candidates.size()];
+        for (int i=0;i<candidates.size();i++){
+            Die d = candidates.get(i);
+            options[i] = d.type.toString();
+        }
+        int choice = JOptionPane.showOptionDialog(frame, title, "Recuperar",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+                null, options, options[0]);
+        if (choice == JOptionPane.CLOSED_OPTION) return null;
+
+        Die picked = candidates.get(choice);
+        game.lost.dice.remove(picked);
+        return picked;
+    }
+
+    private DieRef pickDieRef(String title, List<DieRef> refs, boolean allowCancel) {
+        if (refs.isEmpty()) return null;
+        String[] options = new String[refs.size() + (allowCancel ? 1 : 0)];
+        for (int i=0;i<refs.size();i++){
+            DieRef r = refs.get(i);
+            options[i] = pos(r.slotIndex) + " " + hiddenSafeLabel(r.slotIndex) + " :: " + r.die.type + "=" + r.die.value;
+        }
+        if (allowCancel) options[options.length-1] = "Cancelar";
+
+        int choice = JOptionPane.showOptionDialog(frame, title, "Elegir dado",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+                null, options, options[0]);
+
+        if (choice == JOptionPane.CLOSED_OPTION) return null;
+        if (allowCancel && choice == options.length-1) return null;
+        return refs.get(choice);
+    }
+
+    private List<DieRef> allDiceOnBoard() {
+        List<DieRef> refs = new ArrayList<>();
+        for (int i=0;i<9;i++){
+            BoardSlot s = game.board[i];
+            for (Die d : s.dice) refs.add(new DieRef(i, d));
+        }
+        return refs;
+    }
+
+    private List<Integer> allPlaceableSlots() {
+        List<Integer> res = new ArrayList<>();
+        for (int i=0;i<9;i++){
+            if (game.board[i].card != null && game.board[i].dice.size() < 2) res.add(i);
+        }
+        return res;
+    }
+
+    private List<Integer> adjacentIndexes(int index, CardType filterOrFishAny) {
+        int r = index / 3, c = index % 3;
+        int[][] dirs = ADYACENCIA_INCLUYE_DIAGONALES
+                ? new int[][]{{-1,0},{1,0},{0,-1},{0,1},{-1,-1},{-1,1},{1,-1},{1,1}}
+                : new int[][]{{-1,0},{1,0},{0,-1},{0,1}};
+        List<Integer> res = new ArrayList<>();
+        for (int[] d : dirs) {
+            int rr = r + d[0], cc = c + d[1];
+            if (rr < 0 || rr > 2 || cc < 0 || cc > 2) continue;
+            int idx = rr*3 + cc;
+            BoardSlot s = game.board[idx];
+            if (s.card == null) continue;
+            if (filterOrFishAny == null) {
+                res.add(idx);
+            } else if (filterOrFishAny == CardType.PEZ_ANY) {
+                if (s.card.type.isFish()) res.add(idx);
+            } else {
+                if (s.card.type == filterOrFishAny) res.add(idx);
+            }
+        }
+        return res;
+    }
+
+    private static String pos(int idx) {
+        return "(" + (idx/3) + "," + (idx%3) + ")";
+    }
+
+    private static String safeName(BoardSlot slot) {
+        if (slot == null || slot.card == null) return "Vacío";
+        return slot.card.name;
+    }
+
+    private static String escape(String s) {
+        if (s == null) return "";
+        return s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;");
+    }
+
+    private void log(String msg) {
+        System.out.println(msg);
+        if (logArea != null) {
+            logArea.append(msg + "\n");
+            logArea.setCaretPosition(logArea.getDocument().getLength());
+        }
+    }
+
+    private void beep() { Toolkit.getDefaultToolkit().beep(); }
+
+    // ====== Enums / Data model ======
+    enum GameState { SELECT_DIE, ROLL, PLACE, END_TURN }
+
+    enum DieType {
+        D4(4), D6(6), D8(8), D12(12);
+        final int sides;
+        DieType(int sides) { this.sides = sides; }
+        @Override public String toString() { return "D" + sides; }
+    }
+
+    static class Die {
+        final DieType type;
+        int value;
+        Die(DieType type) { this.type = type; }
+        int roll(Random rng) { return rng.nextInt(type.sides) + 1; }
+    }
+
+    enum CardType {
+        CRUSTACEO("Crustáceo"),
+        PEZ("Pez"),
+        PEZ_GRANDE("Pez grande"),
+        OBJETO("Objeto"),
+        PEZ_ANY("Pez");
+        final String display;
+        CardType(String display) { this.display = display; }
+        boolean isFish() { return this == PEZ || this == PEZ_GRANDE; }
+    }
+
+    enum CardId {
+        CANGREJO_ROJO,
+        JAIBA_AZUL,
+        CAMARON_FANTASMA,
+        LANGOSTA_ESPINOSA,
+        KRILL,
+        CANGREJO_ERMITANO,
+        PERCEBES,
+        CENTOLLA,
+        NAUTILUS,
+        SARDINA,
+        ATUN,
+        SALMON,
+        PEZ_PAYASO,
+        PEZ_GLOBO,
+        MORENA,
+        CABALLITO_DE_MAR,
+        PEZ_LINTERNA,
+        KOI,
+        PEZ_VOLADOR,
+        PIRANA,
+        TIBURON_BLANCO,
+        TIBURON_MARTILLO,
+        TIBURON_BALLENA,
+        PEZ_VELA,
+        CALAMAR_GIGANTE,
+        MANTA_GIGANTE,
+        BALLENA_AZUL,
+        BOTA_VIEJA,
+        BOTELLA_PLASTICO,
+        RED_ENREDADA,
+        LATA_OXIDADA,
+        LIMPIADOR_MARINO,
+        ANZUELO_ROTO
+    }
+
+    interface Condition {
+        boolean isSatisfied(int slotIndex, Game game);
+    }
+
+    static class Card {
+        final CardId id;
+        final String name;
+        final CardType type;
+        final int points;
+        final Condition condition;
+        final String conditionText;
+        final String onFlipText;
+        final String onCatchText;
+        final String onEndText;
+
+        Card(CardId id, String name, CardType type, int points,
+             Condition condition, String conditionText,
+             String onFlipText, String onCatchText, String onEndText) {
+            this.id = id;
+            this.name = name;
+            this.type = type;
+            this.points = points;
+            this.condition = condition;
+            this.conditionText = conditionText;
+            this.onFlipText = onFlipText == null ? "" : onFlipText;
+            this.onCatchText = onCatchText == null ? "" : onCatchText;
+            this.onEndText = onEndText == null ? "" : onEndText;
+        }
+    }
+
+    static class SlotStatus {
+        boolean protectedOnce = false;
+        boolean calamarForcedFaceDown = false;
+
+        int sumConditionShift = 0;
+        Integer bottleTargetIndex = null;
+
+        boolean langostaUsedOnce = false;
+    }
+
+    static class BoardSlot {
+        Card card;
+        boolean faceUp = false;
+        List<Die> dice = new ArrayList<>();
+        SlotStatus status = new SlotStatus();
+
+        BoardSlot copy() {
+            BoardSlot b = new BoardSlot();
+            b.card = this.card;
+            b.faceUp = this.faceUp;
+            b.status = this.statusCopy();
+            b.dice = new ArrayList<>();
+            for (Die d : this.dice) {
+                Die nd = new Die(d.type);
+                nd.value = d.value;
+                b.dice.add(nd);
+            }
+
+            return b;
+        }
+        SlotStatus statusCopy() {
+            SlotStatus s = new SlotStatus();
+            s.protectedOnce = this.status.protectedOnce;
+            s.calamarForcedFaceDown = this.status.calamarForcedFaceDown;
+            s.sumConditionShift = this.status.sumConditionShift;
+            s.bottleTargetIndex = this.status.bottleTargetIndex;
+            s.langostaUsedOnce = this.status.langostaUsedOnce;
+            return s;
+        }
+        void clear() {
+            this.card = null;
+            this.faceUp = false;
+            this.dice.clear();
+            this.status = new SlotStatus();
+        }
+    }
+
+    static class DicePool {
+        final List<Die> dice = new ArrayList<>();
+        int count(DieType t) {
+            int c=0;
+            for (Die d : dice) if (d.type == t) c++;
+            return c;
+        }
+        int totalDice() { return dice.size(); }
+        Die takeOne(DieType t) {
+            for (int i=0;i<dice.size();i++){
+                if (dice.get(i).type == t) return dice.remove(i);
+            }
+            return null;
+        }
+        String summary() {
+            return "D4=" + count(DieType.D4) + " D6=" + count(DieType.D6) + " D8=" + count(DieType.D8) + " D12=" + count(DieType.D12);
+        }
+    }
+
+    static class Reserve extends DicePool {
+        Die pick(DieType t) { return takeOne(t); }
+        void returnDie(Die d) { if (d != null) dice.add(d); }
+        void returnAll(List<Die> ds) { if (ds != null) dice.addAll(ds); }
+    }
+
+    static class LostPile extends DicePool {
+        void lose(Die d) { if (d != null) dice.add(d); }
+    }
+
+    static class Game {
+        BoardSlot[] board = new BoardSlot[9];
+        Deque<Card> deck = new ArrayDeque<>();
+        List<Card> captures = new ArrayList<>();
+        Reserve reserve = new Reserve();
+        LostPile lost = new LostPile();
+        boolean anzueloActive = false;
+        boolean anzueloConsumed = false;
+        Integer forcedNextPlacementIndex = null;
+        int failedCatches = 0;
+
+        int countCapturedFish() {
+            int n = 0;
+            for (Card c : captures) {
+                if (c.type == CardType.PEZ || c.type == CardType.PEZ_GRANDE) n++;
+            }
+            return n;
+        }
+
+        Game() {
+            for (int i=0;i<9;i++) board[i] = new BoardSlot();
+        }
+
+        void newGame() {
+            captures.clear();
+            reserve.dice.clear();
+            lost.dice.clear();
+            anzueloActive = false;
+            anzueloConsumed = false;
+            forcedNextPlacementIndex = null;
+            failedCatches = 0;
+
+            List<Card> cards = createAllCards();
+            Collections.shuffle(cards, new Random());
+            deck.clear();
+            for (Card c : cards) deck.push(c);
+
+            for (int i=0;i<9;i++){
+                board[i] = new BoardSlot();
+                if (!deck.isEmpty()) {
+                    board[i].card = deck.pop();
+                    board[i].faceUp = false;
+                    board[i].status = new SlotStatus();
+                    board[i].dice.clear();
+                } else {
+                    board[i].card = null;
+                }
+            }
+
+            reserve.returnDie(new Die(DieType.D6));
+            reserve.returnDie(new Die(DieType.D6));
+            reserve.returnDie(new Die(DieType.D6));
+            reserve.returnDie(new Die(DieType.D8));
+            reserve.returnDie(new Die(DieType.D8));
+            reserve.returnDie(new Die(DieType.D4));
+            reserve.returnDie(new Die(DieType.D12));
+        }
+
+        void loseDie(Die d) { lost.lose(d); }
+
+        int scoreBaseCaptures() {
+            int sum=0;
+            for (Card c : captures) sum += c.points;
+            return sum;
+        }
+
+        int scoreTotalWithEndBonuses() {
+            int base = scoreBaseCaptures();
+            int bonus = 0;
+
+            int crust = 0, small = 0, big = 0, obj = 0;
+            int krillCount = 0, sardinaCount = 0, martilloCount = 0, limpiadorCount = 0, ballenaCount = 0;
+
+            for (Card c : captures) {
+                if (c.type == CardType.CRUSTACEO) crust++;
+                if (c.type == CardType.PEZ) small++;
+                if (c.type == CardType.PEZ_GRANDE) big++;
+                if (c.type == CardType.OBJETO) obj++;
+
+                if (c.id == CardId.KRILL) krillCount++;
+                if (c.id == CardId.SARDINA) sardinaCount++;
+                if (c.id == CardId.TIBURON_MARTILLO) martilloCount++;
+                if (c.id == CardId.LIMPIADOR_MARINO) limpiadorCount++;
+                if (c.id == CardId.TIBURON_BALLENA) ballenaCount++;
+            }
+
+            bonus += krillCount * crust;
+            bonus += sardinaCount * small;
+            bonus += martilloCount * 2 * big;
+            bonus += limpiadorCount * 2 * obj;
+            if (ballenaCount > 0 && crust >= 3) bonus += 6 * ballenaCount;
+
+            return base + bonus;
+        }
+    }
+
+    static class DieRef {
+        final int slotIndex;
+        final Die die;
+        DieRef(int slotIndex, Die die) { this.slotIndex = slotIndex; this.die = die; }
+    }
+
+    interface IndexPredicate { boolean ok(int idx); }
+
+    // ===== Conditions and utilities =====
+    static int sumWithModifiers(int slotIndex, Game g) {
+        BoardSlot s = g.board[slotIndex];
+        int sum = 0;
+        for (Die d : s.dice) sum += d.value;
+
+        int penalty = 0;
+        int r = slotIndex/3, c = slotIndex%3;
+        int[][] dirs = ADYACENCIA_INCLUYE_DIAGONALES
+                ? new int[][]{{-1,0},{1,0},{0,-1},{0,1},{-1,-1},{-1,1},{1,-1},{1,1}}
+                : new int[][]{{-1,0},{1,0},{0,-1},{0,1}};
+        for (int[] d : dirs) {
+            int rr = r + d[0], cc = c + d[1];
+            if (rr < 0 || rr > 2 || cc < 0 || cc > 2) continue;
+            int idx = rr*3 + cc;
+            BoardSlot adj = g.board[idx];
+            if (adj.card != null && adj.card.id == CardId.BOTA_VIEJA && (adj.faceUp || !adj.dice.isEmpty()) && !adj.status.calamarForcedFaceDown) {
+                penalty += 1;
+            }
+        }
+        sum -= penalty;
+
+        return sum;
+    }
+
+    static boolean bothDiceSameValue(int slotIndex, Game g) {
+        BoardSlot s = g.board[slotIndex];
+        if (s.dice.size()!=2) return false;
+        return s.dice.get(0).value == s.dice.get(1).value;
+    }
+
+    static boolean bothDiceEven(int slotIndex, Game g) {
+        BoardSlot s = g.board[slotIndex];
+        if (s.dice.size()!=2) return false;
+        return s.dice.get(0).value%2==0 && s.dice.get(1).value%2==0;
+    }
+
+    static boolean oneEvenOneOdd(int slotIndex, Game g) {
+        BoardSlot s = g.board[slotIndex];
+        if (s.dice.size()!=2) return false;
+        return (s.dice.get(0).value%2) != (s.dice.get(1).value%2);
+    }
+
+    static boolean atLeastOneIs(int slotIndex, Game g, int... vals) {
+        BoardSlot s = g.board[slotIndex];
+        for (Die d : s.dice) {
+            for (int v : vals) if (d.value == v) return true;
+        }
+        return false;
+    }
+
+    static boolean containsDieType(int slotIndex, Game g, DieType t) {
+        for (Die d : g.board[slotIndex].dice) if (d.type == t) return true;
+        return false;
+    }
+
+    static Condition condSumRange(int min, int max) {
+        return (slotIndex, g) -> {
+            int shift = g.board[slotIndex].status.sumConditionShift;
+            int s = sumWithModifiers(slotIndex, g);
+            return s >= (min + shift) && s <= (max + shift);
+        };
+    }
+    static Condition condSumExact(int value) {
+        return (slotIndex, g) -> {
+            int shift = g.board[slotIndex].status.sumConditionShift;
+            int s = sumWithModifiers(slotIndex, g);
+            return s == (value + shift);
+        };
+    }
+    static Condition condSumAtLeast(int min) {
+        return (slotIndex, g) -> {
+            int shift = g.board[slotIndex].status.sumConditionShift;
+            int s = sumWithModifiers(slotIndex, g);
+            return s >= (min + shift);
+        };
+    }
+    static Condition condSumGreaterThan(int v) {
+        return (slotIndex, g) -> {
+            int shift = g.board[slotIndex].status.sumConditionShift;
+            int s = sumWithModifiers(slotIndex, g);
+            return s > (v + shift);
+        };
+    }
+    static Condition condSumLessOrEqual(int v) {
+        return (slotIndex, g) -> {
+            int shift = g.board[slotIndex].status.sumConditionShift;
+            int s = sumWithModifiers(slotIndex, g);
+            return s <= (v + shift);
+        };
+    }
+
+    static List<Card> createAllCards() {
+        List<Card> cards = new ArrayList<>();
+
+        // ==== Crustaceos ====
+        cards.add(new Card(CardId.CANGREJO_ROJO, "Cangrejo Rojo", CardType.CRUSTACEO, 4,
+                condSumRange(6,8), confirmText("Suma 6–8"),
+                "Mueve 1 dado (ya colocado) desde un pez adyacente hacia otro pez adyacente (siempre que no supere 2 dados).",
+                "", ""));
+
+        cards.add(new Card(CardId.JAIBA_AZUL, "Jaiba Azul", CardType.CRUSTACEO, 4,
+                (slotIndex, g) -> bothDiceEven(slotIndex, g),
+                confirmText("Ambos dados pares"),
+                "El dado que acabas de colocar en esta carta puede ajustarse ±1 (mín. 1, máx. su cara).",
+                "", ""));
+
+        cards.add(new Card(CardId.CAMARON_FANTASMA, "Camarón Fantasma", CardType.CRUSTACEO, 3,
+                (slotIndex, g) -> atLeastOneIs(slotIndex, g, 1, 2),
+                confirmText("Al menos un dado es 1 o 2"),
+                "Mira 2 cartas boca abajo adyacentes (si no hay 2, mira las que existan).",
+                "", ""));
+
+        cards.add(new Card(CardId.LANGOSTA_ESPINOSA, "Langosta Espinosa", CardType.CRUSTACEO, 5,
+                condSumExact(9), confirmText("Suma exacta 9"),
+                "",
+                "Si uno de los dados usados fue D4, recupera 1 dado perdido (máx. 1 vez por partida para esta carta).",
+                ""));
+
+        cards.add(new Card(CardId.KRILL, "Krill", CardType.CRUSTACEO, 2,
+                condSumExact(7), confirmText("Suma exacta 7"),
+                "",
+                "",
+                "Otorga +1 punto por cada crustáceo pescado durante la partida."));
+
+        cards.add(new Card(CardId.CANGREJO_ERMITANO, "Cangrejo Ermitaño", CardType.CRUSTACEO, 3,
+                (slotIndex, g) -> {
+                    int s = sumWithModifiers(slotIndex, g);
+                    return s >= (5 + g.board[slotIndex].status.sumConditionShift) &&
+                            s <= (9 + g.board[slotIndex].status.sumConditionShift) &&
+                            g.board[slotIndex].dice.size()==2 &&
+                            (g.board[slotIndex].dice.get(0).value % 2 != 0) &&
+                            (g.board[slotIndex].dice.get(1).value % 2 != 0);
+                },
+                confirmText("Suma 5–9 solo con impares."),
+                "Si hay un Objeto adyacente boca arriba, puedes descartarlo y reemplazarlo por una carta del mazo boca abajo.",
+                "", ""));
+
+        cards.add(new Card(CardId.PERCEBES, "Percebes", CardType.CRUSTACEO, 6,
+                (slotIndex, g) -> bothDiceSameValue(slotIndex, g),
+                confirmText("Dos dados del mismo valor"),
+                "",
+                "Los dados que estaban en esta carta deben ser movidos a alguna de las cartas adyacentes conservando su valor.",
+                ""));
+
+        cards.add(new Card(CardId.CENTOLLA, "Centolla", CardType.CRUSTACEO, 7,
+                condSumGreaterThan(10), confirmText("Mayor a 10"),
+                "El próximo dado lanzado debe ir obligatoriamente a esta carta",
+                "", ""));
+
+        cards.add(new Card(CardId.NAUTILUS, "Nautilus", CardType.CRUSTACEO, 4,
+                condSumAtLeast(8), confirmText("Suma ≥ 8"),
+                "Puede cambiar el valor de 2 dados sumando o restando 2 puntos a estos, siempre y cuando esos valores estén en sus caras",
+                "", ""));
+
+        // ==== Peces pequeños ====
+        cards.add(new Card(CardId.SARDINA, "Sardina", CardType.PEZ, 2,
+                condSumExact(6), confirmText("Suma exacta 6"),
+                "",
+                "",
+                "Otorga +1 punto por cada “pez pequeño” capturado durante la partida."));
+
+        cards.add(new Card(CardId.ATUN, "Atún", CardType.PEZ, 4,
+                condSumRange(3,7), confirmText("Rango 3–7"),
+                "Puedes relanzar inmediatamente el dado que acabas de tirar y reposicionarlo.",
+                "", ""));
+
+        cards.add(new Card(CardId.SALMON, "Salmón", CardType.PEZ, 6,
+                (slotIndex, g) -> {
+                    if (g.board[slotIndex].dice.size()!=2) return false;
+                    int a = g.board[slotIndex].dice.get(0).value;
+                    int b = g.board[slotIndex].dice.get(1).value;
+                    return (a==4 && b>=5) || (b==4 && a>=5);
+                },
+                confirmText("Un dado es 4 y el otro es ≥ 5"),
+                "",
+                "Puedes revelar 1 carta boca abajo en cualquier lugar (sin ponerle dado).",
+                ""));
+
+        cards.add(new Card(CardId.PEZ_PAYASO, "Pez Payaso", CardType.PEZ, 4,
+                condSumRange(8,10), confirmText("Rango 8–10"),
+                "Elige un pez adyacente: queda “protegido”. Si su pesca falla (al segundo dado), no pierdes dado.",
+                "", ""));
+
+        cards.add(new Card(CardId.PEZ_GLOBO, "Pez Globo", CardType.PEZ, 5,
+                (slotIndex, g) -> {
+                    BoardSlot s = g.board[slotIndex];
+                    if (s.dice.size()!=2) return false;
+                    return s.dice.get(0).value == s.dice.get(0).type.sides &&
+                            s.dice.get(1).value == s.dice.get(1).type.sides;
+                },
+                confirmText("Los dos dados con su valor máximo"),
+                "Puedes inflar el resultado de cualquier dado sobre un pez a su valor máximo",
+                "", ""));
+
+        cards.add(new Card(CardId.MORENA, "Morena", CardType.PEZ, 5,
+                (slotIndex, g) -> {
+                    BoardSlot s = g.board[slotIndex];
+                    if (s.dice.size()!=2) return false;
+                    return Math.abs(s.dice.get(0).value - s.dice.get(1).value) >= 4;
+                },
+                confirmText("Diferencia entre dados ≥ 4"),
+                "Debes mover 1 dado de un pez adyacente a otro pez adyacente (como si “se escabullera”), respetando el máximo de 2 dados.",
+                "", ""));
+
+        cards.add(new Card(CardId.CABALLITO_DE_MAR, "Caballito de Mar", CardType.PEZ, 3,
+                condSumRange(2,4), confirmText("Rango 2–4"),
+                "",
+                "Puedes recuperar un D4 si lo perdiste previamente.",
+                ""));
+
+        cards.add(new Card(CardId.PEZ_LINTERNA, "Pez Linterna", CardType.PEZ, 4,
+                (slotIndex, g) -> atLeastOneIs(slotIndex, g, 3),
+                confirmText("Al menos un dado muestra 3"),
+                "Revela 1 pez boca abajo en cualquier lugar. Si era Pez Grande, debes colocar el dado de esta carta en ese pez, si es un objeto pierdes el dado.",
+                "", ""));
+
+        cards.add(new Card(CardId.KOI, "Koi", CardType.PEZ, 5,
+                condSumExact(9), confirmText("Suma exacta 9"),
+                "",
+                "Puedes elegir 1 pez boca arriba con 1 dado y cambiar ese dado por uno de los dados sobre este pez (manteniendo el valor).",
+                ""));
+
+        cards.add(new Card(CardId.PEZ_VOLADOR, "Pez Volador", CardType.PEZ, 3,
+                (slotIndex, g) -> oneEvenOneOdd(slotIndex, g),
+                confirmText("Un par y un impar"),
+                "",
+                "Si el número par es mayor las cartas en la línea vertical son puestas boca arriba, si el número es impar la línea es horizontal.",
+                ""));
+
+        cards.add(new Card(CardId.PIRANA, "Piraña", CardType.PEZ, 7,
+                (slotIndex, g) -> condSumAtLeast(8).isSatisfied(slotIndex, g) && atLeastOneIs(slotIndex, g, 6),
+                confirmText("Suma ≥ 8 y al menos un dado es 6"),
+                "Descarta 1 pez adyacente boca arriba (se va “mordido”) y reemplázalo por una carta nueva boca abajo, no pierdes los dados sobre el.",
+                "", ""));
+
+        // ==== Peces grandes ====
+        cards.add(new Card(CardId.TIBURON_BLANCO, "Tiburón Blanco", CardType.PEZ_GRANDE, 7,
+                condSumGreaterThan(10), confirmText("Suma > 10"),
+                "Elimina la carta adyacente boca arriba de tu elección y su dado pasa a ser parte de esta carta",
+                "", ""));
+
+        cards.add(new Card(CardId.TIBURON_MARTILLO, "Tiburón Martillo", CardType.PEZ_GRANDE, 4,
+                (slotIndex, g) -> {
+                    BoardSlot s = g.board[slotIndex];
+                    if (s.dice.size()!=2) return false;
+                    return s.dice.get(0).value >= 5 && s.dice.get(1).value >= 5;
+                },
+                confirmText("Ambos dados ≥ 5"),
+                "",
+                "",
+                "Otorga +2 puntos por cada \"pez grande\" pescado durante la partida."));
+
+        cards.add(new Card(CardId.TIBURON_BALLENA, "Tiburón Ballena", CardType.PEZ_GRANDE, 5,
+                condSumGreaterThan(11), confirmText("Suma > 11"),
+                "",
+                "",
+                "Si ya pescaste 3 Crustáceos, obtienes +6 puntos extra."));
+
+        cards.add(new Card(CardId.PEZ_VELA, "Pez Vela", CardType.PEZ_GRANDE, 8,
+                condSumExact(12), confirmText("Suma exacta 12"),
+                "Puedes relanzar el dado colocado en esta carta y elegir entre el resultado anterior y el nuevo.",
+                "", ""));
+
+        cards.add(new Card(CardId.CALAMAR_GIGANTE, "Calamar Gigante", CardType.PEZ_GRANDE, 8,
+                (slotIndex, g) -> condSumGreaterThan(10).isSatisfied(slotIndex, g) && containsDieType(slotIndex, g, DieType.D8),
+                confirmText(">10 con al menos un D8"),
+                "Voltea boca abajo las cartas adyacentes, pero estas conservan los dados sobre ellas y sus habilidades de al voltearse podrán ser activadas nuevamente con el siguiente dado sobre ellas.",
+                "", ""));
+
+        cards.add(new Card(CardId.MANTA_GIGANTE, "Manta Gigante", CardType.PEZ_GRANDE, 5,
+                (slotIndex, g) -> {
+                    int s = sumWithModifiers(slotIndex, g);
+                    int shift = g.board[slotIndex].status.sumConditionShift;
+                    if (s < (9+shift) || s > (11+shift)) return false;
+                    if (g.board[slotIndex].dice.size()!=2) return false;
+                    return g.board[slotIndex].dice.get(0).value != 4 && g.board[slotIndex].dice.get(1).value != 4;
+                },
+                confirmText("Rango 9–11 y ningún dado es 4"),
+                "Recuperas un dado D8 en caso de que lo hubieses perdido previamente.",
+                "", ""));
+
+        cards.add(new Card(CardId.BALLENA_AZUL, "Ballena azul", CardType.PEZ_GRANDE, 9,
+                condSumRange(11,13), confirmText("Rango 11–13"),
+                "Puedes reposicionar la totalidad de los dados colocados entre cualquiera de las cartas del tablero incluidos aquellos sobre esta carta manteniendo sus valores",
+                "", ""));
+
+        // ==== Objetos ====
+        cards.add(new Card(CardId.BOTA_VIEJA, "Bota Vieja", CardType.OBJETO, 0,
+                condSumLessOrEqual(6), confirmText("Suma ≤ 6"),
+                "Mientras este en el tablero tus lanzamientos sobre cartas adyacentes tienen −1 a la suma.",
+                "", ""));
+
+        cards.add(new Card(CardId.BOTELLA_PLASTICO, "Botella de Plástico", CardType.OBJETO, 0,
+                condSumExact(8), confirmText("Suma exacta 8"),
+                "Elige 1 pez adyacente; su condición de suma aumenta en +3 mientras esta botella siga en mesa boca arriba.",
+                "", ""));
+
+        cards.add(new Card(CardId.RED_ENREDADA, "Red Enredada", CardType.OBJETO, 0,
+                (slotIndex, g) -> {
+                    BoardSlot s = g.board[slotIndex];
+                    if (s.dice.size()!=2) return false;
+                    return s.dice.get(0).value == 1 && s.dice.get(1).value == 1;
+                },
+                confirmText("Ambos dados con 1"),
+                "",
+                "Captura además una de las cartas adyacentes boca abajo.",
+                ""));
+
+        cards.add(new Card(CardId.LATA_OXIDADA, "Lata Oxidada", CardType.OBJETO, 0,
+                condSumExact(8), confirmText("Suma exacta 8"),
+                "",
+                "Recupera 1 dado perdido.",
+                ""));
+
+        cards.add(new Card(CardId.LIMPIADOR_MARINO, "Limpiador Marino", CardType.OBJETO, 2,
+                condSumGreaterThan(8), confirmText("Suma > 8"),
+                "",
+                "",
+                "Otorga +2 puntos por cada objeto previamente pescado."));
+
+        cards.add(new Card(CardId.ANZUELO_ROTO, "Anzuelo Roto", CardType.OBJETO, 0,
+                (slotIndex, g) -> bothDiceSameValue(slotIndex, g),
+                confirmText("Dos dados iguales"),
+                "Mientras este objeto esté boca arriba, la primera vez que falles una pesca (al segundo dado), en vez de perder 1 dado pierdes 2.",
+                "", ""));
+
+        return cards;
+    }
+
+    static String confirmText(String t) { return t; }
+
+ // ===== UI components =====
+    class BoardButton extends JButton {
+        final int index;
+
+        // snapshot de dados para pintar (evita depender directo de la lista del modelo)
+        private final java.util.List<Die> diceSnapshot = new ArrayList<>();
+
+        BoardButton(int index) {
+            super();
+            this.index = index;
+            setHorizontalAlignment(SwingConstants.CENTER);
+            setVerticalAlignment(SwingConstants.CENTER);
+            setHorizontalTextPosition(SwingConstants.CENTER);
+            setVerticalTextPosition(SwingConstants.BOTTOM);
+            setMargin(new Insets(6,6,6,6));
+            setPreferredSize(new Dimension(FALLBACK_ICON_W, FALLBACK_ICON_H));
+            setFocusPainted(false);
+        }
+
+        void setDiceOverlay(java.util.List<Die> dice) {
+            diceSnapshot.clear();
+            if (dice != null) {
+                for (Die d : dice) {
+                    Die copy = new Die(d.type);
+                    copy.value = d.value;
+                    diceSnapshot.add(copy);
+                }
+            }
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+
+            if (diceSnapshot.isEmpty()) return;
+
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int bw = getWidth();
+            int bh = getHeight();
+
+            // Tamaño del dado (caja cuadrada)
+            int dieSize = Math.max(18, (int) (Math.min(bw, bh) * DIE_OVERLAY_SIZE));
+            int m = DIE_OVERLAY_MARGIN;
+
+            // Posiciones:
+            // - 1 dado: centrado
+            // - 2 dados: arriba-izq y arriba-der (como dados sobre carta)
+            if (diceSnapshot.size() == 1) {
+                Die d = diceSnapshot.get(0);
+                int x = (bw - dieSize) / 2;
+                int y = (bh - dieSize) / 2;
+
+                paintDieAt(g2, d, x, y, dieSize);
+            } else {
+                // Si hubiese >2 por bug/expansión, pintamos solo los 2 primeros
+                Die d1 = diceSnapshot.get(0);
+                Die d2 = diceSnapshot.get(1);
+
+                int x1 = m;
+                int y1 = m;
+
+                int x2 = bw - dieSize - m;
+                int y2 = m;
+
+                paintDieAt(g2, d1, x1, y1, dieSize);
+                paintDieAt(g2, d2, x2, y2, dieSize);
+            }
+
+            g2.dispose();
+        }
+
+        private void paintDieAt(Graphics2D g2, Die d, int x, int y, int size) {
+            // Sombra basada en alpha (respeta la forma del PNG)
+            ImageIcon shadow = getDieShadowIcon(d.type, d.value, size);
+            if (shadow != null) shadow.paintIcon(this, g2, x + 2, y + 3);
+
+            // Dado real
+            ImageIcon dieIcon = getDieIconOrPlaceholder(d.type, d.value, size, size);
+            if (dieIcon != null) dieIcon.paintIcon(this, g2, x, y);
+        }
+
+    }
+
+
+    // ===== ImageBank =====
+    static class ImageBank {
+        private final Map<String, ImageIcon> raw = new HashMap<>();
+        private final Map<String, ImageIcon> scaled = new HashMap<>();
+
+        boolean exists(String fileName) {
+            if (fileName == null) return false;
+            URL url = ZonaDePescaGame.class.getResource(IMG_FOLDER + fileName);
+            return url != null;
+        }
+
+        ImageIcon getScaledIcon(String fileName, int w, int h) {
+            if (w <= 0) w = FALLBACK_ICON_W;
+            if (h <= 0) h = FALLBACK_ICON_H;
+
+            String key = fileName + "@" + w + "x" + h;
+            ImageIcon cached = scaled.get(key);
+            if (cached != null) return cached;
+
+            ImageIcon base = load(fileName);
+            if (base == null) {
+                ImageIcon ph = placeholderIcon(w, h, "SIN IMG");
+                scaled.put(key, ph);
+                return ph;
+            }
+
+            Image img = base.getImage().getScaledInstance(w, h, Image.SCALE_SMOOTH);
+            ImageIcon out = new ImageIcon(img);
+            scaled.put(key, out);
+            return out;
+        }
+
+        private ImageIcon load(String fileName) {
+            if (fileName == null) return null;
+
+            ImageIcon cached = raw.get(fileName);
+            if (cached != null) return cached;
+
+            URL url = ZonaDePescaGame.class.getResource(IMG_FOLDER + fileName);
+            if (url == null) {
+                raw.put(fileName, null);
+                return null;
+            }
+
+            ImageIcon icon = new ImageIcon(url);
+            raw.put(fileName, icon);
+            return icon;
+        }
+
+        private ImageIcon placeholderIcon(int w, int h, String text) {
+            BufferedImage img = new BufferedImage(Math.max(1,w), Math.max(1,h), BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = img.createGraphics();
+            g.setColor(new Color(240,240,240));
+            g.fillRect(0,0,img.getWidth(), img.getHeight());
+            g.setColor(Color.DARK_GRAY);
+            g.drawRect(0,0,img.getWidth()-1, img.getHeight()-1);
+            g.setFont(new Font("SansSerif", Font.BOLD, 14));
+            FontMetrics fm = g.getFontMetrics();
+            int tw = fm.stringWidth(text);
+            int tx = (img.getWidth() - tw) / 2;
+            int ty = (img.getHeight() + fm.getAscent()) / 2;
+            g.drawString(text, Math.max(4, tx), Math.max(16, ty));
+            g.dispose();
+            return new ImageIcon(img);
+        }
+    }
+}
