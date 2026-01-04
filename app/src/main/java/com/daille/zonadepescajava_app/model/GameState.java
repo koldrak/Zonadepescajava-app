@@ -258,6 +258,7 @@ public class GameState {
 
         boolean loseTwo = isHookActive();
         if (loseTwo) {
+            markHookPenaltyUsed();
             String failMsg = handleFailedCatchImmediate(slotIndex, true);
             String corrientes = buildCurrentsLog(placedValue);
             if (!corrientes.isEmpty()) {
@@ -491,11 +492,20 @@ public class GameState {
 
     private boolean isHookActive() {
         for (BoardSlot s : board) {
-            if (s.isFaceUp() && s.getCard() != null && s.getCard().getId() == CardId.ANZUELO_ROTO) {
+            if (s.isFaceUp() && s.getCard() != null && s.getCard().getId() == CardId.ANZUELO_ROTO && !s.getStatus().hookPenaltyUsed) {
                 return true;
             }
         }
         return false;
+    }
+
+    private void markHookPenaltyUsed() {
+        for (BoardSlot s : board) {
+            if (s.isFaceUp() && s.getCard() != null && s.getCard().getId() == CardId.ANZUELO_ROTO && !s.getStatus().hookPenaltyUsed) {
+                s.getStatus().hookPenaltyUsed = true;
+                break;
+            }
+        }
     }
 
     private String handleOnReveal(int slotIndex, int placedValue) {
@@ -591,7 +601,7 @@ public class GameState {
                 result = "";
                 break;
         }
-        if (slot.getCard().getType() == CardType.PEZ || slot.getCard().getType() == CardType.PEZ_GRANDE) {
+        if (slot.getCard().getType() == CardType.PEZ) {
             String clams = triggerAdjacentClams(slotIndex);
             if (!clams.isEmpty()) {
                 result = result.isEmpty() ? clams : result + " " + clams;
@@ -785,11 +795,20 @@ public class GameState {
             BoardSlot adj = board[idx];
             if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() == CardType.PEZ) {
                 Card removed = adj.getCard();
+                List<Die> preservedDice = new ArrayList<>(adj.getDice());
                 failedDiscards.add(removed);
+                adj.clearDice();
                 adj.setCard(deck.isEmpty() ? null : deck.pop());
                 adj.setFaceUp(false);
                 adj.setStatus(new SlotStatus());
-                return "Piraña descartó a " + removed.getName() + ".";
+                for (Die d : preservedDice) {
+                    if (adj.getDice().size() < 2) {
+                        adj.addDie(d);
+                    } else {
+                        reserve.add(d.getType());
+                    }
+                }
+                return "Piraña descartó a " + removed.getName() + " sin perder sus dados.";
             }
         }
         return "";
@@ -890,6 +909,9 @@ public class GameState {
             if (picked.isEmpty()) break;
             BoardSlot adj = board[idx];
             if (adj.getCard() == null || !adj.isFaceUp()) {
+                if (adj.getCard() != null && !adj.isFaceUp()) {
+                    deck.push(adj.getCard());
+                }
                 adj.setCard(picked.remove(0));
                 adj.setFaceUp(false);
                 adj.setStatus(new SlotStatus());
@@ -898,7 +920,13 @@ public class GameState {
             }
         }
         for (Card c : picked) deck.push(c);
-        return placed == 0 ? "" : "Arenque sembró " + placed + " pez(es) pequeño(s).";
+        List<Card> shuffledDeck = new ArrayList<>(deck);
+        java.util.Collections.shuffle(shuffledDeck, rng);
+        deck.clear();
+        for (Card c : shuffledDeck) {
+            deck.push(c);
+        }
+        return placed == 0 ? "" : "Arenque sembró " + placed + " pez(es) pequeño(s) y barajó el mazo.";
     }
 
     private void recomputeBottleAdjustments() {
@@ -941,7 +969,7 @@ public class GameState {
         BoardSlot slot = board[slotIndex];
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
-            if (adj.getCard() != null && adj.getCard().getType() == CardType.PEZ_GRANDE) {
+            if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() == CardType.PEZ_GRANDE) {
                 adj.getStatus().attachedRemoras.add(slot.getCard());
                 for (Die d : new ArrayList<>(slot.getDice())) {
                     reserve.add(d.getType());
@@ -1034,7 +1062,7 @@ public class GameState {
                 result = remoraLog;
                 break;
         }
-        if (captured.getType() == CardType.PEZ || captured.getType() == CardType.PEZ_GRANDE) {
+        if (captured.getType() == CardType.PEZ) {
             String clams = triggerAdjacentClams(slotIndex);
             if (!clams.isEmpty()) {
                 result = result.isEmpty() ? clams : result + " " + clams;
@@ -1044,6 +1072,9 @@ public class GameState {
     }
 
     private String recoverIfD4Used(int slotIndex) {
+        if (board[slotIndex].getStatus().langostaRecovered) {
+            return "";
+        }
         boolean usedD4 = false;
         for (Die d : board[slotIndex].getDice()) {
             if (d.getType() == DieType.D4) {
@@ -1054,6 +1085,7 @@ public class GameState {
         if (usedD4 && !lostDice.isEmpty()) {
             Die recovered = lostDice.remove(lostDice.size() - 1);
             reserve.add(recovered.getType());
+            board[slotIndex].getStatus().langostaRecovered = true;
             return "Langosta espinosa te devuelve un dado perdido.";
         }
         return "";
@@ -1061,6 +1093,7 @@ public class GameState {
 
     private String spreadDiceToAdjacents(int slotIndex) {
         List<Die> dice = new ArrayList<>(board[slotIndex].getDice());
+        board[slotIndex].clearDice();
         int moved = 0;
         for (Die d : dice) {
             boolean placed = false;
@@ -1073,7 +1106,7 @@ public class GameState {
                 }
             }
             if (!placed) {
-                reserve.add(d.getType());
+                board[slotIndex].addDie(d);
             }
         }
         return moved == 0 ? "" : "Percebes movió " + moved + " dado(s) a cartas adyacentes.";
