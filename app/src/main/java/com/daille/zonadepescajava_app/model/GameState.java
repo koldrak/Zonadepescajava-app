@@ -19,6 +19,8 @@ public class GameState {
     private Integer pendingDieLossSlot = null;
     private int pendingLossTriggerValue = 0;
     private Integer forcedSlotIndex = null;
+    private boolean awaitingLanternChoice = false;
+    private int lanternOriginSlot = -1;
 
     private enum CurrentDirection { UP, DOWN, LEFT, RIGHT }
 
@@ -39,6 +41,8 @@ public class GameState {
         pendingDieLossSlot = null;
         pendingLossTriggerValue = 0;
         forcedSlotIndex = null;
+        awaitingLanternChoice = false;
+        lanternOriginSlot = -1;
 
         reserve.add(DieType.D6);
         reserve.add(DieType.D6);
@@ -89,11 +93,47 @@ public class GameState {
         return pendingDieLossSlot != null;
     }
 
+    public boolean isAwaitingLanternChoice() {
+        return awaitingLanternChoice;
+    }
+
     public List<Die> getPendingDiceChoices() {
         if (pendingDieLossSlot == null) {
             return java.util.Collections.emptyList();
         }
         return new ArrayList<>(board[pendingDieLossSlot].getDice());
+    }
+
+    public String chooseLanternTarget(int slotIndex) {
+        if (!awaitingLanternChoice) {
+            return "No hay selección pendiente del Pez Linterna.";
+        }
+        if (slotIndex < 0 || slotIndex >= board.length) {
+            return "Selecciona una casilla válida.";
+        }
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null || target.isFaceUp()) {
+            return "Debes elegir una carta boca abajo.";
+        }
+
+        target.setFaceUp(true);
+        StringBuilder log = new StringBuilder("Pez Linterna reveló " + target.getCard().getName());
+        BoardSlot origin = lanternOriginSlot >= 0 && lanternOriginSlot < board.length ? board[lanternOriginSlot] : null;
+        if (origin != null && origin.getDice().size() > 0) {
+            if (target.getCard().getType() == CardType.PEZ_GRANDE && target.getDice().size() < 2) {
+                Die moved = origin.removeDie(origin.getDice().size() - 1);
+                target.addDie(moved);
+                log.append(" y movió el dado a ese pez grande.");
+            } else if (target.getCard().getType() == CardType.OBJETO) {
+                Die lost = origin.removeDie(origin.getDice().size() - 1);
+                lostDice.add(lost);
+                log.append(", era un objeto: el dado se pierde.");
+            }
+        }
+        awaitingLanternChoice = false;
+        lanternOriginSlot = -1;
+        recomputeBottleAdjustments();
+        return log.toString();
     }
 
     public String chooseDieToLose(int dieIndex) {
@@ -117,6 +157,7 @@ public class GameState {
         slot.setCard(deck.isEmpty() ? null : deck.pop());
         slot.setFaceUp(false);
         slot.setStatus(new SlotStatus());
+        recomputeBottleAdjustments();
 
         int placedValue = pendingLossTriggerValue;
         pendingDieLossSlot = null;
@@ -137,6 +178,9 @@ public class GameState {
         if (isAwaitingDieLoss()) {
             return "Debes elegir qué dado perder antes de continuar.";
         }
+        if (awaitingLanternChoice) {
+            return "Resuelve la selección del Pez Linterna antes de lanzar otro dado.";
+        }
         if (!reserve.remove(type)) {
             return "No hay más dados " + type.getLabel();
         }
@@ -153,6 +197,9 @@ public class GameState {
         }
         if (isAwaitingDieLoss()) {
             return "Debes elegir qué dado perder antes de continuar.";
+        }
+        if (awaitingLanternChoice) {
+            return "Debes elegir primero qué carta revelar con el Pez Linterna.";
         }
         if (forcedSlotIndex != null && slotIndex != forcedSlotIndex) {
             return "El próximo dado debe colocarse en la carta obligatoria.";
@@ -236,6 +283,7 @@ public class GameState {
         slot.setCard(deck.isEmpty() ? null : deck.pop());
         slot.setFaceUp(false);
         slot.setStatus(new SlotStatus());
+        recomputeBottleAdjustments();
         return captureLog.isEmpty() ? "" : " " + captureLog;
     }
 
@@ -301,6 +349,7 @@ public class GameState {
         slot.setCard(deck.isEmpty() ? null : deck.pop());
         slot.setFaceUp(false);
         slot.setStatus(new SlotStatus());
+        recomputeBottleAdjustments();
         if (loseTwo && toLose.size() > 1) {
             return "La pesca falló y perdiste 2 dados.";
         }
@@ -317,6 +366,7 @@ public class GameState {
         slot.setCard(deck.isEmpty() ? null : deck.pop());
         slot.setFaceUp(false);
         slot.setStatus(new SlotStatus());
+        recomputeBottleAdjustments();
         return "Pesca fallida pero protegida: los dados regresan a la reserva.";
     }
 
@@ -404,6 +454,7 @@ public class GameState {
         for (int i = 0; i < board.length; i++) {
             board[i] = newBoard[i];
         }
+        recomputeBottleAdjustments();
         return "Corrientes: el tablero se desplazó";
     }
 
@@ -429,6 +480,15 @@ public class GameState {
         return false;
     }
 
+    private boolean hasFaceDownCards() {
+        for (BoardSlot s : board) {
+            if (s.getCard() != null && !s.isFaceUp()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean isHookActive() {
         for (BoardSlot s : board) {
             if (s.isFaceUp() && s.getCard() != null && s.getCard().getId() == CardId.ANZUELO_ROTO) {
@@ -441,66 +501,103 @@ public class GameState {
     private String handleOnReveal(int slotIndex, int placedValue) {
         BoardSlot slot = board[slotIndex];
         if (slot.getCard() == null) return "";
+        String result;
         switch (slot.getCard().getId()) {
             case CANGREJO_ROJO:
-                return moveOneDieBetweenAdjacents(slotIndex);
+                result = moveOneDieBetweenAdjacents(slotIndex);
+                break;
             case JAIBA_AZUL:
-                return adjustLastDie(slotIndex);
+                result = adjustLastDie(slotIndex);
+                break;
             case CAMARON_FANTASMA:
-                return peekAdjacentCards(slotIndex);
+                result = peekAdjacentCards(slotIndex);
+                break;
             case ATUN:
-                return rerollAndKeepBest(slotIndex);
+                result = rerollAndKeepBest(slotIndex);
+                break;
             case PEZ_GLOBO:
-                return inflateAnyFishDie();
+                result = inflateAnyFishDie();
+                break;
             case MORENA:
-                return moveMorenaDie(slotIndex);
+                result = moveMorenaDie(slotIndex);
+                break;
             case CANGREJO_ERMITANO:
-                return replaceAdjacentObject(slotIndex);
+                result = replaceAdjacentObject(slotIndex);
+                break;
             case CENTOLLA:
                 forcedSlotIndex = slotIndex;
-                return "Centolla atrae el próximo dado a esta carta.";
+                result = "Centolla atrae el próximo dado a esta carta.";
+                break;
             case NAUTILUS:
-                return retuneTwoDice();
+                result = retuneTwoDice();
+                break;
             case CANGREJO_ARANA:
-                return reviveFailedCard();
+                result = reviveFailedCard();
+                break;
             case BOTELLA_PLASTICO:
-                adjustAdjacentShift(slotIndex, 3);
-                return "Botella: los peces adyacentes requieren +3 a la suma.";
+                recomputeBottleAdjustments();
+                result = "Botella: los peces adyacentes requieren +3 a la suma.";
+                break;
             case BOTA_VIEJA:
-                return "Bota vieja: −1 a la suma de adyacentes.";
+                result = "Bota vieja: −1 a la suma de adyacentes.";
+                break;
             case CORRIENTES_PROFUNDAS:
-                return "Corrientes profundas listas: si igualas su dado, activas marea lateral.";
+                result = "Corrientes profundas listas: si igualas su dado, activas marea lateral.";
+                break;
             case PEZ_PAYASO:
-                return protectAdjacentFish(slotIndex);
+                result = protectAdjacentFish(slotIndex);
+                break;
             case PEZ_LINTERNA:
-                return revealAndPossiblyMoveDie(slotIndex, placedValue);
+                result = startLanternSelection(slotIndex);
+                break;
             case KOI:
-                return swapDieWithFaceUpSingle(slotIndex);
+                result = swapDieWithFaceUpSingle(slotIndex);
+                break;
             case PEZ_VELA:
-                return rerollLatestDie(slotIndex);
+                result = rerollLatestDie(slotIndex);
+                break;
             case PIRANA:
-                return biteAdjacentSmallFish(slotIndex);
+                result = biteAdjacentSmallFish(slotIndex);
+                break;
             case PEZ_FANTASMA:
-                return hideAdjacentFaceUp(slotIndex);
+                result = hideAdjacentFaceUp(slotIndex);
+                break;
             case PULPO:
-                return replacePulpoIfEven(slotIndex, placedValue);
+                result = replacePulpoIfEven(slotIndex, placedValue);
+                break;
             case CALAMAR_GIGANTE:
-                return flipAdjacentFaceUpCardsDown(slotIndex);
+                result = flipAdjacentFaceUpCardsDown(slotIndex);
+                break;
             case MANTA_GIGANTE:
-                return recoverSpecificDie(DieType.D8);
+                result = recoverSpecificDie(DieType.D8);
+                break;
             case ARENQUE:
-                return seedAdjacentSmallFish(slotIndex);
+                result = seedAdjacentSmallFish(slotIndex);
+                break;
             case REMORA:
-                return attachToBigFish(slotIndex);
+                result = attachToBigFish(slotIndex);
+                break;
             case TIBURON_BLANCO:
-                return devourAdjacentFaceUp(slotIndex);
+                result = devourAdjacentFaceUp(slotIndex);
+                break;
             case MERO_GIGANTE:
-                return flipAdjacentCardsDown(slotIndex);
+                result = flipAdjacentCardsDown(slotIndex);
+                recomputeBottleAdjustments();
+                break;
             case PEZ_LUNA:
-                return "Si la marea lo expulsa, liberarás tu captura de mayor valor.";
+                result = "Si la marea lo expulsa, liberarás tu captura de mayor valor.";
+                break;
             default:
-                return "";
+                result = "";
+                break;
         }
+        if (slot.getCard().getType() == CardType.PEZ || slot.getCard().getType() == CardType.PEZ_GRANDE) {
+            String clams = triggerAdjacentClams(slotIndex);
+            if (!clams.isEmpty()) {
+                result = result.isEmpty() ? clams : result + " " + clams;
+            }
+        }
+        return result;
     }
 
     private String reviveFailedCard() {
@@ -624,6 +721,7 @@ public class GameState {
                 adj.setCard(deck.isEmpty() ? null : deck.pop());
                 adj.setFaceUp(false);
                 adj.setStatus(new SlotStatus());
+                recomputeBottleAdjustments();
                 return "Cangrejo ermitaño reemplazó un objeto adyacente.";
             }
         }
@@ -673,28 +771,13 @@ public class GameState {
         return "";
     }
 
-    private String revealAndPossiblyMoveDie(int slotIndex, int placedValue) {
-        BoardSlot origin = board[slotIndex];
-        BoardSlot target = null;
-        for (BoardSlot s : board) {
-            if (s.getCard() != null && !s.isFaceUp()) {
-                target = s;
-                break;
-            }
+    private String startLanternSelection(int slotIndex) {
+        if (!hasFaceDownCards()) {
+            return "No hay cartas boca abajo que revelar.";
         }
-        if (target == null) return "";
-        target.setFaceUp(true);
-        StringBuilder log = new StringBuilder("Revelaste " + target.getCard().getName());
-        if (target.getCard().getType() == CardType.PEZ_GRANDE && !origin.getDice().isEmpty() && target.getDice().size() < 2) {
-            Die moved = origin.removeDie(origin.getDice().size() - 1);
-            target.addDie(moved);
-            log.append(" y moviste el dado a ese pez grande.");
-        } else if (target.getCard().getType() == CardType.OBJETO && !origin.getDice().isEmpty()) {
-            Die lost = origin.removeDie(origin.getDice().size() - 1);
-            lostDice.add(lost);
-            log.append(", era un objeto: el dado se pierde.");
-        }
-        return log.toString();
+        awaitingLanternChoice = true;
+        lanternOriginSlot = slotIndex;
+        return "Pez Linterna: elige una carta boca abajo para revelar.";
     }
 
     private String biteAdjacentSmallFish(int slotIndex) {
@@ -774,6 +857,9 @@ public class GameState {
                 flipped++;
             }
         }
+        if (flipped > 0) {
+            recomputeBottleAdjustments();
+        }
         return flipped == 0 ? "" : "Calamar gigante volvió boca abajo " + flipped + " carta(s).";
     }
 
@@ -815,17 +901,40 @@ public class GameState {
         return placed == 0 ? "" : "Arenque sembró " + placed + " pez(es) pequeño(s).";
     }
 
-    private void adjustAdjacentShift(int slotIndex, int delta) {
-        int r = slotIndex / 3, c = slotIndex % 3;
-        int[][] dirs = new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
-        for (int[] d : dirs) {
-            int rr = r + d[0], cc = c + d[1];
-            if (rr < 0 || rr > 2 || cc < 0 || cc > 2) continue;
-            BoardSlot adj = board[rr * 3 + cc];
-            if (adj.getCard() != null && adj.getCard().getType() == CardType.PEZ) {
-                adj.getStatus().sumConditionShift += delta;
+    private void recomputeBottleAdjustments() {
+        for (BoardSlot slot : board) {
+            slot.getStatus().sumConditionShift = 0;
+        }
+        for (int i = 0; i < board.length; i++) {
+            BoardSlot slot = board[i];
+            if (slot.getCard() == null || !slot.isFaceUp()) continue;
+            if (slot.getCard().getId() != CardId.BOTELLA_PLASTICO) continue;
+            for (Integer adjIndex : adjacentIndices(i, true)) {
+                BoardSlot adj = board[adjIndex];
+                if (adj.getCard() != null && adj.getCard().getType() == CardType.PEZ) {
+                    adj.getStatus().sumConditionShift += 3;
+                }
             }
         }
+    }
+
+    private String triggerAdjacentClams(int triggeredSlotIndex) {
+        StringBuilder log = new StringBuilder();
+        for (Integer idx : adjacentIndices(triggeredSlotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() == null || !adj.isFaceUp() || adj.getCard().getId() != CardId.ALMEJAS) {
+                continue;
+            }
+            if (adj.getDice().size() >= 2 || lostDice.isEmpty()) {
+                continue;
+            }
+            Die recovered = lostDice.remove(lostDice.size() - 1);
+            Die rolled = Die.roll(recovered.getType(), rng);
+            adj.addDie(rolled);
+            if (log.length() > 0) log.append(" ");
+            log.append("Almejas lanzó un ").append(rolled.getLabel()).append(".");
+        }
+        return log.toString();
     }
 
     private String attachToBigFish(int slotIndex) {
@@ -865,6 +974,7 @@ public class GameState {
                         reserve.add(d.getType());
                     }
                 }
+                recomputeBottleAdjustments();
                 return "Tiburón blanco devoró una carta adyacente.";
             }
         }
@@ -875,8 +985,8 @@ public class GameState {
         int flipped = 0;
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
-            if (adj.getCard() != null && adj.isFaceUp()) {
-                adj.setFaceUp(false);
+            if (adj.getCard() != null && !adj.isFaceUp()) {
+                adj.setFaceUp(true);
                 flipped++;
             }
         }
@@ -887,32 +997,50 @@ public class GameState {
         Card captured = board[slotIndex].getCard();
         if (captured == null) return "";
         String remoraLog = collectAttachedRemoras(slotIndex);
+        String result;
         switch (captured.getId()) {
             case LANGOSTA_ESPINOSA:
-                return recoverIfD4Used(slotIndex) + remoraLog;
+                result = recoverIfD4Used(slotIndex) + remoraLog;
+                break;
             case RED_ENREDADA:
                 captureAdjacentFaceDown(slotIndex);
-                return "Red enredada arrastra una carta adyacente." + remoraLog;
+                result = "Red enredada arrastra una carta adyacente." + remoraLog;
+                break;
             case LATA_OXIDADA:
                 if (!lostDice.isEmpty()) {
                     Die recovered = lostDice.remove(lostDice.size() - 1);
                     reserve.add(recovered.getType());
-                    return "Recuperaste un dado perdido." + remoraLog;
+                    result = "Recuperaste un dado perdido." + remoraLog;
+                } else {
+                    result = remoraLog;
                 }
-                return remoraLog;
+                break;
             case PERCEBES:
-                return spreadDiceToAdjacents(slotIndex) + remoraLog;
+                result = spreadDiceToAdjacents(slotIndex) + remoraLog;
+                break;
             case CABALLITO_DE_MAR:
-                return recoverSpecificDie(DieType.D4) + remoraLog;
+                result = recoverSpecificDie(DieType.D4) + remoraLog;
+                break;
             case SALMON:
-                return revealSingleFaceDown() + remoraLog;
+                result = revealSingleFaceDown() + remoraLog;
+                break;
             case PEZ_VOLADOR:
-                return flipLineFromFlyingFish(slotIndex, diceOnCard) + remoraLog;
+                result = flipLineFromFlyingFish(slotIndex, diceOnCard) + remoraLog;
+                break;
             case BALLENA_AZUL:
-                return repositionAllDice(diceOnCard) + remoraLog;
+                result = repositionAllDice(diceOnCard) + remoraLog;
+                break;
             default:
-                return remoraLog;
+                result = remoraLog;
+                break;
         }
+        if (captured.getType() == CardType.PEZ || captured.getType() == CardType.PEZ_GRANDE) {
+            String clams = triggerAdjacentClams(slotIndex);
+            if (!clams.isEmpty()) {
+                result = result.isEmpty() ? clams : result + " " + clams;
+            }
+        }
+        return result;
     }
 
     private String recoverIfD4Used(int slotIndex) {
@@ -964,6 +1092,7 @@ public class GameState {
                 adj.setCard(deck.isEmpty() ? null : deck.pop());
                 adj.setFaceUp(false);
                 adj.setStatus(new SlotStatus());
+                recomputeBottleAdjustments();
                 break;
             }
         }
