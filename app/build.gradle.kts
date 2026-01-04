@@ -32,6 +32,12 @@ android {
     buildFeatures {
         viewBinding = true
     }
+
+    sourceSets {
+        getByName("main") {
+            assets.srcDir("src/main/res/drawable")
+        }
+    }
 }
 
 dependencies {
