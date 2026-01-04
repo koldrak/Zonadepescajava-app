@@ -20,8 +20,12 @@ public class GameViewModel extends ViewModel {
         if (initialized) {
             return false;
         }
+        startNewGame();
+        return true;
+    }
+
+    public void startNewGame() {
         gameState.newGame();
         initialized = true;
-        return true;
     }
 }

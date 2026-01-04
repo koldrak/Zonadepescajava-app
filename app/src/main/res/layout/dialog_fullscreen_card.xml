@@ -12,4 +12,15 @@
         android:contentDescription="@string/card_image_content_description"
         android:scaleType="fitCenter" />
 
+    <TextView
+        android:id="@+id/fullscreenOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="24dp"
+        android:textColor="@android:color/white"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
 </FrameLayout>
