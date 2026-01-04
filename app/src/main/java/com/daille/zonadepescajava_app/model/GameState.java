@@ -16,6 +16,8 @@ public class GameState {
     private Die selectedDie;
     private boolean gameOver = false;
 
+    private enum CurrentDirection { UP, DOWN, LEFT, RIGHT }
+
     public GameState() {
         for (int i = 0; i < board.length; i++) {
             board[i] = new BoardSlot();
@@ -105,34 +107,45 @@ public class GameState {
         slot.addDie(selectedDie);
         int placedValue = selectedDie.getValue();
         selectedDie = null;
+        StringBuilder extraLog = new StringBuilder();
         if (!slot.isFaceUp()) {
             slot.setFaceUp(true);
+            String reveal = handleOnReveal(slotIndex);
+            if (!reveal.isEmpty()) {
+                extraLog.append(" ").append(reveal);
+            }
         }
 
         if (slot.getCard().getCondition().isSatisfied(slotIndex, this)) {
-            capture(slotIndex);
-            return checkDefeatOrContinue("¡Captura exitosa!");
+            String onCaptureLog = capture(slotIndex);
+            return checkDefeatOrContinue("¡Captura exitosa!" + onCaptureLog + extraLog);
         }
 
         if (slot.getDice().size() >= 2) {
             String failMsg = handleFailedCatch(slotIndex);
-            return checkDefeatOrContinue(failMsg);
+            return checkDefeatOrContinue(failMsg + extraLog);
         }
 
         String msg = "Necesitas otro dado para intentar la pesca.";
         if (placedValue == 1) {
-            msg += " " + applyCurrent();
+            msg += " " + applyCurrent(CurrentDirection.UP);
         }
-        return checkDefeatOrContinue(msg);
+        String corrientes = applyDeepCurrentIfTriggered(placedValue);
+        if (!corrientes.isEmpty()) {
+            msg += " " + corrientes;
+        }
+        return checkDefeatOrContinue(msg + extraLog);
     }
 
-    private void capture(int slotIndex) {
+    private String capture(int slotIndex) {
         BoardSlot slot = board[slotIndex];
         captures.add(slot.getCard());
+        String captureLog = handleOnCapture(slotIndex);
         slot.clearDice();
         slot.setCard(deck.isEmpty() ? null : deck.pop());
         slot.setFaceUp(false);
         slot.setStatus(new SlotStatus());
+        return captureLog.isEmpty() ? "" : " " + captureLog;
     }
 
     public void toggleFace(int slotIndex) {
@@ -144,71 +157,111 @@ public class GameState {
 
     public int getScore() {
         int sum = 0;
+        int crustaceos = 0, peces = 0, pecesGrandes = 0, objetos = 0;
+        int krillCount = 0, sardinaCount = 0, tiburonMartilloCount = 0, limpiadorCount = 0;
         for (Card c : captures) {
             sum += c.getPoints();
+            switch (c.getType()) {
+                case CRUSTACEO: crustaceos++; break;
+                case PEZ: peces++; break;
+                case PEZ_GRANDE: pecesGrandes++; break;
+                case OBJETO: objetos++; break;
+            }
+            if (c.getId() == CardId.KRILL) krillCount++;
+            if (c.getId() == CardId.SARDINA) sardinaCount++;
+            if (c.getId() == CardId.TIBURON_MARTILLO) tiburonMartilloCount++;
+            if (c.getId() == CardId.LIMPIADOR_MARINO) limpiadorCount++;
         }
+
+        sum += krillCount * crustaceos;
+        sum += sardinaCount * peces;
+        sum += tiburonMartilloCount * pecesGrandes * 2;
+        sum += limpiadorCount * objetos * 2;
         return sum;
     }
 
     private String handleFailedCatch(int slotIndex) {
         BoardSlot slot = board[slotIndex];
         if (slot.getDice().isEmpty()) return "Pesca fallida.";
-        Die lost = slot.getDice().get(0);
-        Die saved = slot.getDice().get(slot.getDice().size() - 1);
-        if (slot.getDice().size() == 2) {
-            if (slot.getDice().get(1).getValue() > slot.getDice().get(0).getValue()) {
-                lost = slot.getDice().get(1);
-                saved = slot.getDice().get(0);
+        boolean loseTwo = isHookActive();
+        List<Die> dice = new ArrayList<>(slot.getDice());
+        dice.sort((a, b) -> Integer.compare(a.getValue(), b.getValue()));
+        List<Die> toLose = new ArrayList<>();
+        List<Die> toSave = new ArrayList<>();
+
+        if (loseTwo && dice.size() >= 2) {
+            toLose.addAll(dice);
+        } else {
+            toLose.add(dice.get(0));
+            for (int i = 1; i < dice.size(); i++) {
+                toSave.add(dice.get(i));
             }
         }
-        lostDice.add(lost);
-        reserve.add(saved.getType());
+
+        lostDice.addAll(toLose);
+        for (Die d : toSave) {
+            reserve.add(d.getType());
+        }
         slot.clearDice();
         slot.setCard(deck.isEmpty() ? null : deck.pop());
         slot.setFaceUp(false);
         slot.setStatus(new SlotStatus());
-        return "La pesca falló y perdiste " + lost.getLabel();
+        if (loseTwo && toLose.size() > 1) {
+            return "La pesca falló y perdiste 2 dados.";
+        }
+        return "La pesca falló y perdiste " + toLose.get(0).getLabel();
     }
 
     private String checkDefeatOrContinue(String base) {
-        if (reserve.isEmpty() && selectedDie == null) {
+        if ((reserve.isEmpty() && selectedDie == null) || (!hasAnyBoardCard() && deck.isEmpty())) {
             gameOver = true;
-            return base + " | Sin dados en reserva: derrota.";
+            if (reserve.isEmpty() && selectedDie == null) {
+                return base + " | Sin dados en reserva: derrota.";
+            }
+            return base + " | No quedan cartas por capturar.";
         }
         return base;
     }
 
-    private String applyCurrent() {
+    private String applyCurrent(CurrentDirection direction) {
         List<Card> toShuffle = new ArrayList<>();
-        for (int c = 0; c < 3; c++) {
-            int idx = c;
-            BoardSlot leaving = board[idx];
-            if (leaving.getCard() != null) {
-                if (leaving.getDice().isEmpty()) {
-                    toShuffle.add(leaving.getCard());
-                } else {
-                    lostDice.addAll(leaving.getDice());
-                }
-            }
-        }
-
+        List<Die> lostFromBoard = new ArrayList<>();
         BoardSlot[] newBoard = new BoardSlot[9];
         for (int i = 0; i < 9; i++) newBoard[i] = new BoardSlot();
 
-        for (int r = 1; r < 3; r++) {
+        for (int r = 0; r < 3; r++) {
             for (int c = 0; c < 3; c++) {
-                int from = r * 3 + c;
-                int to = (r - 1) * 3 + c;
-                newBoard[to] = board[from];
+                int idx = r * 3 + c;
+                BoardSlot src = board[idx];
+                int targetR = r, targetC = c;
+                switch (direction) {
+                    case UP: targetR = r - 1; break;
+                    case DOWN: targetR = r + 1; break;
+                    case LEFT: targetC = c - 1; break;
+                    case RIGHT: targetC = c + 1; break;
+                }
+                if (targetR < 0 || targetR > 2 || targetC < 0 || targetC > 2) {
+                    if (src.getCard() != null) {
+                        if (src.getDice().isEmpty()) {
+                            toShuffle.add(src.getCard());
+                        } else {
+                            lostFromBoard.addAll(src.getDice());
+                        }
+                    }
+                    continue;
+                }
+                int targetIdx = targetR * 3 + targetC;
+                newBoard[targetIdx] = src;
             }
         }
 
-        for (int c = 0; c < 3; c++) {
-            int idx = 6 + c;
-            newBoard[idx] = new BoardSlot();
-            newBoard[idx].setCard(deck.isEmpty() ? null : deck.pop());
-            newBoard[idx].setFaceUp(false);
-            newBoard[idx].setStatus(new SlotStatus());
+        for (int i = 0; i < 9; i++) {
+            if (newBoard[i].getCard() == null) {
+                newBoard[i] = new BoardSlot();
+                newBoard[i].setCard(deck.isEmpty() ? null : deck.pop());
+                newBoard[i].setFaceUp(false);
+                newBoard[i].setStatus(new SlotStatus());
+            }
         }
 
         if (!toShuffle.isEmpty()) {
@@ -219,9 +272,110 @@ public class GameState {
             for (Card c : tmp) deck.push(c);
         }
 
+        if (!lostFromBoard.isEmpty()) {
+            lostDice.addAll(lostFromBoard);
+        }
+
         for (int i = 0; i < board.length; i++) {
             board[i] = newBoard[i];
         }
         return "Corrientes: el tablero se desplazó";
+    }
+
+    private String applyDeepCurrentIfTriggered(int placedValue) {
+        for (BoardSlot slot : board) {
+            if (!slot.isFaceUp() || slot.getCard() == null || slot.getCard().getId() != CardId.CORRIENTES_PROFUNDAS) {
+                continue;
+            }
+            for (Die d : slot.getDice()) {
+                if (d.getValue() == placedValue) {
+                    CurrentDirection dir = placedValue % 2 == 0 ? CurrentDirection.RIGHT : CurrentDirection.LEFT;
+                    return applyCurrent(dir);
+                }
+            }
+        }
+        return "";
+    }
+
+    private boolean hasAnyBoardCard() {
+        for (BoardSlot s : board) {
+            if (s.getCard() != null) return true;
+        }
+        return false;
+    }
+
+    private boolean isHookActive() {
+        for (BoardSlot s : board) {
+            if (s.isFaceUp() && s.getCard() != null && s.getCard().getId() == CardId.ANZUELO_ROTO) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String handleOnReveal(int slotIndex) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getCard() == null) return "";
+        switch (slot.getCard().getId()) {
+            case BOTELLA_PLASTICO:
+                adjustAdjacentShift(slotIndex, 3);
+                return "Botella: los peces adyacentes requieren +3 a la suma.";
+            case BOTA_VIEJA:
+                return "Bota vieja: −1 a la suma de adyacentes.";
+            case CORRIENTES_PROFUNDAS:
+                return "Corrientes profundas listas: si igualas su dado, activas marea lateral.";
+            default:
+                return "";
+        }
+    }
+
+    private void adjustAdjacentShift(int slotIndex, int delta) {
+        int r = slotIndex / 3, c = slotIndex % 3;
+        int[][] dirs = new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
+        for (int[] d : dirs) {
+            int rr = r + d[0], cc = c + d[1];
+            if (rr < 0 || rr > 2 || cc < 0 || cc > 2) continue;
+            BoardSlot adj = board[rr * 3 + cc];
+            if (adj.getCard() != null && adj.getCard().getType() == CardType.PEZ) {
+                adj.getStatus().sumConditionShift += delta;
+            }
+        }
+    }
+
+    private String handleOnCapture(int slotIndex) {
+        Card captured = board[slotIndex].getCard();
+        if (captured == null) return "";
+        switch (captured.getId()) {
+            case RED_ENREDADA:
+                captureAdjacentFaceDown(slotIndex);
+                return "Red enredada arrastra una carta adyacente.";
+            case LATA_OXIDADA:
+                if (!lostDice.isEmpty()) {
+                    Die recovered = lostDice.remove(lostDice.size() - 1);
+                    reserve.add(recovered.getType());
+                    return "Recuperaste un dado perdido.";
+                }
+                return "";
+            default:
+                return "";
+        }
+    }
+
+    private void captureAdjacentFaceDown(int slotIndex) {
+        int r = slotIndex / 3, c = slotIndex % 3;
+        int[][] dirs = new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+        for (int[] d : dirs) {
+            int rr = r + d[0], cc = c + d[1];
+            if (rr < 0 || rr > 2 || cc < 0 || cc > 2) continue;
+            BoardSlot adj = board[rr * 3 + cc];
+            if (adj.getCard() != null && !adj.isFaceUp()) {
+                captures.add(adj.getCard());
+                adj.clearDice();
+                adj.setCard(deck.isEmpty() ? null : deck.pop());
+                adj.setFaceUp(false);
+                adj.setStatus(new SlotStatus());
+                break;
+            }
+        }
     }
 }
