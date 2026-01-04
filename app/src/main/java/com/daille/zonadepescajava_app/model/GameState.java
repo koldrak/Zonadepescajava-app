@@ -2,6 +2,7 @@ package com.daille.zonadepescajava_app.model;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 import java.util.Random;
@@ -24,8 +25,18 @@ public class GameState {
     private boolean awaitingAtunDecision = false;
     private int atunSlotIndex = -1;
     private int atunDieIndex = -1;
+    private boolean awaitingPezVelaDecision = false;
+    private boolean awaitingPezVelaResultChoice = false;
+    private int pezVelaSlotIndex = -1;
+    private int pezVelaDieIndex = -1;
+    private Die pezVelaOriginalDie = null;
+    private Die pezVelaRerolledDie = null;
     private final List<Die> pendingPercebesDice = new ArrayList<>();
     private final List<Integer> pendingPercebesTargets = new ArrayList<>();
+    private final List<Die> pendingBallenaDice = new ArrayList<>();
+    private final List<Card> pendingArenquePool = new ArrayList<>();
+    private final List<Card> pendingArenqueChosen = new ArrayList<>();
+    private int arenqueSlotIndex = -1;
     private enum PendingSelection {
         NONE,
         RED_CRAB_FROM,
@@ -37,7 +48,11 @@ public class GameState {
         SALMON_FLIP,
         CLOWNFISH_PROTECT,
         PERCEBES_MOVE,
-        ATUN_DESTINATION
+        ATUN_DESTINATION,
+        MORENA_FROM,
+        MORENA_TO,
+        ARENQUE_DESTINATION,
+        BLUE_WHALE_PLACE
     }
     private PendingSelection pendingSelection = PendingSelection.NONE;
     private int pendingSelectionActor = -1;
@@ -70,8 +85,19 @@ public class GameState {
         awaitingAtunDecision = false;
         atunSlotIndex = -1;
         atunDieIndex = -1;
+        clearPezVelaState();
         pendingPercebesDice.clear();
         pendingPercebesTargets.clear();
+        awaitingPezVelaDecision = false;
+        awaitingPezVelaResultChoice = false;
+        pezVelaSlotIndex = -1;
+        pezVelaDieIndex = -1;
+        pezVelaOriginalDie = null;
+        pezVelaRerolledDie = null;
+        pendingBallenaDice.clear();
+        pendingArenquePool.clear();
+        pendingArenqueChosen.clear();
+        arenqueSlotIndex = -1;
 
         reserve.add(DieType.D6);
         reserve.add(DieType.D6);
@@ -134,6 +160,34 @@ public class GameState {
         return awaitingAtunDecision;
     }
 
+    public boolean isAwaitingPezVelaDecision() {
+        return awaitingPezVelaDecision;
+    }
+
+    public boolean isAwaitingPezVelaResultChoice() {
+        return awaitingPezVelaResultChoice;
+    }
+
+    public boolean isAwaitingArenqueChoice() {
+        return awaitingArenqueChoice;
+    }
+
+    public Die getPezVelaOriginalDie() {
+        return pezVelaOriginalDie;
+    }
+
+    public Die getPezVelaRerolledDie() {
+        return pezVelaRerolledDie;
+    }
+
+    public List<String> getPendingArenqueNames() {
+        List<String> names = new ArrayList<>();
+        for (Card c : pendingArenquePool) {
+            names.add(c.getName());
+        }
+        return names;
+    }
+
     public List<Integer> getHighlightSlots() {
         List<Integer> highlight = new ArrayList<>();
         if (pendingSelection == PendingSelection.NONE) {
@@ -167,6 +221,21 @@ public class GameState {
             case BLUE_CRAB:
                 for (int i = 0; i < board.length; i++) {
                     if (!board[i].getDice().isEmpty()) highlight.add(i);
+                }
+                break;
+            case MORENA_FROM:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    if (!board[idx].getDice().isEmpty()) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case MORENA_TO:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    if (idx != pendingSelectionAux && board[idx].getCard() != null
+                            && board[idx].getDice().size() < 2) {
+                        highlight.add(idx);
+                    }
                 }
                 break;
             case NAUTILUS_FIRST:
@@ -210,6 +279,21 @@ public class GameState {
                 }
                 break;
             case ATUN_DESTINATION:
+                for (int i = 0; i < board.length; i++) {
+                    if (board[i].getCard() != null && board[i].getDice().size() < 2) {
+                        highlight.add(i);
+                    }
+                }
+                break;
+            case ARENQUE_DESTINATION:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    BoardSlot target = board[idx];
+                    if (target.getDice().isEmpty() && (target.getCard() == null || !target.isFaceUp())) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case BLUE_WHALE_PLACE:
                 for (int i = 0; i < board.length; i++) {
                     if (board[i].getCard() != null && board[i].getDice().size() < 2) {
                         highlight.add(i);
@@ -304,6 +388,18 @@ public class GameState {
             case ATUN_DESTINATION:
                 result = repositionAtunDie(slotIndex);
                 break;
+            case MORENA_FROM:
+                result = chooseMorenaOrigin(slotIndex);
+                break;
+            case MORENA_TO:
+                result = chooseMorenaDestination(slotIndex);
+                break;
+            case ARENQUE_DESTINATION:
+                result = placeArenqueFish(slotIndex);
+                break;
+            case BLUE_WHALE_PLACE:
+                result = placeBlueWhaleDie(slotIndex);
+                break;
             default:
                 result = "No hay acciones pendientes.";
         }
@@ -334,6 +430,54 @@ public class GameState {
         pendingSelectionActor = atunSlotIndex;
         return (reroll ? "Atún relanzó el dado " : "Atún conserva el dado ")
                 + "(" + finalDie.getLabel() + "). Elige una carta para reposicionarlo.";
+    }
+
+    public String choosePezVelaReroll(boolean reroll) {
+        if (!awaitingPezVelaDecision) {
+            return "No hay decisión pendiente del Pez Vela.";
+        }
+        if (pezVelaSlotIndex < 0 || pezVelaSlotIndex >= board.length) {
+            clearPezVelaState();
+            return "El Pez Vela ya no está disponible.";
+        }
+        BoardSlot slot = board[pezVelaSlotIndex];
+        if (pezVelaDieIndex < 0 || pezVelaDieIndex >= slot.getDice().size()) {
+            clearPezVelaState();
+            return "El dado del Pez Vela ya no está disponible.";
+        }
+        if (!reroll) {
+            Die current = slot.getDice().get(pezVelaDieIndex);
+            clearPezVelaState();
+            return "Pez vela conserva el " + current.getLabel() + ".";
+        }
+        pezVelaRerolledDie = Die.roll(slot.getDice().get(pezVelaDieIndex).getType(), rng);
+        awaitingPezVelaDecision = false;
+        awaitingPezVelaResultChoice = true;
+        return "Pez vela obtuvo " + pezVelaRerolledDie.getLabel() + ". Elige qué resultado conservar.";
+    }
+
+    public String choosePezVelaResult(boolean useReroll) {
+        if (!awaitingPezVelaResultChoice) {
+            return "No hay elección pendiente del Pez Vela.";
+        }
+        if (pezVelaSlotIndex < 0 || pezVelaSlotIndex >= board.length) {
+            clearPezVelaState();
+            return "El Pez Vela ya no está disponible.";
+        }
+        BoardSlot slot = board[pezVelaSlotIndex];
+        if (pezVelaDieIndex < 0 || pezVelaDieIndex >= slot.getDice().size()) {
+            clearPezVelaState();
+            return "El dado del Pez Vela ya no está disponible.";
+        }
+        Die chosen = useReroll && pezVelaRerolledDie != null ? pezVelaRerolledDie : pezVelaOriginalDie;
+        if (chosen == null) {
+            clearPezVelaState();
+            return "No se pudo conservar ningún resultado.";
+        }
+        slot.setDie(pezVelaDieIndex, chosen);
+        String msg = "Pez vela conserva el resultado " + chosen.getLabel() + ".";
+        clearPezVelaState();
+        return msg;
     }
 
     public String chooseDieToLose(int dieIndex) {
@@ -381,8 +525,17 @@ public class GameState {
         if (awaitingAtunDecision) {
             return "Decide primero si relanzar el dado del Atún.";
         }
+        if (awaitingPezVelaDecision || awaitingPezVelaResultChoice) {
+            return "Resuelve la decisión del Pez Vela antes de lanzar otro dado.";
+        }
         if (awaitingLanternChoice) {
             return "Resuelve la selección del Pez Linterna antes de lanzar otro dado.";
+        }
+        if (awaitingArenqueChoice) {
+            return "Selecciona primero los peces pequeños del Arenque.";
+        }
+        if (pendingSelection == PendingSelection.BLUE_WHALE_PLACE && !pendingBallenaDice.isEmpty()) {
+            return "Coloca los dados pendientes de la Ballena azul antes de continuar.";
         }
         if (!reserve.remove(type)) {
             return "No hay más dados " + type.getLabel();
@@ -404,11 +557,20 @@ public class GameState {
         if (awaitingAtunDecision) {
             return "Resuelve primero la habilidad del Atún.";
         }
+        if (awaitingPezVelaDecision || awaitingPezVelaResultChoice) {
+            return "Resuelve primero la habilidad del Pez Vela.";
+        }
         if (awaitingLanternChoice) {
             return "Debes elegir primero qué carta revelar con el Pez Linterna.";
         }
         if (isAwaitingBoardSelection()) {
             return "Resuelve la acción pendiente antes de colocar otro dado.";
+        }
+        if (awaitingArenqueChoice) {
+            return "Selecciona los peces pequeños del Arenque antes de colocar otros dados.";
+        }
+        if (pendingSelection == PendingSelection.BLUE_WHALE_PLACE && !pendingBallenaDice.isEmpty()) {
+            return "Primero coloca los dados pendientes de la Ballena azul.";
         }
         if (forcedSlotIndex != null && slotIndex != forcedSlotIndex) {
             return "El próximo dado debe colocarse en la carta obligatoria.";
@@ -479,6 +641,18 @@ public class GameState {
         pendingDieLossSlot = slotIndex;
         pendingLossTriggerValue = placedValue;
         return checkDefeatOrContinue("La pesca falló. Elige qué dado perder." + extraLog);
+    }
+
+    private String addDieToSlot(int slotIndex, Die die) {
+        BoardSlot target = board[slotIndex];
+        target.addDie(die);
+        if (target.getCard() == null || target.isFaceUp()) {
+            return "";
+        }
+        target.setFaceUp(true);
+        String reveal = handleOnReveal(slotIndex, die.getValue());
+        recomputeBottleAdjustments();
+        return reveal == null ? "" : reveal;
     }
 
     private String capture(int slotIndex) {
@@ -728,6 +902,7 @@ public class GameState {
         pendingSelectionActor = -1;
         pendingSelectionAux = -1;
         clearPercebesState();
+        clearBallenaState();
     }
 
     private void clearPercebesState() {
@@ -735,10 +910,30 @@ public class GameState {
         pendingPercebesTargets.clear();
     }
 
+    private void clearBallenaState() {
+        pendingBallenaDice.clear();
+    }
+
+    private void clearArenqueState() {
+        pendingArenquePool.clear();
+        pendingArenqueChosen.clear();
+        awaitingArenqueChoice = false;
+        arenqueSlotIndex = -1;
+    }
+
     private void clearAtunState() {
         awaitingAtunDecision = false;
         atunSlotIndex = -1;
         atunDieIndex = -1;
+    }
+
+    private void clearPezVelaState() {
+        awaitingPezVelaDecision = false;
+        awaitingPezVelaResultChoice = false;
+        pezVelaSlotIndex = -1;
+        pezVelaDieIndex = -1;
+        pezVelaOriginalDie = null;
+        pezVelaRerolledDie = null;
     }
 
     private String revealAndTrigger(int slotIndex) {
@@ -812,7 +1007,7 @@ public class GameState {
                 result = swapDieWithFaceUpSingle(slotIndex);
                 break;
             case PEZ_VELA:
-                result = rerollLatestDie(slotIndex);
+                result = startPezVelaDecision(slotIndex);
                 break;
             case PIRANA:
                 result = biteAdjacentSmallFish(slotIndex);
@@ -832,10 +1027,13 @@ public class GameState {
                 result = recoverSpecificDie(DieType.D8);
                 break;
             case ARENQUE:
-                result = seedAdjacentSmallFish(slotIndex);
+                result = startArenqueSelection(slotIndex);
                 break;
             case REMORA:
                 result = attachToBigFish(slotIndex);
+                break;
+            case BALLENA_AZUL:
+                result = startBlueWhaleReposition(slotIndex);
                 break;
             case TIBURON_BLANCO:
                 result = devourAdjacentFaceUp(slotIndex);
@@ -905,8 +1103,10 @@ public class GameState {
         }
         if (from == null || to == null || from.equals(to)) return "";
         Die moved = board[from].removeDie(0);
-        board[to].addDie(moved);
-        return "Cangrejo rojo movió un dado entre cartas adyacentes.";
+        String reveal = addDieToSlot(to, moved);
+        return reveal.isEmpty()
+                ? "Cangrejo rojo movió un dado entre cartas adyacentes."
+                : "Cangrejo rojo movió un dado entre cartas adyacentes. " + reveal;
     }
 
     private boolean isAdjacentToActor(int slotIndex) {
@@ -939,9 +1139,11 @@ public class GameState {
             return "No hay dados para mover.";
         }
         Die moved = origin.removeDie(origin.getDice().size() - 1);
-        target.addDie(moved);
+        String reveal = addDieToSlot(slotIndex, moved);
         clearPendingSelection();
-        return "Cangrejo rojo movió un dado entre cartas adyacentes.";
+        return reveal.isEmpty()
+                ? "Cangrejo rojo movió un dado entre cartas adyacentes."
+                : "Cangrejo rojo movió un dado entre cartas adyacentes. " + reveal;
     }
 
     private String adjustLastDie(int slotIndex) {
@@ -1002,6 +1204,17 @@ public class GameState {
         return "Atún: decide si relanzar el dado y elige destino.";
     }
 
+    private String startPezVelaDecision(int slotIndex) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getDice().isEmpty()) return "";
+        awaitingPezVelaDecision = true;
+        pezVelaSlotIndex = slotIndex;
+        pezVelaDieIndex = slot.getDice().size() - 1;
+        pezVelaOriginalDie = slot.getDice().get(pezVelaDieIndex);
+        pezVelaRerolledDie = null;
+        return "Pez vela: decide si quieres relanzar el dado.";
+    }
+
     private String repositionAtunDie(int slotIndex) {
         if (atunSlotIndex < 0 || atunSlotIndex >= board.length) {
             clearPendingSelection();
@@ -1022,10 +1235,12 @@ public class GameState {
             return "La carta seleccionada ya tiene 2 dados.";
         }
         Die moved = origin.removeDie(atunDieIndex);
-        target.addDie(moved);
+        String reveal = addDieToSlot(slotIndex, moved);
         clearPendingSelection();
         clearAtunState();
-        return "Atún reposicionó el dado en la carta elegida.";
+        return reveal.isEmpty()
+                ? "Atún reposicionó el dado en la carta elegida."
+                : "Atún reposicionó el dado en la carta elegida. " + reveal;
     }
 
     private String inflateAnyFishDie() {
@@ -1046,8 +1261,49 @@ public class GameState {
     }
 
     private String moveMorenaDie(int slotIndex) {
-        String result = moveOneDieBetweenAdjacents(slotIndex);
-        return result.isEmpty() ? "" : "Morena movió un dado adyacente.";
+        boolean hasOrigin = false, hasTarget = false;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            if (!board[idx].getDice().isEmpty()) hasOrigin = true;
+            if (board[idx].getCard() != null && board[idx].getDice().size() < 2) hasTarget = true;
+        }
+        if (!hasOrigin || !hasTarget) {
+            return "No hay movimientos válidos para la morena.";
+        }
+        pendingSelection = PendingSelection.MORENA_FROM;
+        pendingSelectionActor = slotIndex;
+        return "Morena: elige una carta adyacente con dado para mover.";
+    }
+
+    private String chooseMorenaOrigin(int slotIndex) {
+        if (!isAdjacentToActor(slotIndex) || board[slotIndex].getDice().isEmpty()) {
+            return "Elige una carta adyacente con dado.";
+        }
+        pendingSelectionAux = slotIndex;
+        pendingSelection = PendingSelection.MORENA_TO;
+        return "Selecciona la carta adyacente destino para el dado.";
+    }
+
+    private String chooseMorenaDestination(int slotIndex) {
+        if (!isAdjacentToActor(slotIndex)) {
+            return "La carta destino debe ser adyacente a la morena.";
+        }
+        if (slotIndex == pendingSelectionAux) {
+            return "Elige una carta distinta como destino.";
+        }
+        BoardSlot origin = board[pendingSelectionAux];
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null || target.getDice().size() >= 2) {
+            return "La carta destino no puede recibir más dados.";
+        }
+        if (origin.getDice().isEmpty()) {
+            clearPendingSelection();
+            return "No hay dados para mover.";
+        }
+        Die moved = origin.removeDie(origin.getDice().size() - 1);
+        String reveal = addDieToSlot(slotIndex, moved);
+        clearPendingSelection();
+        return reveal.isEmpty() ? "Morena movió un dado entre cartas adyacentes." :
+                "Morena movió un dado entre cartas adyacentes. " + reveal;
     }
 
     private String replaceAdjacentObject(int slotIndex) {
@@ -1176,14 +1432,20 @@ public class GameState {
                 adj.setCard(deck.isEmpty() ? null : deck.pop());
                 adj.setFaceUp(false);
                 adj.setStatus(new SlotStatus());
+                StringBuilder extra = new StringBuilder();
                 for (Die d : preservedDice) {
                     if (adj.getDice().size() < 2) {
-                        adj.addDie(d);
+                        String reveal = addDieToSlot(idx, d);
+                        if (!reveal.isEmpty()) {
+                            if (extra.length() > 0) extra.append(" ");
+                            extra.append(reveal);
+                        }
                     } else {
                         reserve.add(d.getType());
                     }
                 }
-                return "Piraña descartó a " + removed.getName() + " sin perder sus dados.";
+                String base = "Piraña descartó a " + removed.getName() + " sin perder sus dados.";
+                return extra.length() == 0 ? base : base + " " + extra;
             }
         }
         return "";
@@ -1252,17 +1514,6 @@ public class GameState {
                 : "Pulpo fue reemplazado por " + replacement.getName() + ". " + reveal;
     }
 
-    private String rerollLatestDie(int slotIndex) {
-        BoardSlot slot = board[slotIndex];
-        if (slot.getDice().isEmpty()) return "";
-        int idx = slot.getDice().size() - 1;
-        Die oldDie = slot.getDice().get(idx);
-        Die rerolled = Die.roll(oldDie.getType(), rng);
-        int best = Math.max(oldDie.getValue(), rerolled.getValue());
-        slot.setDie(idx, new Die(oldDie.getType(), best));
-        return "Pez vela eligió el mejor resultado: " + best;
-    }
-
     private String flipAdjacentFaceUpCardsDown(int slotIndex) {
         int flipped = 0;
         for (Integer idx : adjacentIndices(slotIndex, true)) {
@@ -1290,40 +1541,95 @@ public class GameState {
         return "";
     }
 
-    private String seedAdjacentSmallFish(int slotIndex) {
-        List<Card> picked = new ArrayList<>();
+    private String startArenqueSelection(int slotIndex) {
         List<Card> remaining = new ArrayList<>(deck);
         deck.clear();
+        pendingArenquePool.clear();
+        pendingArenqueChosen.clear();
+        arenqueSlotIndex = slotIndex;
         for (Card c : remaining) {
-            if (picked.size() < 2 && c.getType() == CardType.PEZ) {
-                picked.add(c);
+            if (c.getType() == CardType.PEZ) {
+                pendingArenquePool.add(c);
             } else {
                 deck.push(c);
             }
         }
-        int placed = 0;
-        for (Integer idx : adjacentIndices(slotIndex, true)) {
-            if (picked.isEmpty()) break;
-            BoardSlot adj = board[idx];
-            if (adj.getCard() == null || !adj.isFaceUp()) {
-                if (adj.getCard() != null && !adj.isFaceUp()) {
-                    deck.push(adj.getCard());
-                }
-                adj.setCard(picked.remove(0));
-                adj.setFaceUp(false);
-                adj.setStatus(new SlotStatus());
-                adj.clearDice();
-                placed++;
+        if (pendingArenquePool.isEmpty()) {
+            deck.addAll(remaining);
+            arenqueSlotIndex = -1;
+            return "No hay peces pequeños en el mazo.";
+        }
+        awaitingArenqueChoice = true;
+        return "Arenque: elige hasta 2 peces pequeños del mazo.";
+    }
+
+    public String chooseArenqueFish(List<Integer> indices) {
+        if (!awaitingArenqueChoice) {
+            return "No hay selección de Arenque pendiente.";
+        }
+        awaitingArenqueChoice = false;
+        pendingArenqueChosen.clear();
+        List<Integer> unique = new ArrayList<>();
+        for (Integer i : indices) {
+            if (i == null) continue;
+            if (i < 0 || i >= pendingArenquePool.size()) continue;
+            if (unique.contains(i)) continue;
+            unique.add(i);
+            if (unique.size() >= 2) break;
+        }
+        for (int idx : unique) {
+            pendingArenqueChosen.add(pendingArenquePool.get(idx));
+        }
+        for (int i = 0; i < pendingArenquePool.size(); i++) {
+            if (!unique.contains(i)) {
+                deck.push(pendingArenquePool.get(i));
             }
         }
-        for (Card c : picked) deck.push(c);
-        List<Card> shuffledDeck = new ArrayList<>(deck);
-        java.util.Collections.shuffle(shuffledDeck, rng);
-        deck.clear();
-        for (Card c : shuffledDeck) {
-            deck.push(c);
+        pendingArenquePool.clear();
+        shuffleDeck();
+        if (pendingArenqueChosen.isEmpty()) {
+            clearArenqueState();
+            return "No se eligieron peces pequeños.";
         }
-        return placed == 0 ? "" : "Arenque sembró " + placed + " pez(es) pequeño(s) y barajó el mazo.";
+        pendingSelection = PendingSelection.ARENQUE_DESTINATION;
+        pendingSelectionActor = arenqueSlotIndex;
+        return pendingArenqueChosen.size() == 1
+                ? "Coloca el pez pequeño elegido adyacente al Arenque."
+                : "Coloca los 2 peces pequeños adyacentes al Arenque.";
+    }
+
+    private String placeArenqueFish(int slotIndex) {
+        if (pendingArenqueChosen.isEmpty()) {
+            clearPendingSelection();
+            clearArenqueState();
+            return "No hay peces pequeños por colocar.";
+        }
+        if (!adjacentIndices(pendingSelectionActor, true).contains(slotIndex)) {
+            return "Debes elegir una casilla adyacente al Arenque.";
+        }
+        BoardSlot target = board[slotIndex];
+        if (!target.getDice().isEmpty()) {
+            return "Debes elegir una casilla sin dados.";
+        }
+        if (target.getCard() != null && target.isFaceUp()) {
+            return "Solo puedes reemplazar cartas boca abajo o espacios vacíos.";
+        }
+        if (target.getCard() != null) {
+            deck.push(target.getCard());
+        }
+        Card placing = pendingArenqueChosen.remove(0);
+        target.setCard(placing);
+        target.setFaceUp(false);
+        target.setStatus(new SlotStatus());
+        target.clearDice();
+        recomputeBottleAdjustments();
+        if (pendingArenqueChosen.isEmpty()) {
+            clearPendingSelection();
+            clearArenqueState();
+            shuffleDeck();
+            return "Arenque colocó todos los peces pequeños y barajó el mazo.";
+        }
+        return "Pez pequeño colocado. Elige otra casilla adyacente.";
     }
 
     private void recomputeBottleAdjustments() {
@@ -1340,6 +1646,15 @@ public class GameState {
                     adj.getStatus().sumConditionShift += 3;
                 }
             }
+        }
+    }
+
+    private void shuffleDeck() {
+        List<Card> shuffledDeck = new ArrayList<>(deck);
+        java.util.Collections.shuffle(shuffledDeck, rng);
+        deck.clear();
+        for (Card c : shuffledDeck) {
+            deck.push(c);
         }
     }
 
@@ -1364,21 +1679,26 @@ public class GameState {
 
     private String attachToBigFish(int slotIndex) {
         BoardSlot slot = board[slotIndex];
+        List<Integer> candidates = new ArrayList<>();
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
             if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() == CardType.PEZ_GRANDE) {
-                adj.getStatus().attachedRemoras.add(slot.getCard());
-                for (Die d : new ArrayList<>(slot.getDice())) {
-                    reserve.add(d.getType());
-                }
-                slot.clearDice();
-                slot.setCard(deck.isEmpty() ? null : deck.pop());
-                slot.setFaceUp(false);
-                slot.setStatus(new SlotStatus());
-                return "Rémora se adhirió a un pez grande.";
+                candidates.add(idx);
             }
         }
-        return "";
+        if (candidates.isEmpty()) {
+            return "No hay peces grandes boca arriba adyacentes para la rémora.";
+        }
+        BoardSlot adj = board[candidates.get(0)];
+        adj.getStatus().attachedRemoras.add(slot.getCard());
+        for (Die d : new ArrayList<>(slot.getDice())) {
+            reserve.add(d.getType());
+        }
+        slot.clearDice();
+        slot.setCard(deck.isEmpty() ? null : deck.pop());
+        slot.setFaceUp(false);
+        slot.setStatus(new SlotStatus());
+        return "Rémora se adhirió a un pez grande.";
     }
 
     private String devourAdjacentFaceUp(int slotIndex) {
@@ -1392,15 +1712,22 @@ public class GameState {
                 adj.setFaceUp(false);
                 adj.setStatus(new SlotStatus());
                 BoardSlot shark = board[slotIndex];
+                StringBuilder reveal = new StringBuilder();
                 for (Die d : dice) {
                     if (shark.getDice().size() < 2) {
-                        shark.addDie(d);
+                        String extra = addDieToSlot(slotIndex, d);
+                        if (!extra.isEmpty()) {
+                            if (reveal.length() > 0) reveal.append(" ");
+                            reveal.append(extra);
+                        }
                     } else {
                         reserve.add(d.getType());
                     }
                 }
                 recomputeBottleAdjustments();
-                return "Tiburón blanco devoró una carta adyacente.";
+                return reveal.length() == 0
+                        ? "Tiburón blanco devoró una carta adyacente."
+                        : "Tiburón blanco devoró una carta adyacente. " + reveal;
             }
         }
         return "";
@@ -1461,9 +1788,6 @@ public class GameState {
             case PEZ_VOLADOR:
                 result = flipLineFromFlyingFish(slotIndex, diceOnCard) + remoraLog;
                 break;
-            case BALLENA_AZUL:
-                result = repositionAllDice(diceOnCard) + remoraLog;
-                break;
             default:
                 result = remoraLog;
                 break;
@@ -1511,7 +1835,7 @@ public class GameState {
         }
 
         if (available.size() < dice.size()) {
-            for (Die d : dice) board[slotIndex].addDie(d);
+            for (Die d : dice) addDieToSlot(slotIndex, d);
             return "No hay suficientes cartas adyacentes con espacio para mover los dados.";
         }
 
@@ -1540,13 +1864,17 @@ public class GameState {
             return "No hay dados por mover.";
         }
         Die moved = pendingPercebesDice.remove(0);
-        target.addDie(moved);
+        String reveal = addDieToSlot(slotIndex, moved);
         pendingPercebesTargets.add(slotIndex);
         if (pendingPercebesDice.isEmpty()) {
             clearPendingSelection();
-            return "Percebes movió todos los dados a cartas adyacentes.";
+            return reveal.isEmpty()
+                    ? "Percebes movió todos los dados a cartas adyacentes."
+                    : "Percebes movió todos los dados a cartas adyacentes. " + reveal;
         }
-        return "Percebes movió un dado. Elige otra carta adyacente distinta.";
+        return reveal.isEmpty()
+                ? "Percebes movió un dado. Elige otra carta adyacente distinta."
+                : "Percebes movió un dado. " + reveal + " Elige otra carta adyacente distinta.";
     }
 
     private void captureAdjacentFaceDown(int slotIndex) {
@@ -1640,6 +1968,49 @@ public class GameState {
         return base;
     }
 
+    private String startBlueWhaleReposition(int slotIndex) {
+        List<Die> pool = new ArrayList<>();
+        for (BoardSlot s : board) {
+            if (!s.getDice().isEmpty()) {
+                pool.addAll(s.getDice());
+                s.clearDice();
+            }
+        }
+        if (pool.isEmpty()) {
+            return "No hay dados para reposicionar.";
+        }
+        pendingBallenaDice.clear();
+        pendingBallenaDice.addAll(pool);
+        pendingSelection = PendingSelection.BLUE_WHALE_PLACE;
+        pendingSelectionActor = slotIndex;
+        return "Ballena azul: coloca cada dado nuevamente en el tablero.";
+    }
+
+    private String placeBlueWhaleDie(int slotIndex) {
+        if (pendingBallenaDice.isEmpty()) {
+            clearPendingSelection();
+            return "No hay dados por colocar.";
+        }
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null) {
+            return "Selecciona una carta válida para el dado.";
+        }
+        if (target.getDice().size() >= 2) {
+            return "La carta seleccionada ya tiene 2 dados.";
+        }
+        Die moved = pendingBallenaDice.remove(0);
+        String reveal = addDieToSlot(slotIndex, moved);
+        if (pendingBallenaDice.isEmpty()) {
+            clearPendingSelection();
+            return reveal.isEmpty()
+                    ? "Ballena azul reposicionó todos los dados en el tablero."
+                    : "Ballena azul reposicionó todos los dados en el tablero. " + reveal;
+        }
+        return reveal.isEmpty()
+                ? "Dado colocado. Elige destino para el siguiente."
+                : "Dado colocado. " + reveal + " Elige destino para el siguiente.";
+    }
+
     private String repositionAllDice(List<Die> diceOnCard) {
         List<Die> pool = new ArrayList<>();
         for (BoardSlot s : board) {
@@ -1648,10 +2019,11 @@ public class GameState {
             s.clearDice();
         }
         int placed = 0;
-        for (BoardSlot s : board) {
+        for (int i = 0; i < board.length; i++) {
+            BoardSlot s = board[i];
             if (s.getCard() == null) continue;
             while (s.getDice().size() < 2 && !pool.isEmpty()) {
-                s.addDie(pool.remove(0));
+                addDieToSlot(i, pool.remove(0));
                 placed++;
             }
         }
