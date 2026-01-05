@@ -199,6 +199,34 @@
                 android:layout_marginTop="12dp"
                 android:text="Colecciones" />
 
+            <TextView
+                android:id="@+id/scoreRecordsTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Records de puntaje"
+                android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+
+            <ListView
+                android:id="@+id/scoreRecordsList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:divider="@android:color/darker_gray"
+                android:dividerHeight="1dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:scrollbars="none"
+                tools:listitem="@android:layout/simple_list_item_1" />
+
+            <TextView
+                android:id="@+id/scoreRecordsEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Aún no hay puntajes registrados"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                android:textColor="@android:color/darker_gray"
+                android:visibility="gone" />
+
         </LinearLayout>
 
     </FrameLayout>
