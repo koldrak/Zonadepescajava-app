@@ -7,6 +7,7 @@ import com.daille.zonadepescajava_app.model.GameState;
 public class GameViewModel extends ViewModel {
     private final GameState gameState = new GameState();
     private boolean initialized = false;
+    private boolean finalScoreRecorded = false;
 
     public GameState getGameState() {
         return gameState;
@@ -27,5 +28,14 @@ public class GameViewModel extends ViewModel {
     public void startNewGame() {
         gameState.newGame();
         initialized = true;
+        finalScoreRecorded = false;
+    }
+
+    public boolean isFinalScoreRecorded() {
+        return finalScoreRecorded;
+    }
+
+    public void markFinalScoreRecorded() {
+        finalScoreRecorded = true;
     }
 }

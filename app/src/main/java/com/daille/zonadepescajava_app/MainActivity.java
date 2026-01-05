@@ -7,6 +7,7 @@ import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -15,6 +16,8 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 
 import com.daille.zonadepescajava_app.databinding.ActivityMainBinding;
+import com.daille.zonadepescajava_app.data.ScoreDatabaseHelper;
+import com.daille.zonadepescajava_app.data.ScoreRecord;
 import com.daille.zonadepescajava_app.model.BoardSlot;
 import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardId;
@@ -30,6 +33,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.text.DateFormat;
+import java.util.Date;
 
 public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.OnSlotInteractionListener {
 
@@ -42,6 +47,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private Handler animationHandler;
     private Runnable rollingRunnable;
     private boolean endScoringShown = false;
+    private ScoreDatabaseHelper scoreDatabaseHelper;
+    private ArrayAdapter<String> scoreRecordsAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,17 +56,23 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-
         viewModel = new ViewModelProvider(this).get(GameViewModel.class);
         gameState = viewModel.getGameState();
+        endScoringShown = viewModel.isFinalScoreRecorded();
         cardImageResolver = new CardImageResolver(this);
         diceImageResolver = new DiceImageResolver(this);
         animationHandler = new Handler(Looper.getMainLooper());
+        scoreDatabaseHelper = new ScoreDatabaseHelper(this);
+        setupScoreRecordsList();
         setupMenuButtons();
 
         if (viewModel.isInitialized()) {
             setupBoard();
-            showGameLayout();
+            if (viewModel.isFinalScoreRecorded()) {
+                showStartMenu();
+            } else {
+                showGameLayout();
+            }
             refreshUi("Partida restaurada tras cambio de orientación.");
         } else {
             showStartMenu();
@@ -85,6 +98,37 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 Toast.makeText(this, "Configuraciones próximamente.", Toast.LENGTH_SHORT).show());
         binding.openCollections.setOnClickListener(v ->
                 Toast.makeText(this, "Colecciones disponibles próximamente.", Toast.LENGTH_SHORT).show());
+    }
+
+    private void setupScoreRecordsList() {
+        scoreRecordsAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>());
+        binding.scoreRecordsList.setAdapter(scoreRecordsAdapter);
+        binding.scoreRecordsList.setEmptyView(binding.scoreRecordsEmpty);
+        refreshScoreRecords();
+    }
+
+    private void refreshScoreRecords() {
+        List<ScoreRecord> records = scoreDatabaseHelper.getTopScores(3);
+        List<String> labels = new ArrayList<>();
+        DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault());
+
+        for (int i = 0; i < records.size(); i++) {
+            ScoreRecord record = records.get(i);
+            String date = dateFormat.format(new Date(record.getCreatedAt()));
+            labels.add(String.format(Locale.getDefault(), "#%d • %d puntos (%s)", i + 1, record.getScore(), date));
+        }
+
+        scoreRecordsAdapter.clear();
+        scoreRecordsAdapter.addAll(labels);
+        scoreRecordsAdapter.notifyDataSetChanged();
+    }
+
+    private void persistFinalScore(int finalScore) {
+        if (!viewModel.isFinalScoreRecorded()) {
+            scoreDatabaseHelper.saveScore(finalScore);
+            viewModel.markFinalScoreRecorded();
+            refreshScoreRecords();
+        }
     }
 
     private void showStartMenu() {
@@ -268,6 +312,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void showBonusScoreDialog(int baseTotal, int finalScore) {
         int bonus = finalScore - baseTotal;
+        persistFinalScore(finalScore);
         String overlay = bonus != 0
                 ? "Bonos: " + (bonus > 0 ? "+" : "") + bonus + "\nTotal: " + finalScore
                 : "Total final: " + finalScore;
@@ -543,5 +588,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         };
 
         animationHandler.post(rollingRunnable);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (scoreDatabaseHelper != null) {
+            scoreDatabaseHelper.close();
+        }
     }
 }
