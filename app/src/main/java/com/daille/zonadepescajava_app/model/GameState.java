@@ -58,6 +58,8 @@ public class GameState {
     private boolean awaitingPulpoChoice = false;
     private int pulpoSlotIndex = -1;
     private int pulpoPlacedValue = 0;
+    private boolean pendingGameOver = false;
+    private String pendingGameOverMessage = null;
     private enum PendingSelection {
         NONE,
         RED_CRAB_FROM,
@@ -160,6 +162,8 @@ public class GameState {
         awaitingPulpoChoice = false;
         pulpoSlotIndex = -1;
         pulpoPlacedValue = 0;
+        pendingGameOver = false;
+        pendingGameOverMessage = null;
 
         if (startingReserve == null || startingReserve.isEmpty()) {
             reserve.add(DieType.D6);
@@ -236,6 +240,32 @@ public class GameState {
 
     public boolean isAwaitingBlowfishDecision() {
         return awaitingBlowfishDecision;
+    }
+
+    private boolean hasPendingTurnResolutions() {
+        return isAwaitingDieLoss()
+                || awaitingAtunDecision
+                || awaitingBlueCrabDecision
+                || awaitingBlowfishDecision
+                || awaitingPezVelaDecision
+                || awaitingPezVelaResultChoice
+                || awaitingLanternChoice
+                || isAwaitingBoardSelection()
+                || awaitingArenqueChoice
+                || awaitingPulpoChoice
+                || awaitingValueAdjustment
+                || awaitingGhostShrimpDecision
+                || (pendingSelection == PendingSelection.BLUE_WHALE_PLACE && !pendingBallenaDice.isEmpty())
+                || !recentlyRevealedCards.isEmpty();
+    }
+
+    public String resolvePendingGameOverIfReady() {
+        if (pendingGameOver && !hasPendingTurnResolutions()) {
+            gameOver = true;
+            pendingGameOver = false;
+            return pendingGameOverMessage;
+        }
+        return null;
     }
 
     public boolean isAwaitingPezVelaDecision() {
@@ -1012,14 +1042,30 @@ public class GameState {
     }
 
     private String checkDefeatOrContinue(String base) {
-        if ((reserve.isEmpty() && selectedDie == null) || (!hasAnyBoardCard() && deck.isEmpty())) {
-            gameOver = true;
-            if (reserve.isEmpty() && selectedDie == null) {
-                return base + " | Sin dados en reserva: derrota.";
-            }
-            return base + " | No quedan cartas por capturar.";
+        String ending = null;
+        if (reserve.isEmpty() && selectedDie == null) {
+            ending = "Sin dados en reserva: derrota.";
+        } else if (!hasAnyBoardCard() && deck.isEmpty()) {
+            ending = "No quedan cartas por capturar.";
         }
-        return base;
+
+        if (ending == null) {
+            pendingGameOver = false;
+            pendingGameOverMessage = null;
+            return base;
+        }
+
+        String message = base + " | " + ending;
+        if (hasPendingTurnResolutions()) {
+            pendingGameOver = true;
+            pendingGameOverMessage = message;
+            return message;
+        }
+
+        gameOver = true;
+        pendingGameOver = false;
+        pendingGameOverMessage = null;
+        return message;
     }
 
     private String buildCurrentsLog(int placedValue) {
