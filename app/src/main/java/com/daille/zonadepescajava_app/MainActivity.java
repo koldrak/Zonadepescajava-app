@@ -3,13 +3,17 @@ package com.daille.zonadepescajava_app;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
+import android.content.ClipData;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.DragEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.FrameLayout;
 import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
@@ -34,6 +38,7 @@ import com.daille.zonadepescajava_app.ui.DiceImageResolver;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.text.DateFormat;
@@ -52,6 +57,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private boolean endScoringShown = false;
     private ScoreDatabaseHelper scoreDatabaseHelper;
     private ArrayAdapter<String> scoreRecordsAdapter;
+    private final List<ImageView> diceTokens = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +74,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         scoreDatabaseHelper = new ScoreDatabaseHelper(this);
         setupScoreRecordsList();
         setupMenuButtons();
+        setupDiceSelectionUi();
 
         if (viewModel.isInitialized()) {
             setupBoard();
@@ -84,29 +91,37 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void setupBoard() {
         adapter = new BoardSlotAdapter(this, Arrays.asList(gameState.getBoard()), this);
-        binding.boardRecycler.setLayoutManager(new GridLayoutManager(this, 3));
-        binding.boardRecycler.setAdapter(adapter);
+        binding.gamePanel.boardRecycler.setLayoutManager(new GridLayoutManager(this, 3));
+        binding.gamePanel.boardRecycler.setAdapter(adapter);
     }
 
     private void setupMenuButtons() {
-        binding.startNewGame.setOnClickListener(v -> {
-            viewModel.startNewGame();
+        binding.startMenu.startNewGame.setOnClickListener(v -> {
+            showDiceSelectionPanel();
+        });
+        binding.diceSelectionPanel.confirmDiceSelection.setOnClickListener(v -> {
+            List<DieType> startingReserve = extractSelectedDice();
+            if (startingReserve.size() != 7) {
+                Toast.makeText(this, "Selecciona exactamente 7 dados antes de iniciar.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            viewModel.startNewGame(startingReserve);
             gameState = viewModel.getGameState();
             endScoringShown = false;
             setupBoard();
             showGameLayout();
             refreshUi("Juego iniciado. Lanza un dado y toca una carta.");
         });
-        binding.openSettings.setOnClickListener(v ->
+        binding.startMenu.openSettings.setOnClickListener(v ->
                 Toast.makeText(this, "Configuraciones próximamente.", Toast.LENGTH_SHORT).show());
-        binding.openCollections.setOnClickListener(v ->
+        binding.startMenu.openCollections.setOnClickListener(v ->
                 Toast.makeText(this, "Colecciones disponibles próximamente.", Toast.LENGTH_SHORT).show());
     }
 
     private void setupScoreRecordsList() {
         scoreRecordsAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>());
-        binding.scoreRecordsList.setAdapter(scoreRecordsAdapter);
-        binding.scoreRecordsList.setEmptyView(binding.scoreRecordsEmpty);
+        binding.startMenu.scoreRecordsList.setAdapter(scoreRecordsAdapter);
+        binding.startMenu.scoreRecordsList.setEmptyView(binding.startMenu.scoreRecordsEmpty);
         refreshScoreRecords();
     }
 
@@ -135,13 +150,23 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void showStartMenu() {
-        binding.startMenu.setVisibility(View.VISIBLE);
-        binding.gameContent.setVisibility(View.GONE);
+        resetDiceSelection();
+        binding.startMenu.getRoot().setVisibility(View.VISIBLE);
+        binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.gamePanel.getRoot().setVisibility(View.GONE);
+    }
+
+    private void showDiceSelectionPanel() {
+        resetDiceSelection();
+        binding.startMenu.getRoot().setVisibility(View.GONE);
+        binding.diceSelectionPanel.getRoot().setVisibility(View.VISIBLE);
+        binding.gamePanel.getRoot().setVisibility(View.GONE);
     }
 
     private void showGameLayout() {
-        binding.startMenu.setVisibility(View.GONE);
-        binding.gameContent.setVisibility(View.VISIBLE);
+        binding.startMenu.getRoot().setVisibility(View.GONE);
+        binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.gamePanel.getRoot().setVisibility(View.VISIBLE);
     }
 
     private void refreshUi(String log) {
@@ -150,20 +175,20 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void refreshUi(String log, Runnable afterReveals) {
         adapter.update(Arrays.asList(gameState.getBoard()), gameState.getHighlightSlots());
-        binding.score.setText(String.format(Locale.getDefault(), "Puntaje: %d", gameState.getScore()));
-        binding.deckInfo.setText(String.format(Locale.getDefault(), "Mazo restante: %d", gameState.getDeckSize()));
-        binding.captures.setText(String.format(Locale.getDefault(), "Capturas: %d", gameState.getCaptures().size()));
+        binding.gamePanel.score.setText(String.format(Locale.getDefault(), "Puntaje: %d", gameState.getScore()));
+        binding.gamePanel.deckInfo.setText(String.format(Locale.getDefault(), "Mazo restante: %d", gameState.getDeckSize()));
+        binding.gamePanel.captures.setText(String.format(Locale.getDefault(), "Capturas: %d", gameState.getCaptures().size()));
 
-        binding.selection.setText(gameState.getSelectedDie() == null
+        binding.gamePanel.selection.setText(gameState.getSelectedDie() == null
                 ? "Selecciona un dado de la reserva"
                 : "Dado preparado: " + gameState.getSelectedDie().getLabel());
 
         updateSelectedDiePreview();
-        renderDiceCollection(binding.reserveDiceContainer, gameState.getReserve(), true);
-        renderDiceCollection(binding.lostDiceContainer, gameState.getLostDice(), false);
+        renderDiceCollection(binding.gamePanel.reserveDiceContainer, gameState.getReserve(), true);
+        renderDiceCollection(binding.gamePanel.lostDiceContainer, gameState.getLostDice(), false);
 
-        binding.lost.setText(String.format(Locale.getDefault(), "Perdidos: %d", gameState.getLostDice().size()));
-        binding.log.setText(log);
+        binding.gamePanel.lost.setText(String.format(Locale.getDefault(), "Perdidos: %d", gameState.getLostDice().size()));
+        binding.gamePanel.log.setText(log);
         List<Card> revealed = gameState.consumeRecentlyRevealedCards();
         if (revealed.isEmpty()) {
             if (afterReveals != null) {
@@ -173,6 +198,146 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             return;
         }
         showRevealedCardsSequential(new ArrayList<>(revealed), afterReveals);
+    }
+
+    private void setupDiceSelectionUi() {
+        binding.diceSelectionPanel.diceSelectionZone.setOnDragListener(createDragListener());
+        binding.diceSelectionPanel.diceWarehouseZone.setOnDragListener(createDragListener());
+        createDiceTokens();
+        binding.diceSelectionPanel.diceWarehouseZone.post(this::layoutDiceInWarehouse);
+    }
+
+    private void createDiceTokens() {
+        if (!diceTokens.isEmpty()) {
+            return;
+        }
+        List<DieType> availableTypes = Arrays.asList(DieType.D4, DieType.D6, DieType.D8, DieType.D12);
+        for (DieType type : availableTypes) {
+            for (int i = 0; i < 3; i++) {
+                ImageView dieView = new ImageView(this);
+                dieView.setLayoutParams(new ViewGroup.LayoutParams(dpToPx(70), dpToPx(70)));
+                dieView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                dieView.setTag(type);
+                Bitmap preview = diceImageResolver.getTypePreview(type);
+                dieView.setImageBitmap(preview);
+                dieView.setOnTouchListener(this::handleDiceTouch);
+                diceTokens.add(dieView);
+                binding.diceSelectionPanel.diceWarehouseZone.addView(dieView);
+            }
+        }
+        updateSelectionCounter();
+    }
+
+    private boolean handleDiceTouch(View view, MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+            ClipData data = ClipData.newPlainText("die", ((DieType) view.getTag()).name());
+            View.DragShadowBuilder shadowBuilder = new View.DragShadowBuilder(view);
+            view.startDragAndDrop(data, shadowBuilder, view, 0);
+            view.setVisibility(View.INVISIBLE);
+            return true;
+        }
+        return false;
+    }
+
+    private View.OnDragListener createDragListener() {
+        return (v, event) -> {
+            View draggedView = (View) event.getLocalState();
+            if (!(draggedView instanceof ImageView)) {
+                return false;
+            }
+            switch (event.getAction()) {
+                case DragEvent.ACTION_DROP:
+                    FrameLayout target = (FrameLayout) v;
+                    boolean isSelectionZone = target == binding.diceSelectionPanel.diceSelectionZone;
+                    boolean alreadyInTarget = draggedView.getParent() == target;
+                    if (isSelectionZone && !alreadyInTarget && countDiceInContainer(target) >= 7) {
+                        Toast.makeText(this, "La zona de selección solo admite 7 dados.", Toast.LENGTH_SHORT).show();
+                        draggedView.setVisibility(View.VISIBLE);
+                        return true;
+                    }
+                    moveDieToContainer((ImageView) draggedView, target, event.getX(), event.getY());
+                    return true;
+                case DragEvent.ACTION_DRAG_ENDED:
+                    if (!event.getResult()) {
+                        draggedView.setVisibility(View.VISIBLE);
+                    }
+                    return true;
+                default:
+                    return true;
+            }
+        };
+    }
+
+    private void moveDieToContainer(ImageView dieView, FrameLayout container, float x, float y) {
+        ViewGroup parent = (ViewGroup) dieView.getParent();
+        if (parent != null) {
+            parent.removeView(dieView);
+        }
+        container.addView(dieView);
+        container.post(() -> {
+            float targetX = x - dieView.getWidth() / 2f;
+            float targetY = y - dieView.getHeight() / 2f;
+            targetX = Math.max(0, Math.min(targetX, container.getWidth() - dieView.getWidth()));
+            targetY = Math.max(0, Math.min(targetY, container.getHeight() - dieView.getHeight()));
+            dieView.setX(targetX);
+            dieView.setY(targetY);
+            dieView.setVisibility(View.VISIBLE);
+        });
+        updateSelectionCounter();
+    }
+
+    private void layoutDiceInWarehouse() {
+        int containerWidth = binding.diceSelectionPanel.diceWarehouseZone.getWidth();
+        if (containerWidth == 0) return;
+
+        int dieSize = dpToPx(70);
+        int spacing = dpToPx(12);
+        int perRow = Math.max(1, (containerWidth - spacing) / (dieSize + spacing));
+
+        for (int i = 0; i < diceTokens.size(); i++) {
+            ImageView die = diceTokens.get(i);
+            float centerX = spacing + (i % perRow) * (dieSize + spacing) + dieSize / 2f;
+            float centerY = spacing + (i / perRow) * (dieSize + spacing) + dieSize / 2f;
+            moveDieToContainer(die, binding.diceSelectionPanel.diceWarehouseZone, centerX, centerY);
+        }
+    }
+
+    private void resetDiceSelection() {
+        binding.diceSelectionPanel.diceSelectionZone.post(this::layoutDiceInWarehouse);
+    }
+
+    private int countDiceInContainer(FrameLayout container) {
+        int count = 0;
+        for (int i = 0; i < container.getChildCount(); i++) {
+            if (container.getChildAt(i) instanceof ImageView) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private List<DieType> extractSelectedDice() {
+        if (diceTokens.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<DieType> selected = new ArrayList<>();
+        for (int i = 0; i < binding.diceSelectionPanel.diceSelectionZone.getChildCount(); i++) {
+            View child = binding.diceSelectionPanel.diceSelectionZone.getChildAt(i);
+            if (child instanceof ImageView) {
+                selected.add((DieType) child.getTag());
+            }
+        }
+        return selected;
+    }
+
+    private void updateSelectionCounter() {
+        int selected = countDiceInContainer(binding.diceSelectionPanel.diceSelectionZone);
+        binding.diceSelectionPanel.diceSelectionCounter.setText(String.format(Locale.getDefault(), "Dados seleccionados: %d/7", selected));
+    }
+
+    private int dpToPx(int dp) {
+        float density = getResources().getDisplayMetrics().density;
+        return Math.round(dp * density);
     }
 
     private String buildReserveText() {
@@ -235,16 +400,16 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void updateSelectedDiePreview() {
         if (gameState.getSelectedDie() == null) {
-            binding.selectedDieImage.setVisibility(View.GONE);
+            binding.gamePanel.selectedDieImage.setVisibility(View.GONE);
             return;
         }
 
         Bitmap face = diceImageResolver.getFace(gameState.getSelectedDie());
         if (face != null) {
-            binding.selectedDieImage.setVisibility(View.VISIBLE);
-            binding.selectedDieImage.setImageBitmap(face);
+            binding.gamePanel.selectedDieImage.setVisibility(View.VISIBLE);
+            binding.gamePanel.selectedDieImage.setImageBitmap(face);
         } else {
-            binding.selectedDieImage.setVisibility(View.GONE);
+            binding.gamePanel.selectedDieImage.setVisibility(View.GONE);
         }
     }
 
@@ -561,8 +726,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 }
                 Bitmap preview = diceImageResolver.randomFace(type);
                 if (preview != null) {
-                    binding.selectedDieImage.setVisibility(View.VISIBLE);
-                    binding.selectedDieImage.setImageBitmap(preview);
+                    binding.gamePanel.selectedDieImage.setVisibility(View.VISIBLE);
+                    binding.gamePanel.selectedDieImage.setImageBitmap(preview);
                 }
                 animationHandler.postDelayed(this, 70);
             }
@@ -614,8 +779,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             completePlacement(position);
             return;
         }
-        View cardView = binding.boardRecycler.getLayoutManager() != null
-                ? binding.boardRecycler.getLayoutManager().findViewByPosition(position)
+        View cardView = binding.gamePanel.boardRecycler.getLayoutManager() != null
+                ? binding.gamePanel.boardRecycler.getLayoutManager().findViewByPosition(position)
                 : null;
         if (cardView == null) {
             completePlacement(position);
