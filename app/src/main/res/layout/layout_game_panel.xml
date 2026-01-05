@@ -46,6 +46,31 @@
                 tools:text="Capturas: 0" />
         </LinearLayout>
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingVertical="8dp">
+
+            <ImageView
+                android:id="@+id/cardumenDeckImage"
+                android:layout_width="80dp"
+                android:layout_height="112dp"
+                android:contentDescription="@string/description"
+                android:scaleType="centerCrop"
+                android:src="@drawable/cartabocaabajo" />
+
+            <TextView
+                android:id="@+id/cardumenDeckLabel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="Mazo de cardumen"
+                android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+        </LinearLayout>
+
         <TextView
             android:id="@+id/log"
             android:layout_width="match_parent"
@@ -129,6 +154,30 @@
                 android:id="@+id/lostDiceContainer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingVertical="4dp" />
+        </HorizontalScrollView>
+
+        <TextView
+            android:id="@+id/captureZoneTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="zona de capturas"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+
+        <HorizontalScrollView
+            android:id="@+id/captureScroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/captureCardsContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingVertical="4dp" />
         </HorizontalScrollView>

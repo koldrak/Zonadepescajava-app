@@ -24,6 +24,16 @@
             android:id="@+id/gamePanel"
             android:visibility="gone"
             layout="@layout/layout_game_panel" />
+
+        <FrameLayout
+            android:id="@+id/animationOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:importantForAccessibility="no"
+            android:layout_gravity="center"
+            android:clipChildren="false"
+            android:clipToPadding="false" />
     </FrameLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
