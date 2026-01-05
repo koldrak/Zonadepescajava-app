@@ -66,9 +66,11 @@ public class GameState {
         NAUTILUS_FIRST,
         NAUTILUS_SECOND,
         BLOWFISH,
+        PIRANA_TARGET,
         GHOST_TARGET,
         GHOST_SHRIMP_FIRST,
         GHOST_SHRIMP_SECOND,
+        WHITE_SHARK_TARGET,
         SALMON_FLIP,
         CLOWNFISH_PROTECT,
         PERCEBES_MOVE,
@@ -370,6 +372,14 @@ public class GameState {
                     if (!board[i].getDice().isEmpty()) highlight.add(i);
                 }
                 break;
+            case PIRANA_TARGET:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    if (board[idx].getCard() != null && board[idx].isFaceUp()
+                            && board[idx].getCard().getType() == CardType.PEZ) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
             case GHOST_TARGET:
                 for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
                     if (board[idx].getCard() != null && board[idx].isFaceUp()) {
@@ -388,6 +398,13 @@ public class GameState {
                 for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
                     if (board[idx].getCard() != null && !board[idx].isFaceUp()
                             && idx != ghostShrimpFirstChoice) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case WHITE_SHARK_TARGET:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    if (board[idx].getCard() != null && board[idx].isFaceUp()) {
                         highlight.add(idx);
                     }
                 }
@@ -513,6 +530,9 @@ public class GameState {
             case BLOWFISH:
                 result = inflateChosenDie(slotIndex);
                 break;
+            case PIRANA_TARGET:
+                result = resolvePiranhaBite(pendingSelectionActor, slotIndex);
+                break;
             case GHOST_TARGET:
                 result = hideChosenAdjacent(slotIndex);
                 break;
@@ -524,6 +544,9 @@ public class GameState {
                 break;
             case SALMON_FLIP:
                 result = flipChosenFaceDown(slotIndex);
+                break;
+            case WHITE_SHARK_TARGET:
+                result = devourChosenFaceUp(pendingSelectionActor, slotIndex);
                 break;
             case CLOWNFISH_PROTECT:
                 result = protectChosenCard(slotIndex);
@@ -1467,7 +1490,7 @@ public class GameState {
                 result = startBlueWhaleReposition(slotIndex);
                 break;
             case TIBURON_BLANCO:
-                result = devourAdjacentFaceUp(slotIndex);
+                result = startWhiteSharkSelection(slotIndex);
                 break;
             case MERO_GIGANTE:
                 result = flipAdjacentCardsDown(slotIndex);
@@ -2040,33 +2063,57 @@ public class GameState {
     }
 
     private String biteAdjacentSmallFish(int slotIndex) {
+        List<Integer> targets = new ArrayList<>();
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
             if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() == CardType.PEZ) {
-                Card removed = adj.getCard();
-                List<Die> preservedDice = new ArrayList<>(adj.getDice());
-                failedDiscards.add(removed);
-                adj.clearDice();
-                adj.setCard(deck.isEmpty() ? null : deck.pop());
-                adj.setFaceUp(false);
-                adj.setStatus(new SlotStatus());
-                StringBuilder extra = new StringBuilder();
-                for (Die d : preservedDice) {
-                    if (adj.getDice().size() < 2) {
-                        String reveal = addDieToSlot(idx, d);
-                        if (!reveal.isEmpty()) {
-                            if (extra.length() > 0) extra.append(" ");
-                            extra.append(reveal);
-                        }
-                    } else {
-                        reserve.add(d.getType());
-                    }
-                }
-                String base = "Piraña descartó a " + removed.getName() + " sin perder sus dados.";
-                return extra.length() == 0 ? base : base + " " + extra;
+                targets.add(idx);
             }
         }
-        return "";
+        if (targets.isEmpty()) {
+            return "No hay peces pequeños boca arriba adyacentes para la piraña.";
+        }
+        if (targets.size() == 1) {
+            return resolvePiranhaBite(slotIndex, targets.get(0));
+        }
+        return queueableSelection(
+                PendingSelection.PIRANA_TARGET,
+                slotIndex,
+                "Piraña: elige un pez pequeño adyacente boca arriba para descartarlo.");
+    }
+
+    private String resolvePiranhaBite(int actorIndex, int targetIndex) {
+        if (!adjacentIndices(actorIndex, true).contains(targetIndex)) {
+            return "Elige un pez pequeño adyacente a la piraña.";
+        }
+        BoardSlot adj = board[targetIndex];
+        if (adj.getCard() == null || !adj.isFaceUp() || adj.getCard().getType() != CardType.PEZ) {
+            return "Debes elegir un pez pequeño boca arriba.";
+        }
+        Card removed = adj.getCard();
+        List<Die> preservedDice = new ArrayList<>(adj.getDice());
+        failedDiscards.add(removed);
+        adj.clearDice();
+        adj.setCard(deck.isEmpty() ? null : deck.pop());
+        adj.setFaceUp(false);
+        adj.setStatus(new SlotStatus());
+        StringBuilder extra = new StringBuilder();
+        for (Die d : preservedDice) {
+            if (adj.getDice().size() < 2) {
+                String reveal = addDieToSlot(targetIndex, d);
+                if (!reveal.isEmpty()) {
+                    if (extra.length() > 0) extra.append(" ");
+                    extra.append(reveal);
+                }
+            } else {
+                reserve.add(d.getType());
+            }
+        }
+        String base = "Piraña descartó a " + removed.getName() + " sin perder sus dados.";
+        if (pendingSelection == PendingSelection.PIRANA_TARGET) {
+            clearPendingSelection();
+        }
+        return extra.length() == 0 ? base : base + " " + extra;
     }
 
     private String hideAdjacentFaceUp(int slotIndex) {
@@ -2359,36 +2406,60 @@ public class GameState {
         return "Rémora se adhirió a un pez grande.";
     }
 
-    private String devourAdjacentFaceUp(int slotIndex) {
+    private String startWhiteSharkSelection(int slotIndex) {
+        List<Integer> targets = new ArrayList<>();
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
             if (adj.getCard() != null && adj.isFaceUp()) {
-                List<Die> dice = new ArrayList<>(adj.getDice());
-                failedDiscards.add(adj.getCard());
-                adj.clearDice();
-                adj.setCard(deck.isEmpty() ? null : deck.pop());
-                adj.setFaceUp(false);
-                adj.setStatus(new SlotStatus());
-                BoardSlot shark = board[slotIndex];
-                StringBuilder reveal = new StringBuilder();
-                for (Die d : dice) {
-                    if (shark.getDice().size() < 2) {
-                        String extra = addDieToSlot(slotIndex, d);
-                        if (!extra.isEmpty()) {
-                            if (reveal.length() > 0) reveal.append(" ");
-                            reveal.append(extra);
-                        }
-                    } else {
-                        reserve.add(d.getType());
-                    }
-                }
-                recomputeBottleAdjustments();
-                return reveal.length() == 0
-                        ? "Tiburón blanco devoró una carta adyacente."
-                        : "Tiburón blanco devoró una carta adyacente. " + reveal;
+                targets.add(idx);
             }
         }
-        return "";
+        if (targets.isEmpty()) {
+            return "No hay cartas boca arriba adyacentes para devorar.";
+        }
+        if (targets.size() == 1) {
+            return devourChosenFaceUp(slotIndex, targets.get(0));
+        }
+        return queueableSelection(
+                PendingSelection.WHITE_SHARK_TARGET,
+                slotIndex,
+                "Tiburón blanco: elige una carta adyacente boca arriba para devorarla.");
+    }
+
+    private String devourChosenFaceUp(int sharkSlot, int targetIndex) {
+        if (!adjacentIndices(sharkSlot, true).contains(targetIndex)) {
+            return "Elige una carta adyacente al tiburón blanco.";
+        }
+        BoardSlot adj = board[targetIndex];
+        if (adj.getCard() == null || !adj.isFaceUp()) {
+            return "Debes elegir una carta boca arriba para devorar.";
+        }
+        List<Die> dice = new ArrayList<>(adj.getDice());
+        failedDiscards.add(adj.getCard());
+        adj.clearDice();
+        adj.setCard(deck.isEmpty() ? null : deck.pop());
+        adj.setFaceUp(false);
+        adj.setStatus(new SlotStatus());
+        BoardSlot shark = board[sharkSlot];
+        StringBuilder reveal = new StringBuilder();
+        for (Die d : dice) {
+            if (shark.getDice().size() < 2) {
+                String extra = addDieToSlot(sharkSlot, d);
+                if (!extra.isEmpty()) {
+                    if (reveal.length() > 0) reveal.append(" ");
+                    reveal.append(extra);
+                }
+            } else {
+                reserve.add(d.getType());
+            }
+        }
+        recomputeBottleAdjustments();
+        if (pendingSelection == PendingSelection.WHITE_SHARK_TARGET) {
+            clearPendingSelection();
+        }
+        return reveal.length() == 0
+                ? "Tiburón blanco devoró una carta adyacente."
+                : "Tiburón blanco devoró una carta adyacente. " + reveal;
     }
 
     private String flipAdjacentCardsDown(int slotIndex) {

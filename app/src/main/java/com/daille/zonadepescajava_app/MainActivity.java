@@ -1,5 +1,8 @@
 package com.daille.zonadepescajava_app;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ObjectAnimator;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
@@ -142,6 +145,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void refreshUi(String log) {
+        refreshUi(log, null);
+    }
+
+    private void refreshUi(String log, Runnable afterReveals) {
         adapter.update(Arrays.asList(gameState.getBoard()), gameState.getHighlightSlots());
         binding.score.setText(String.format(Locale.getDefault(), "Puntaje: %d", gameState.getScore()));
         binding.deckInfo.setText(String.format(Locale.getDefault(), "Mazo restante: %d", gameState.getDeckSize()));
@@ -157,8 +164,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
         binding.lost.setText(String.format(Locale.getDefault(), "Perdidos: %d", gameState.getLostDice().size()));
         binding.log.setText(log);
-        showRevealedCards();
-        checkForFinalScoring();
+        List<Card> revealed = gameState.consumeRecentlyRevealedCards();
+        if (revealed.isEmpty()) {
+            if (afterReveals != null) {
+                afterReveals.run();
+            }
+            checkForFinalScoring();
+            return;
+        }
+        showRevealedCardsSequential(new ArrayList<>(revealed), afterReveals);
     }
 
     private String buildReserveText() {
@@ -176,7 +190,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     @Override
     public void onSlotTapped(int position) {
-        String result;
         if (gameState.isAwaitingValueAdjustment()) {
             promptValueAdjustmentChoice();
             return;
@@ -202,43 +215,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             return;
         }
         if (gameState.isAwaitingBoardSelection()) {
-            result = gameState.handleBoardSelection(position);
+            handleGameResult(gameState.handleBoardSelection(position));
         } else if (gameState.isAwaitingLanternChoice()) {
-            result = gameState.chooseLanternTarget(position);
+            handleGameResult(gameState.chooseLanternTarget(position));
         } else {
-            result = gameState.placeSelectedDie(position);
-        }
-        refreshUi(result);
-        Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
-        if (gameState.isAwaitingValueAdjustment()) {
-            promptValueAdjustmentChoice();
-        }
-        if (gameState.isAwaitingBlueCrabDecision()) {
-            promptBlueCrabDecision();
-        }
-        if (gameState.isAwaitingBlowfishDecision()) {
-            promptBlowfishDecision();
-        }
-        if (gameState.isAwaitingPezVelaDecision()) {
-            promptPezVelaDecision();
-        }
-        if (gameState.isAwaitingPezVelaResultChoice()) {
-            promptPezVelaResultChoice();
-        }
-        if (gameState.isAwaitingGhostShrimpDecision()) {
-            promptGhostShrimpDecision();
-        }
-        if (gameState.isAwaitingPulpoChoice()) {
-            promptPulpoChoice();
-        }
-        if (gameState.isAwaitingArenqueChoice()) {
-            promptArenqueChoice();
-        }
-        if (gameState.isAwaitingAtunDecision()) {
-            promptAtunDecision();
-        }
-        if (gameState.isAwaitingDieLoss()) {
-            promptDieLossChoice();
+            animatePlacement(position);
         }
     }
 
@@ -267,15 +248,20 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
     }
 
-    private void showRevealedCards() {
-        List<com.daille.zonadepescajava_app.model.Card> revealed = gameState.consumeRecentlyRevealedCards();
-        for (com.daille.zonadepescajava_app.model.Card card : revealed) {
-            Bitmap image = cardImageResolver.getImageFor(card, true);
-            if (image == null) {
-                image = cardImageResolver.getCardBack();
+    private void showRevealedCardsSequential(List<Card> revealed, Runnable onComplete) {
+        if (revealed.isEmpty()) {
+            if (onComplete != null) {
+                onComplete.run();
             }
-            CardFullscreenDialog.show(this, image);
+            checkForFinalScoring();
+            return;
         }
+        Card card = revealed.remove(0);
+        Bitmap image = cardImageResolver.getImageFor(card, true);
+        if (image == null) {
+            image = cardImageResolver.getCardBack();
+        }
+        CardFullscreenDialog.show(this, image, null, () -> showRevealedCardsSequential(revealed, onComplete));
     }
 
     private void checkForFinalScoring() {
@@ -330,8 +316,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void handleReserveDieTap(DieType type) {
         startRollingAnimation(type);
         String msg = gameState.rollFromReserve(type);
-        refreshUi(msg);
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+        handleGameResult(msg);
     }
 
     private void renderDiceCollection(View container, Iterable<?> dice, boolean allowReserveTap) {
@@ -379,8 +364,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setTitle("Elige qué dado perder")
                 .setItems(labels, (dialog, which) -> {
                     String msg = gameState.chooseDieToLose(which);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    handleGameResult(msg);
                 })
                 .setCancelable(false)
                 .show();
@@ -393,13 +377,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setMessage("¿Quieres relanzar el dado recién lanzado?")
                 .setPositiveButton("Relanzar", (dialog, which) -> {
                     String msg = gameState.chooseAtunReroll(true);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    handleGameResult(msg);
                 })
                 .setNegativeButton("Conservar", (dialog, which) -> {
                     String msg = gameState.chooseAtunReroll(false);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    handleGameResult(msg);
                 })
                 .setCancelable(false)
                 .show();
@@ -412,16 +394,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setMessage("¿Quieres activar la habilidad para ajustar un dado ±1?")
                 .setPositiveButton("Usar", (dialog, which) -> {
                     String msg = gameState.chooseBlueCrabUse(true);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
-                    if (gameState.isAwaitingValueAdjustment()) {
-                        promptValueAdjustmentChoice();
-                    }
+                    handleGameResult(msg);
                 })
                 .setNegativeButton("Omitir", (dialog, which) -> {
                     String msg = gameState.chooseBlueCrabUse(false);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    handleGameResult(msg);
                 })
                 .setCancelable(false)
                 .show();
@@ -434,13 +411,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setMessage("¿Quieres inflar un dado al máximo?")
                 .setPositiveButton("Usar", (dialog, which) -> {
                     String msg = gameState.chooseBlowfishUse(true);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    handleGameResult(msg);
                 })
                 .setNegativeButton("Omitir", (dialog, which) -> {
                     String msg = gameState.chooseBlowfishUse(false);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    handleGameResult(msg);
                 })
                 .setCancelable(false)
                 .show();
@@ -457,19 +432,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setMessage("¿Quieres sumar o restar " + amount + " al dado seleccionado?")
                 .setPositiveButton("Sumar", (dialog, which) -> {
                     String msg = gameState.chooseValueAdjustment(true);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
-                    if (gameState.isAwaitingValueAdjustment()) {
-                        promptValueAdjustmentChoice();
-                    }
+                    handleGameResult(msg);
                 })
                 .setNegativeButton("Restar", (dialog, which) -> {
                     String msg = gameState.chooseValueAdjustment(false);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
-                    if (gameState.isAwaitingValueAdjustment()) {
-                        promptValueAdjustmentChoice();
-                    }
+                    handleGameResult(msg);
                 })
                 .setCancelable(false)
                 .show();
@@ -483,13 +450,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setMessage("Viste: " + seen + ". ¿Intercambiar sus posiciones?")
                 .setPositiveButton("Intercambiar", (dialog, which) -> {
                     String msg = gameState.resolveGhostShrimpSwap(true);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    handleGameResult(msg);
                 })
                 .setNegativeButton("Conservar", (dialog, which) -> {
                     String msg = gameState.resolveGhostShrimpSwap(false);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    handleGameResult(msg);
                 })
                 .setCancelable(false)
                 .show();
@@ -504,8 +469,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setTitle("Pulpo")
                 .setItems(items, (dialog, which) -> {
                     String msg = gameState.choosePulpoReplacement(which);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    handleGameResult(msg);
                 })
                 .setCancelable(false)
                 .show();
@@ -521,16 +485,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setMessage("Resultado actual: " + current + ". ¿Relanzar?")
                 .setPositiveButton("Relanzar", (dialog, which) -> {
                     String msg = gameState.choosePezVelaReroll(true);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
-                    if (gameState.isAwaitingPezVelaResultChoice()) {
-                        promptPezVelaResultChoice();
-                    }
+                    handleGameResult(msg);
                 })
                 .setNegativeButton("Conservar", (dialog, which) -> {
                     String msg = gameState.choosePezVelaReroll(false);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    handleGameResult(msg);
                 })
                 .setCancelable(false)
                 .show();
@@ -549,13 +508,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setMessage("Elige qué resultado conservar")
                 .setPositiveButton("Nuevo (" + rerolled + ")", (dialog, which) -> {
                     String msg = gameState.choosePezVelaResult(true);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    handleGameResult(msg);
                 })
                 .setNegativeButton("Anterior (" + previous + ")", (dialog, which) -> {
                     String msg = gameState.choosePezVelaResult(false);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    handleGameResult(msg);
                 })
                 .setCancelable(false)
                 .show();
@@ -576,13 +533,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                         if (checked[i]) selected.add(i);
                     }
                     String msg = gameState.chooseArenqueFish(selected);
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    handleGameResult(msg);
                 })
                 .setNegativeButton("Cancelar", (dialog, which) -> {
                     String msg = gameState.chooseArenqueFish(java.util.Collections.emptyList());
-                    refreshUi(msg);
-                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                    handleGameResult(msg);
                 })
                 .setCancelable(false)
                 .show();
@@ -614,6 +569,82 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         };
 
         animationHandler.post(rollingRunnable);
+    }
+
+    private void handleGameResult(String message) {
+        refreshUi(message, this::triggerPendingPrompts);
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+    }
+
+    private void triggerPendingPrompts() {
+        if (gameState.isAwaitingValueAdjustment()) {
+            promptValueAdjustmentChoice();
+        }
+        if (gameState.isAwaitingBlueCrabDecision()) {
+            promptBlueCrabDecision();
+        }
+        if (gameState.isAwaitingBlowfishDecision()) {
+            promptBlowfishDecision();
+        }
+        if (gameState.isAwaitingPezVelaDecision()) {
+            promptPezVelaDecision();
+        }
+        if (gameState.isAwaitingPezVelaResultChoice()) {
+            promptPezVelaResultChoice();
+        }
+        if (gameState.isAwaitingGhostShrimpDecision()) {
+            promptGhostShrimpDecision();
+        }
+        if (gameState.isAwaitingPulpoChoice()) {
+            promptPulpoChoice();
+        }
+        if (gameState.isAwaitingArenqueChoice()) {
+            promptArenqueChoice();
+        }
+        if (gameState.isAwaitingAtunDecision()) {
+            promptAtunDecision();
+        }
+        if (gameState.isAwaitingDieLoss()) {
+            promptDieLossChoice();
+        }
+    }
+
+    private void animatePlacement(int position) {
+        if (gameState.getSelectedDie() == null) {
+            completePlacement(position);
+            return;
+        }
+        View cardView = binding.boardRecycler.getLayoutManager() != null
+                ? binding.boardRecycler.getLayoutManager().findViewByPosition(position)
+                : null;
+        if (cardView == null) {
+            completePlacement(position);
+            return;
+        }
+        ObjectAnimator firstHalf = ObjectAnimator.ofFloat(cardView, View.ROTATION_Y, 0f, 90f);
+        firstHalf.setDuration(150);
+        ObjectAnimator secondHalf = ObjectAnimator.ofFloat(cardView, View.ROTATION_Y, 90f, 0f);
+        secondHalf.setDuration(150);
+        firstHalf.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                cardView.setRotationY(90f);
+                completePlacement(position);
+                cardView.post(secondHalf::start);
+            }
+        });
+        secondHalf.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                cardView.setRotationY(0f);
+            }
+        });
+        firstHalf.start();
+    }
+
+    private void completePlacement(int position) {
+        String result = gameState.placeSelectedDie(position);
+        handleGameResult(result);
     }
 
     @Override
