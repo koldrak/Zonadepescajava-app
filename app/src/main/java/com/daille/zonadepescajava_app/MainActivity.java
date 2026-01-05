@@ -14,6 +14,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
@@ -59,6 +60,17 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private ScoreDatabaseHelper scoreDatabaseHelper;
     private ArrayAdapter<String> scoreRecordsAdapter;
     private final List<ImageView> diceTokens = new ArrayList<>();
+    private final Card[] lastBoardCards = new Card[9];
+
+    private static class CaptureAnimationRequest {
+        private final Card card;
+        private final int slotIndex;
+
+        CaptureAnimationRequest(Card card, int slotIndex) {
+            this.card = card;
+            this.slotIndex = slotIndex;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,6 +91,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
         if (viewModel.isInitialized()) {
             setupBoard();
+            snapshotBoardState();
             if (viewModel.isFinalScoreRecorded()) {
                 showStartMenu();
             } else {
@@ -110,6 +123,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             gameState = viewModel.getGameState();
             endScoringShown = false;
             setupBoard();
+            snapshotBoardState();
             showGameLayout();
             refreshUi("Juego iniciado. Lanza un dado y toca una carta.");
         });
@@ -175,6 +189,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void refreshUi(String log, Runnable afterReveals) {
+        List<CaptureAnimationRequest> captureAnimations = collectCaptureAnimations();
+        List<Integer> refillSlots = collectRefillSlots();
         adapter.update(Arrays.asList(gameState.getBoard()), gameState.getHighlightSlots());
         binding.gamePanel.score.setText(String.format(Locale.getDefault(), "Puntaje: %d", gameState.getScore()));
         binding.gamePanel.deckInfo.setText(String.format(Locale.getDefault(), "Mazo restante: %d", gameState.getDeckSize()));
@@ -194,6 +210,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             log = pendingGameOver;
         }
         binding.gamePanel.log.setText(log);
+        renderCapturedCards();
+        binding.getRoot().post(() ->
+                runCaptureAnimationQueue(new ArrayList<>(captureAnimations),
+                        () -> runRefillAnimationQueue(new ArrayList<>(refillSlots), null)));
+        snapshotBoardState();
         List<Card> revealed = gameState.consumeRecentlyRevealedCards();
         if (revealed.isEmpty()) {
             if (afterReveals != null) {
@@ -208,6 +229,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void setupDiceSelectionUi() {
         binding.diceSelectionPanel.diceSelectionZone.setOnDragListener(createDragListener());
         binding.diceSelectionPanel.diceWarehouseZone.setOnDragListener(createDragListener());
+        binding.diceSelectionPanel.diceWarehouseZone.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) ->
+                layoutDiceInWarehouse());
         createDiceTokens();
         binding.diceSelectionPanel.diceWarehouseZone.post(this::layoutDiceInWarehouse);
     }
@@ -293,7 +316,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void layoutDiceInWarehouse() {
         int containerWidth = binding.diceSelectionPanel.diceWarehouseZone.getWidth();
-        if (containerWidth == 0) return;
+        if (containerWidth == 0) {
+            binding.diceSelectionPanel.diceWarehouseZone.post(this::layoutDiceInWarehouse);
+            return;
+        }
 
         int dieSize = dpToPx(70);
         int spacing = dpToPx(12);
@@ -536,6 +562,216 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             chip.setContentDescription(contentDescription);
             group.addView(chip);
         }
+    }
+
+    private List<CaptureAnimationRequest> collectCaptureAnimations() {
+        List<CaptureAnimationRequest> events = new ArrayList<>();
+        BoardSlot[] board = gameState.getBoard();
+        for (int i = 0; i < board.length; i++) {
+            Card previous = lastBoardCards[i];
+            Card current = board[i].getCard();
+            if (previous != null && previous != current && gameState.getCaptures().contains(previous)) {
+                events.add(new CaptureAnimationRequest(previous, i));
+            }
+        }
+        return events;
+    }
+
+    private List<Integer> collectRefillSlots() {
+        List<Integer> slots = new ArrayList<>();
+        BoardSlot[] board = gameState.getBoard();
+        for (int i = 0; i < board.length; i++) {
+            Card previous = lastBoardCards[i];
+            Card current = board[i].getCard();
+            if (current != null && current != previous && !wasCardOnBoard(current)) {
+                slots.add(i);
+            }
+        }
+        return slots;
+    }
+
+    private boolean wasCardOnBoard(Card card) {
+        if (card == null) return false;
+        for (Card previous : lastBoardCards) {
+            if (previous == card) return true;
+        }
+        return false;
+    }
+
+    private void snapshotBoardState() {
+        BoardSlot[] board = gameState.getBoard();
+        for (int i = 0; i < board.length; i++) {
+            lastBoardCards[i] = board[i].getCard();
+        }
+    }
+
+    private void renderCapturedCards() {
+        ViewGroup container = binding.gamePanel.captureCardsContainer;
+        container.removeAllViews();
+        int cardWidth = dpToPx(120);
+        int cardHeight = dpToPx(170);
+        int margin = dpToPx(6);
+
+        for (Card card : gameState.getCaptures()) {
+            Bitmap image = cardImageResolver.getImageFor(card, true);
+            if (image == null) {
+                image = cardImageResolver.getCardBack();
+            }
+            ImageView cardView = new ImageView(this);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(cardWidth, cardHeight);
+            params.setMargins(margin, 0, margin, 0);
+            cardView.setLayoutParams(params);
+            cardView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            cardView.setImageBitmap(image);
+            cardView.setContentDescription(card != null ? card.getName() : getString(R.string.card_image_content_description));
+            container.addView(cardView);
+        }
+    }
+
+    private void runCaptureAnimationQueue(List<CaptureAnimationRequest> queue, Runnable onComplete) {
+        if (queue == null || queue.isEmpty()) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+        CaptureAnimationRequest next = queue.remove(0);
+        View source = binding.gamePanel.boardRecycler.getLayoutManager() != null
+                ? binding.gamePanel.boardRecycler.getLayoutManager().findViewByPosition(next.slotIndex)
+                : null;
+        if (source == null) {
+            runCaptureAnimationQueue(queue, onComplete);
+            return;
+        }
+        animateCardToCaptureZone(source, next.card, () -> runCaptureAnimationQueue(queue, onComplete));
+    }
+
+    private void animateCardToCaptureZone(View sourceView, Card card, Runnable onComplete) {
+        FrameLayout overlay = binding.animationOverlay;
+        if (overlay == null || card == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+        Bitmap image = cardImageResolver.getImageFor(card, true);
+        if (image == null) {
+            image = cardImageResolver.getCardBack();
+        }
+        int width = sourceView.getWidth();
+        int height = sourceView.getHeight();
+        if (width == 0 || height == 0) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        ImageView floating = createFloatingCard(image, width, height);
+        int[] overlayLocation = new int[2];
+        overlay.getLocationOnScreen(overlayLocation);
+        int[] sourceLocation = new int[2];
+        sourceView.getLocationOnScreen(sourceLocation);
+        floating.setX(sourceLocation[0] - overlayLocation[0]);
+        floating.setY(sourceLocation[1] - overlayLocation[1]);
+        overlay.addView(floating);
+
+        int[] targetLocation = new int[2];
+        binding.gamePanel.captureScroll.getLocationOnScreen(targetLocation);
+        float targetX = targetLocation[0] - overlayLocation[0] + dpToPx(8);
+        float targetY = targetLocation[1] - overlayLocation[1] + dpToPx(4);
+
+        floating.animate()
+                .x(targetX)
+                .y(targetY)
+                .setDuration(400)
+                .withEndAction(() -> {
+                    overlay.removeView(floating);
+                    if (onComplete != null) {
+                        onComplete.run();
+                    }
+                })
+                .start();
+    }
+
+    private void runRefillAnimationQueue(List<Integer> slots, Runnable onComplete) {
+        if (slots == null || slots.isEmpty()) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+        Integer slotIndex = slots.remove(0);
+        animateDeckToSlot(slotIndex, () -> runRefillAnimationQueue(slots, onComplete));
+    }
+
+    private void animateDeckToSlot(int slotIndex, Runnable onComplete) {
+        FrameLayout overlay = binding.animationOverlay;
+        View deckView = binding.gamePanel.cardumenDeckImage;
+        if (overlay == null || deckView == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+        View target = binding.gamePanel.boardRecycler.getLayoutManager() != null
+                ? binding.gamePanel.boardRecycler.getLayoutManager().findViewByPosition(slotIndex)
+                : null;
+        if (target == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        Bitmap image = cardImageResolver.getCardBack();
+        int width = target.getWidth();
+        int height = target.getHeight();
+        if (width == 0 || height == 0) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        ImageView floating = createFloatingCard(image, width, height);
+        int[] overlayLocation = new int[2];
+        overlay.getLocationOnScreen(overlayLocation);
+        int[] deckLocation = new int[2];
+        deckView.getLocationOnScreen(deckLocation);
+        int[] targetLocation = new int[2];
+        target.getLocationOnScreen(targetLocation);
+
+        float startX = deckLocation[0] - overlayLocation[0] + deckView.getWidth() / 2f - width / 2f;
+        float startY = deckLocation[1] - overlayLocation[1] + deckView.getHeight() / 2f - height / 2f;
+        float endX = targetLocation[0] - overlayLocation[0];
+        float endY = targetLocation[1] - overlayLocation[1];
+
+        floating.setX(startX);
+        floating.setY(startY);
+        overlay.addView(floating);
+
+        floating.animate()
+                .x(endX)
+                .y(endY)
+                .setDuration(350)
+                .withEndAction(() -> {
+                    overlay.removeView(floating);
+                    if (onComplete != null) {
+                        onComplete.run();
+                    }
+                })
+                .start();
+    }
+
+    private ImageView createFloatingCard(Bitmap image, int width, int height) {
+        ImageView floating = new ImageView(this);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(width, height);
+        floating.setLayoutParams(params);
+        floating.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        floating.setImageBitmap(image);
+        floating.setElevation(8f);
+        return floating;
     }
 
     private void promptDieLossChoice() {
