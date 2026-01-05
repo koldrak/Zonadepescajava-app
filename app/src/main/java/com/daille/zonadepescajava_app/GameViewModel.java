@@ -26,7 +26,11 @@ public class GameViewModel extends ViewModel {
     }
 
     public void startNewGame() {
-        gameState.newGame();
+        startNewGame(null);
+    }
+
+    public void startNewGame(List<com.daille.zonadepescajava_app.model.DieType> reserve) {
+        gameState.newGame(reserve);
         initialized = true;
         finalScoreRecorded = false;
     }

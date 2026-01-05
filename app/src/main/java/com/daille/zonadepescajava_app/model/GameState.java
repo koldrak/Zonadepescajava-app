@@ -105,6 +105,10 @@ public class GameState {
     }
 
     public void newGame() {
+        newGame(null);
+    }
+
+    public void newGame(List<DieType> startingReserve) {
         captures.clear();
         lostDice.clear();
         failedDiscards.clear();
@@ -157,13 +161,17 @@ public class GameState {
         pulpoSlotIndex = -1;
         pulpoPlacedValue = 0;
 
-        reserve.add(DieType.D6);
-        reserve.add(DieType.D6);
-        reserve.add(DieType.D6);
-        reserve.add(DieType.D8);
-        reserve.add(DieType.D8);
-        reserve.add(DieType.D4);
-        reserve.add(DieType.D12);
+        if (startingReserve == null || startingReserve.isEmpty()) {
+            reserve.add(DieType.D6);
+            reserve.add(DieType.D6);
+            reserve.add(DieType.D6);
+            reserve.add(DieType.D8);
+            reserve.add(DieType.D8);
+            reserve.add(DieType.D4);
+            reserve.add(DieType.D12);
+        } else {
+            reserve.addAll(startingReserve);
+        }
 
         List<Card> allCards = GameUtils.buildDeck(rng);
         for (Card c : allCards) {
