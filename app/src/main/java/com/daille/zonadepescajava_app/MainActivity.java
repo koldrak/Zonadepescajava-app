@@ -55,6 +55,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private Handler animationHandler;
     private Runnable rollingRunnable;
     private boolean endScoringShown = false;
+    private boolean isRevealingCard = false;
     private ScoreDatabaseHelper scoreDatabaseHelper;
     private ArrayAdapter<String> scoreRecordsAdapter;
     private final List<ImageView> diceTokens = new ArrayList<>();
@@ -188,6 +189,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         renderDiceCollection(binding.gamePanel.lostDiceContainer, gameState.getLostDice(), false);
 
         binding.gamePanel.lost.setText(String.format(Locale.getDefault(), "Perdidos: %d", gameState.getLostDice().size()));
+        String pendingGameOver = gameState.resolvePendingGameOverIfReady();
+        if (pendingGameOver != null) {
+            log = pendingGameOver;
+        }
         binding.gamePanel.log.setText(log);
         List<Card> revealed = gameState.consumeRecentlyRevealedCards();
         if (revealed.isEmpty()) {
@@ -355,6 +360,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     @Override
     public void onSlotTapped(int position) {
+        if (isRevealingCard) {
+            Toast.makeText(this, "Toca la carta para continuar.", Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (gameState.isAwaitingValueAdjustment()) {
             promptValueAdjustmentChoice();
             return;
@@ -390,6 +399,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     @Override
     public void onSlotLongPressed(int position) {
+        if (isRevealingCard) {
+            return;
+        }
         BoardSlot slot = gameState.getBoard()[position];
         android.graphics.Bitmap image = cardImageResolver.getImageFor(slot.getCard(), slot.isFaceUp());
         if (image == null) {
@@ -415,18 +427,24 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void showRevealedCardsSequential(List<Card> revealed, Runnable onComplete) {
         if (revealed.isEmpty()) {
-            if (onComplete != null) {
-                onComplete.run();
-            }
-            checkForFinalScoring();
+            finishRevealSequence(onComplete);
             return;
         }
+        isRevealingCard = true;
         Card card = revealed.remove(0);
         Bitmap image = cardImageResolver.getImageFor(card, true);
         if (image == null) {
             image = cardImageResolver.getCardBack();
         }
         CardFullscreenDialog.show(this, image, null, () -> showRevealedCardsSequential(revealed, onComplete));
+    }
+
+    private void finishRevealSequence(Runnable onComplete) {
+        isRevealingCard = false;
+        if (onComplete != null) {
+            onComplete.run();
+        }
+        checkForFinalScoring();
     }
 
     private void checkForFinalScoring() {
@@ -479,6 +497,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void handleReserveDieTap(DieType type) {
+        if (isRevealingCard) {
+            Toast.makeText(this, "Toca la carta para continuar.", Toast.LENGTH_SHORT).show();
+            return;
+        }
         startRollingAnimation(type);
         String msg = gameState.rollFromReserve(type);
         handleGameResult(msg);
