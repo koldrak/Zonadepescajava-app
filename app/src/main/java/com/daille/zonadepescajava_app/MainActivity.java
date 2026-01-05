@@ -272,7 +272,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 ? "Bonos: " + (bonus > 0 ? "+" : "") + bonus + "\nTotal: " + finalScore
                 : "Total final: " + finalScore;
         Bitmap image = cardImageResolver.getCardBack();
-        CardFullscreenDialog.show(this, image, overlay, null);
+        CardFullscreenDialog.show(this, image, overlay, this::showStartMenu);
     }
 
     private void handleReserveDieTap(DieType type) {
