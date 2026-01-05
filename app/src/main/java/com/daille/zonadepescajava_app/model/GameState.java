@@ -2,6 +2,7 @@ package com.daille.zonadepescajava_app.model;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
@@ -968,7 +969,10 @@ public class GameState {
     private String applyCurrent(CurrentDirection direction) {
         List<Card> toShuffle = new ArrayList<>();
         List<Die> lostFromBoard = new ArrayList<>();
+        Integer newForcedSlot = forcedSlotIndex;
         BoardSlot[] newBoard = new BoardSlot[9];
+        int[] indexMap = new int[9];
+        Arrays.fill(indexMap, -1);
         for (int i = 0; i < 9; i++) newBoard[i] = new BoardSlot();
 
         for (int r = 0; r < 3; r++) {
@@ -981,6 +985,13 @@ public class GameState {
                     case DOWN: targetR = r + 1; break;
                     case LEFT: targetC = c - 1; break;
                     case RIGHT: targetC = c + 1; break;
+                }
+                if (idx == forcedSlotIndex) {
+                    if (targetR < 0 || targetR > 2 || targetC < 0 || targetC > 2) {
+                        newForcedSlot = null;
+                    } else {
+                        newForcedSlot = targetR * 3 + targetC;
+                    }
                 }
                 if (targetR < 0 || targetR > 2 || targetC < 0 || targetC > 2) {
                     if (src.getCard() != null) {
@@ -998,6 +1009,7 @@ public class GameState {
                 }
                 int targetIdx = targetR * 3 + targetC;
                 newBoard[targetIdx] = src;
+                indexMap[idx] = targetIdx;
             }
         }
 
@@ -1025,6 +1037,8 @@ public class GameState {
         for (int i = 0; i < board.length; i++) {
             board[i] = newBoard[i];
         }
+        forcedSlotIndex = newForcedSlot;
+        remapPendingState(indexMap);
         recomputeBottleAdjustments();
         String baseLog = "Corrientes: el tablero se desplazó";
         if (lostFromBoard.isEmpty()) {
@@ -1043,6 +1057,116 @@ public class GameState {
             reserve.add(remaining.getType());
         }
         src.clearDice();
+    }
+
+    private void remapPendingState(int[] indexMap) {
+        pendingDieLossSlot = remapNullableIndex(pendingDieLossSlot, indexMap);
+        lanternOriginSlot = remapIndex(lanternOriginSlot, indexMap);
+        if (awaitingLanternChoice && lanternOriginSlot < 0) {
+            awaitingLanternChoice = false;
+        }
+
+        atunSlotIndex = remapIndex(atunSlotIndex, indexMap);
+        if (awaitingAtunDecision && atunSlotIndex < 0) {
+            clearAtunState();
+        }
+
+        blueCrabSlotIndex = remapIndex(blueCrabSlotIndex, indexMap);
+        if (awaitingBlueCrabDecision && blueCrabSlotIndex < 0) {
+            clearBlueCrabState();
+        }
+
+        adjustmentSlotIndex = remapIndex(adjustmentSlotIndex, indexMap);
+        if (awaitingValueAdjustment && adjustmentSlotIndex < 0) {
+            awaitingValueAdjustment = false;
+            adjustmentDieIndex = -1;
+            adjustmentAmount = 0;
+            adjustmentSource = null;
+        }
+
+        pezVelaSlotIndex = remapIndex(pezVelaSlotIndex, indexMap);
+        if ((awaitingPezVelaDecision || awaitingPezVelaResultChoice) && pezVelaSlotIndex < 0) {
+            clearPezVelaState();
+        }
+
+        ghostShrimpFirstChoice = remapIndex(ghostShrimpFirstChoice, indexMap);
+        ghostShrimpSecondChoice = remapIndex(ghostShrimpSecondChoice, indexMap);
+        if (awaitingGhostShrimpDecision && (ghostShrimpFirstChoice < 0 || ghostShrimpSecondChoice < 0)) {
+            awaitingGhostShrimpDecision = false;
+            ghostShrimpFirstChoice = -1;
+            ghostShrimpSecondChoice = -1;
+        }
+
+        pendingPercebesTargets.replaceAll(idx -> remapIndex(idx, indexMap));
+        pendingPercebesTargets.removeIf(idx -> idx < 0);
+
+        remapPendingSelectionQueue(indexMap);
+        remapCurrentSelection(indexMap);
+
+        if (awaitingArenqueChoice) {
+            arenqueSlotIndex = remapIndex(arenqueSlotIndex, indexMap);
+            if (arenqueSlotIndex < 0) {
+                clearArenqueState();
+            }
+        }
+
+        if (awaitingPulpoChoice) {
+            pulpoSlotIndex = remapIndex(pulpoSlotIndex, indexMap);
+            if (pulpoSlotIndex < 0) {
+                clearPulpoState();
+            }
+        }
+    }
+
+    private void remapCurrentSelection(int[] indexMap) {
+        if (pendingSelection == PendingSelection.NONE) return;
+
+        pendingSelectionActor = remapIndex(pendingSelectionActor, indexMap);
+        if (pendingSelectionActor < 0) {
+            clearSelectionState(pendingSelection);
+            pendingSelection = PendingSelection.NONE;
+            pendingSelectionAux = -1;
+            pendingSelectionQueue.clear();
+            return;
+        }
+
+        if (pendingSelectionAux >= 0) {
+            pendingSelectionAux = remapIndex(pendingSelectionAux, indexMap);
+            if (pendingSelectionAux < 0) {
+                clearSelectionState(pendingSelection);
+                pendingSelection = PendingSelection.NONE;
+                pendingSelectionQueue.clear();
+                return;
+            }
+        }
+    }
+
+    private void remapPendingSelectionQueue(int[] indexMap) {
+        if (pendingSelectionQueue.isEmpty()) return;
+
+        Deque<PendingSelectionState> remapped = new ArrayDeque<>();
+        for (PendingSelectionState state : pendingSelectionQueue) {
+            int actor = remapIndex(state.actor, indexMap);
+            int aux = state.aux >= 0 ? remapIndex(state.aux, indexMap) : state.aux;
+            if (actor >= 0) {
+                remapped.add(new PendingSelectionState(state.selection, actor, aux));
+            } else {
+                clearSelectionState(state.selection);
+            }
+        }
+        pendingSelectionQueue.clear();
+        pendingSelectionQueue.addAll(remapped);
+    }
+
+    private int remapIndex(int original, int[] indexMap) {
+        if (original < 0 || original >= indexMap.length) return -1;
+        return indexMap[original];
+    }
+
+    private Integer remapNullableIndex(Integer original, int[] indexMap) {
+        if (original == null) return null;
+        int remapped = remapIndex(original, indexMap);
+        return remapped >= 0 ? remapped : null;
     }
 
     private String formatDiceList(List<Die> dice) {
@@ -2358,7 +2482,10 @@ public class GameState {
         String reveal = addDieToSlot(slotIndex, moved);
         pendingPercebesTargets.add(slotIndex);
         if (pendingPercebesDice.isEmpty()) {
-            clearPendingSelection();
+            clearPercebesState();
+            if (pendingSelection == PendingSelection.PERCEBES_MOVE) {
+                clearPendingSelection();
+            }
             return reveal.isEmpty()
                     ? "Percebes movió todos los dados a cartas adyacentes."
                     : "Percebes movió todos los dados a cartas adyacentes. " + reveal;
