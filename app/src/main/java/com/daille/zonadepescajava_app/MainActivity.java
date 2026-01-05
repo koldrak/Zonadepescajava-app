@@ -49,7 +49,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        setSupportActionBar(binding.toolbar);
+
         viewModel = new ViewModelProvider(this).get(GameViewModel.class);
         gameState = viewModel.getGameState();
         cardImageResolver = new CardImageResolver(this);
