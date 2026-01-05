@@ -1024,7 +1024,7 @@ public class GameState {
                     case LEFT: targetC = c - 1; break;
                     case RIGHT: targetC = c + 1; break;
                 }
-                if (idx == forcedSlotIndex) {
+                if (forcedSlotIndex != null && idx == forcedSlotIndex) {
                     if (targetR < 0 || targetR > 2 || targetC < 0 || targetC > 2) {
                         newForcedSlot = null;
                     } else {
