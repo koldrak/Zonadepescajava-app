@@ -185,6 +185,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             promptBlueCrabDecision();
             return;
         }
+        if (gameState.isAwaitingBlowfishDecision()) {
+            promptBlowfishDecision();
+            return;
+        }
         if (gameState.isAwaitingGhostShrimpDecision()) {
             promptGhostShrimpDecision();
             return;
@@ -211,6 +215,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         if (gameState.isAwaitingBlueCrabDecision()) {
             promptBlueCrabDecision();
+        }
+        if (gameState.isAwaitingBlowfishDecision()) {
+            promptBlowfishDecision();
         }
         if (gameState.isAwaitingPezVelaDecision()) {
             promptPezVelaDecision();
@@ -413,6 +420,25 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setNegativeButton("Omitir", (dialog, which) -> {
                     String msg = gameState.chooseBlueCrabUse(false);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptBlowfishDecision() {
+        if (!gameState.isAwaitingBlowfishDecision()) return;
+        new AlertDialog.Builder(this)
+                .setTitle("Pez globo")
+                .setMessage("¿Quieres inflar un dado al máximo?")
+                .setPositiveButton("Usar", (dialog, which) -> {
+                    String msg = gameState.chooseBlowfishUse(true);
+                    refreshUi(msg);
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Omitir", (dialog, which) -> {
+                    String msg = gameState.chooseBlowfishUse(false);
                     refreshUi(msg);
                     Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
                 })

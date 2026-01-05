@@ -28,6 +28,8 @@ public class GameState {
     private int atunDieIndex = -1;
     private boolean awaitingBlueCrabDecision = false;
     private int blueCrabSlotIndex = -1;
+    private boolean awaitingBlowfishDecision = false;
+    private int blowfishSlotIndex = -1;
     private boolean awaitingValueAdjustment = false;
     private int adjustmentSlotIndex = -1;
     private int adjustmentDieIndex = -1;
@@ -46,6 +48,7 @@ public class GameState {
     private final List<Die> pendingPercebesDice = new ArrayList<>();
     private final List<Integer> pendingPercebesTargets = new ArrayList<>();
     private final List<Die> pendingBallenaDice = new ArrayList<>();
+    private int pendingBallenaTotal = 0;
     private final List<Card> pendingPulpoOptions = new ArrayList<>();
     private final Deque<PendingSelectionState> pendingSelectionQueue = new ArrayDeque<>();
     private final List<Card> pendingArenquePool = new ArrayList<>();
@@ -120,6 +123,8 @@ public class GameState {
         atunDieIndex = -1;
         awaitingBlueCrabDecision = false;
         blueCrabSlotIndex = -1;
+        awaitingBlowfishDecision = false;
+        blowfishSlotIndex = -1;
         awaitingValueAdjustment = false;
         adjustmentSlotIndex = -1;
         adjustmentDieIndex = -1;
@@ -140,6 +145,7 @@ public class GameState {
         ghostShrimpSecondChoice = -1;
         recentlyRevealedCards.clear();
         pendingBallenaDice.clear();
+        pendingBallenaTotal = 0;
         pendingPulpoOptions.clear();
         pendingArenquePool.clear();
         pendingArenqueChosen.clear();
@@ -216,6 +222,10 @@ public class GameState {
 
     public boolean isAwaitingBlueCrabDecision() {
         return awaitingBlueCrabDecision;
+    }
+
+    public boolean isAwaitingBlowfishDecision() {
+        return awaitingBlowfishDecision;
     }
 
     public boolean isAwaitingPezVelaDecision() {
@@ -591,6 +601,29 @@ public class GameState {
         return msg;
     }
 
+    public String chooseBlowfishUse(boolean useAbility) {
+        if (!awaitingBlowfishDecision) {
+            return "No hay decisión pendiente del Pez globo.";
+        }
+        if (blowfishSlotIndex < 0 || blowfishSlotIndex >= board.length) {
+            awaitingBlowfishDecision = false;
+            blowfishSlotIndex = -1;
+            return "El Pez globo ya no está disponible.";
+        }
+        if (!useAbility) {
+            awaitingBlowfishDecision = false;
+            blowfishSlotIndex = -1;
+            return "Omitiste la habilidad del Pez globo.";
+        }
+        awaitingBlowfishDecision = false;
+        String msg = queueableSelection(
+                PendingSelection.BLOWFISH,
+                blowfishSlotIndex,
+                "Pez globo: elige un dado para inflarlo a su valor máximo.");
+        blowfishSlotIndex = -1;
+        return msg;
+    }
+
     public String choosePezVelaReroll(boolean reroll) {
         if (!awaitingPezVelaDecision) {
             return "No hay decisión pendiente del Pez Vela.";
@@ -734,6 +767,9 @@ public class GameState {
         if (awaitingBlueCrabDecision) {
             return "Resuelve primero la habilidad de la Jaiba azul.";
         }
+        if (awaitingBlowfishDecision) {
+            return "Decide primero si usarás la habilidad del Pez globo.";
+        }
         if (awaitingPezVelaDecision || awaitingPezVelaResultChoice) {
             return "Resuelve primero la habilidad del Pez Vela.";
         }
@@ -779,6 +815,7 @@ public class GameState {
         StringBuilder extraLog = new StringBuilder();
         if (!slot.isFaceUp()) {
             slot.setFaceUp(true);
+            slot.getStatus().calamarForcedFaceDown = false;
             markRevealed(slotIndex);
             String reveal = handleOnReveal(slotIndex, placedValue);
             if (!reveal.isEmpty()) {
@@ -837,6 +874,7 @@ public class GameState {
             return "";
         }
         target.setFaceUp(true);
+        target.getStatus().calamarForcedFaceDown = false;
         markRevealed(slotIndex);
         String reveal = handleOnReveal(slotIndex, die.getValue());
         recomputeBottleAdjustments();
@@ -1013,6 +1051,14 @@ public class GameState {
             }
         }
 
+        if (!toShuffle.isEmpty()) {
+            List<Card> tmp = new ArrayList<>(deck);
+            tmp.addAll(toShuffle);
+            java.util.Collections.shuffle(tmp, rng);
+            deck.clear();
+            for (Card c : tmp) deck.push(c);
+        }
+
         for (int i = 0; i < 9; i++) {
             if (newBoard[i].getCard() == null) {
                 newBoard[i] = new BoardSlot();
@@ -1020,14 +1066,6 @@ public class GameState {
                 newBoard[i].setFaceUp(false);
                 newBoard[i].setStatus(new SlotStatus());
             }
-        }
-
-        if (!toShuffle.isEmpty()) {
-            List<Card> tmp = new ArrayList<>(deck);
-            tmp.addAll(toShuffle);
-            java.util.Collections.shuffle(tmp, rng);
-            deck.clear();
-            for (Card c : tmp) deck.push(c);
         }
 
         if (!lostFromBoard.isEmpty()) {
@@ -1074,6 +1112,11 @@ public class GameState {
         blueCrabSlotIndex = remapIndex(blueCrabSlotIndex, indexMap);
         if (awaitingBlueCrabDecision && blueCrabSlotIndex < 0) {
             clearBlueCrabState();
+        }
+
+        blowfishSlotIndex = remapIndex(blowfishSlotIndex, indexMap);
+        if (awaitingBlowfishDecision && blowfishSlotIndex < 0) {
+            awaitingBlowfishDecision = false;
         }
 
         adjustmentSlotIndex = remapIndex(adjustmentSlotIndex, indexMap);
@@ -1264,6 +1307,7 @@ public class GameState {
 
     private void clearBallenaState() {
         pendingBallenaDice.clear();
+        pendingBallenaTotal = 0;
     }
 
     private void clearArenqueState() {
@@ -1436,11 +1480,9 @@ public class GameState {
                 result = "";
                 break;
         }
-        if (slot.getCard().getType() == CardType.PEZ) {
-            String clams = triggerAdjacentClams(slotIndex);
-            if (!clams.isEmpty()) {
-                result = result.isEmpty() ? clams : result + " " + clams;
-            }
+        String clams = triggerAdjacentClams(slotIndex);
+        if (!clams.isEmpty()) {
+            result = result.isEmpty() ? clams : result + " " + clams;
         }
         return result;
     }
@@ -1734,20 +1776,21 @@ public class GameState {
     }
 
     private String startBlowfishInflate(int slotIndex) {
-        boolean hasDice = false;
+        boolean hasInflatable = false;
         for (BoardSlot s : board) {
-            if (!s.getDice().isEmpty()) {
-                hasDice = true;
+            if (s.getDice().isEmpty()) continue;
+            Die top = s.getDice().get(s.getDice().size() - 1);
+            if (top.getValue() < top.getType().getSides()) {
+                hasInflatable = true;
                 break;
             }
         }
-        if (!hasDice) {
-            return "No hay dados en la zona de pesca para inflar.";
+        if (!hasInflatable) {
+            return "Todos los dados en la zona de pesca ya muestran su valor máximo.";
         }
-        return queueableSelection(
-                PendingSelection.BLOWFISH,
-                slotIndex,
-                "Pez globo: elige un dado para inflarlo a su valor máximo.");
+        awaitingBlowfishDecision = true;
+        blowfishSlotIndex = slotIndex;
+        return "Pez globo: ¿quieres inflar un dado al máximo?";
     }
 
     private String inflateChosenDie(int slotIndex) {
@@ -1759,7 +1802,7 @@ public class GameState {
         Die die = slot.getDice().get(idx);
         int max = die.getType().getSides();
         if (die.getValue() == max) {
-            return "El dado seleccionado ya muestra su valor máximo.";
+            return "Elige un dado que no esté ya en su valor máximo.";
         }
         slot.setDie(idx, new Die(die.getType(), max));
         clearPendingSelection();
@@ -2599,10 +2642,12 @@ public class GameState {
         }
         pendingBallenaDice.clear();
         pendingBallenaDice.addAll(pool);
+        pendingBallenaTotal = pendingBallenaDice.size();
         return queueableSelection(
                 PendingSelection.BLUE_WHALE_PLACE,
                 slotIndex,
-                "Ballena azul: coloca cada dado nuevamente en el tablero.");
+                "Ballena azul: coloca cada dado nuevamente en el tablero. Comienza con "
+                        + pendingBallenaDice.get(0).getLabel() + ".");
     }
 
     private String placeBlueWhaleDie(int slotIndex) {
@@ -2625,9 +2670,13 @@ public class GameState {
                     ? "Ballena azul reposicionó todos los dados en el tablero."
                     : "Ballena azul reposicionó todos los dados en el tablero. " + reveal;
         }
+        int placedCount = pendingBallenaTotal - pendingBallenaDice.size();
+        String nextLabel = pendingBallenaDice.get(0).getLabel();
+        String base = "Dado " + placedCount + "/" + pendingBallenaTotal + " colocado.";
+        String prompt = " El siguiente es " + nextLabel + ".";
         return reveal.isEmpty()
-                ? "Dado colocado. Elige destino para el siguiente."
-                : "Dado colocado. " + reveal + " Elige destino para el siguiente.";
+                ? base + prompt
+                : "" + base + " " + reveal + prompt;
     }
 
     private String repositionAllDice(List<Die> diceOnCard) {
