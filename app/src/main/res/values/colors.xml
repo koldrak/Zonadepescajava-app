@@ -2,7 +2,7 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="selection_highlight">#5BC7B5</color>
+    <color name="selection_highlight">#D9CCC903</color>
     <color name="remora_highlight">#0F0404</color>
     <color name="bottle_highlight">#FFA000</color>
 

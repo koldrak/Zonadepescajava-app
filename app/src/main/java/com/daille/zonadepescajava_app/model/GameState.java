@@ -91,7 +91,8 @@ public class GameState {
         ARENQUE_DESTINATION,
         BLUE_WHALE_PLACE,
         SPIDER_CRAB_CHOOSE_CARD,
-        SPIDER_CRAB_CHOOSE_SLOT
+        SPIDER_CRAB_CHOOSE_SLOT,
+        KOI_TARGET
     }
     private PendingSelection pendingSelection = PendingSelection.NONE;
     private int pendingSelectionActor = -1;
@@ -391,6 +392,14 @@ public class GameState {
                     }
                 }
                 break;
+            case KOI_TARGET:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    BoardSlot t = board[idx];
+                    if (t.getCard() != null && t.isFaceUp() && t.getDice().size() == 1) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
             case BLUE_CRAB:
                 for (int i = 0; i < board.length; i++) {
                     if (!board[i].getDice().isEmpty()) highlight.add(i);
@@ -669,6 +678,9 @@ public class GameState {
             case SPIDER_CRAB_CHOOSE_SLOT:
                 result = placeSpiderCrabRevivedCard(slotIndex);
                 break;
+            case KOI_TARGET:
+                result = resolveKoiSwap(pendingSelectionActor, slotIndex);
+                break;
 
             default:
                 result = "No hay acciones pendientes.";
@@ -687,6 +699,36 @@ public class GameState {
         return result;
 
     }
+
+    private String resolveKoiSwap(int koiSlotIndex, int targetIndex) {
+        if (!adjacentIndices(koiSlotIndex, true).contains(targetIndex)) {
+            return "Koi: debes elegir una carta adyacente.";
+        }
+
+        BoardSlot koi = board[koiSlotIndex];
+        BoardSlot target = board[targetIndex];
+
+        if (koi.getDice().isEmpty()) {
+            clearPendingSelection();
+            return "Koi: ya no tiene dado para intercambiar.";
+        }
+
+        if (target.getCard() == null || !target.isFaceUp() || target.getDice().size() != 1) {
+            return "Koi: elige una carta boca arriba adyacente con exactamente 1 dado.";
+        }
+
+        Die fromKoi = koi.removeDie(koi.getDice().size() - 1);
+        Die fromTarget = target.removeDie(0);
+
+        koi.addDie(fromTarget);
+        target.addDie(fromKoi);
+
+        clearPendingSelection();
+        recomputeBottleAdjustments();
+
+        return "Koi intercambió un dado con una carta adyacente.";
+    }
+
     private String placeSpiderCrabRevivedCard(int slotIndex) {
         if (pendingSelection != PendingSelection.SPIDER_CRAB_CHOOSE_SLOT) {
             return "No hay colocación pendiente del Cangrejo araña.";
@@ -1036,51 +1078,43 @@ public class GameState {
         BoardSlot slot = board[slotIndex];
 
         if (slot.getDice().size() < 2) {
-            return extraLog;
+            return extraLog == null ? "" : extraLog;
         }
 
-        String corrientes = applyCurrents ? buildCurrentsLog(triggerValue) : "";
-        StringBuilder combinedLog = new StringBuilder(extraLog == null ? "" : extraLog);
-        if (!corrientes.isEmpty()) {
-            if (combinedLog.length() > 0) combinedLog.append(" ");
-            combinedLog.append(corrientes);
-        }
+        StringBuilder log = new StringBuilder(extraLog == null ? "" : extraLog);
 
+        // 1) Resolver captura/fallo ANTES de corrientes (para que slotIndex sea consistente)
+        String coreResult;
         if (slot.getCard().getCondition().isSatisfied(slotIndex, this)) {
             String onCaptureLog = capture(slotIndex);
-            String result = "¡Captura exitosa!" + onCaptureLog;
-            if (combinedLog.length() > 0) {
-                result += " " + combinedLog;
-            }
-            return checkDefeatOrContinue(result.trim());
-        }
-
-        if (slot.getStatus().protectedOnce) {
-            String protectedFail = handleProtectedFailure(slotIndex);
-            if (combinedLog.length() > 0) {
-                protectedFail += " " + combinedLog;
-            }
-            return checkDefeatOrContinue(protectedFail.trim());
-        }
-
-        boolean loseTwo = isHookActive();
-        if (loseTwo) {
+            coreResult = "¡Captura exitosa!" + onCaptureLog;
+        } else if (slot.getStatus().protectedOnce) {
+            coreResult = handleProtectedFailure(slotIndex);
+        } else if (isHookActive()) {
             markHookPenaltyUsed();
-            String failMsg = handleFailedCatchImmediate(slotIndex, true);
-            if (combinedLog.length() > 0) {
-                failMsg += " " + combinedLog;
-            }
-            return checkDefeatOrContinue(failMsg.trim());
+            coreResult = handleFailedCatchImmediate(slotIndex, true);
+        } else {
+            pendingDieLossSlot = slotIndex;
+            pendingLossTriggerValue = triggerValue;
+            coreResult = "La pesca falló. Elige qué dado perder.";
         }
 
-        pendingDieLossSlot = slotIndex;
-        pendingLossTriggerValue = triggerValue;
-        String fail = "La pesca falló. Elige qué dado perder.";
-        if (combinedLog.length() > 0) {
-            fail += " " + combinedLog;
+        // 2) Ahora sí, aplicar corrientes (pueden mover el tablero y remapear estados pendientes)
+        if (applyCurrents) {
+            String corrientes = buildCurrentsLog(triggerValue);
+            if (!corrientes.isEmpty()) {
+                if (log.length() > 0) log.append(" ");
+                log.append(corrientes);
+            }
         }
-        return checkDefeatOrContinue(fail.trim());
+
+        // 3) Unir mensajes
+        String result = coreResult;
+        if (log.length() > 0) result += " " + log;
+
+        return checkDefeatOrContinue(result.trim());
     }
+
 
     private String capture(int slotIndex) {
         BoardSlot slot = board[slotIndex];
@@ -1693,8 +1727,9 @@ public class GameState {
                 result = startLanternSelection(slotIndex);
                 break;
             case KOI:
-                result = swapDieWithFaceUpSingle(slotIndex);
+                result = startKoiSwapSelection(slotIndex);
                 break;
+
             case PEZ_VELA:
                 result = startPezVelaDecision(slotIndex);
                 break;
@@ -1741,6 +1776,31 @@ public class GameState {
             result = result.isEmpty() ? clams : result + " " + clams;
         }
         return result;
+    }
+    private String startKoiSwapSelection(int slotIndex) {
+        BoardSlot origin = board[slotIndex];
+        if (origin.getDice().isEmpty()) {
+            return ""; // KOI sin dado: no puede hacer nada
+        }
+
+        boolean hasTarget = false;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot t = board[idx];
+            if (t.getCard() != null && t.isFaceUp() && t.getDice().size() == 1) {
+                hasTarget = true;
+                break;
+            }
+        }
+
+        if (!hasTarget) {
+            return "Koi: no hay cartas adyacentes boca arriba con exactamente 1 dado para intercambiar.";
+        }
+
+        return queueableSelection(
+                PendingSelection.KOI_TARGET,
+                slotIndex,
+                "Koi: elige una carta adyacente boca arriba con 1 dado para intercambiar un dado."
+        );
     }
 
     private String startSpiderCrabRevive(int slotIndex) {
@@ -2334,22 +2394,6 @@ public class GameState {
 
         clearPendingSelection();
         return "Pez payaso protege la carta seleccionada.";
-    }
-
-    private String swapDieWithFaceUpSingle(int slotIndex) {
-        BoardSlot origin = board[slotIndex];
-        if (origin.getDice().isEmpty()) return "";
-        for (BoardSlot target : board) {
-            if (target == origin) continue;
-            if (target.getCard() != null && target.isFaceUp() && target.getDice().size() == 1) {
-                Die fromOrigin = origin.removeDie(origin.getDice().size() - 1);
-                Die targetDie = target.removeDie(0);
-                origin.addDie(targetDie);
-                target.addDie(fromOrigin);
-                return "Koi intercambió un dado con otra carta.";
-            }
-        }
-        return "";
     }
 
     private String startLanternSelection(int slotIndex) {
