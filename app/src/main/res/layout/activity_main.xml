@@ -8,6 +8,7 @@
     tools:context=".MainActivity">
 
     <FrameLayout
+        android:id="@+id/frameLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
@@ -17,23 +18,26 @@
 
         <include
             android:id="@+id/diceSelectionPanel"
-            android:visibility="gone"
-            layout="@layout/layout_dice_selection" />
+            layout="@layout/layout_dice_selection"
+            android:visibility="gone" />
 
         <include
             android:id="@+id/gamePanel"
-            android:visibility="gone"
-            layout="@layout/layout_game_panel" />
+            layout="@layout/layout_game_panel"
+            android:visibility="gone" />
 
-        <FrameLayout
-            android:id="@+id/animationOverlay"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clickable="false"
-            android:importantForAccessibility="no"
-            android:layout_gravity="center"
-            android:clipChildren="false"
-            android:clipToPadding="false" />
     </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/animationOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:clickable="false"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:importantForAccessibility="no"
+        app:layout_anchor="@+id/frameLayout"
+        app:layout_anchorGravity="center" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -270,9 +270,10 @@ public class GameState {
                 || awaitingPulpoChoice
                 || awaitingValueAdjustment
                 || awaitingGhostShrimpDecision
-                || (pendingSelection == PendingSelection.BLUE_WHALE_PLACE && !pendingBallenaDice.isEmpty())
-                || !recentlyRevealedCards.isEmpty();
+                || (pendingSelection == PendingSelection.BLUE_WHALE_PLACE && !pendingBallenaDice.isEmpty());
+        // OJO: recentlyRevealedCards NO debe bloquear el game over (es UI, no resolución).
     }
+
 
     public String resolvePendingGameOverIfReady() {
         if (pendingGameOver && !hasPendingTurnResolutions()) {
@@ -517,11 +518,13 @@ public class GameState {
                 break;
             case SPIDER_CRAB_CHOOSE_SLOT:
                 for (int i = 0; i < board.length; i++) {
-                    if (board[i].getCard() == null) {
+                    BoardSlot s = board[i];
+                    if (s.getCard() != null && !s.isFaceUp() && s.getDice().isEmpty()) {
                         highlight.add(i);
                     }
                 }
                 break;
+
 
             case NONE:
             default:
@@ -674,30 +677,59 @@ public class GameState {
         if (!revealLog.isEmpty()) {
             result = result.isEmpty() ? revealLog : result + " " + revealLog;
         }
+
+// ✅ Safety net: resolver cartas que quedaron con 2 dados por efectos
+        String endTurn = resolveAllReadySlots();
+        if (!endTurn.isEmpty()) {
+            result = result.isEmpty() ? endTurn : result + " " + endTurn;
+        }
+
         return result;
+
     }
     private String placeSpiderCrabRevivedCard(int slotIndex) {
         if (pendingSelection != PendingSelection.SPIDER_CRAB_CHOOSE_SLOT) {
             return "No hay colocación pendiente del Cangrejo araña.";
         }
-        if (slotIndex < 0 || slotIndex >= board.length) {
-            return "Debes elegir una carta boca abajo válida.";
+        if (pendingSpiderCrabCard == null) {
+            clearPendingSelection();
+            return "No hay carta recuperada para colocar.";
         }
-        BoardSlot slot = board[slotIndex];
-        if (slot.getCard() == null || slot.isFaceUp()) {
-            return "Debes elegir una carta boca abajo válida.";
+        if (slotIndex < 0 || slotIndex >= board.length) {
+            return "Selecciona una casilla válida.";
         }
 
+        BoardSlot slot = board[slotIndex];
+
+        // Debe existir carta y estar boca abajo
+        if (slot.getCard() == null || slot.isFaceUp()) {
+            return "Debes elegir una carta boca abajo para reemplazar.";
+        }
+
+        // Para evitar inconsistencias: la carta objetivo debe estar sin dados
+        if (!slot.getDice().isEmpty()) {
+            return "Debes elegir una carta boca abajo sin dados para reemplazar.";
+        }
+
+        // REEMPLAZO: la carta anterior vuelve al mazo (no desaparece)
+        Card replaced = slot.getCard();
+        deck.push(replaced);
+        shuffleDeck();
+
+        // Colocar la recuperada boca abajo
         slot.setCard(pendingSpiderCrabCard);
         slot.setFaceUp(false);
         slot.setStatus(new SlotStatus());
+        slot.clearDice(); // por seguridad, aunque ya estaba vacía
 
         pendingSpiderCrabCard = null;
         spiderCrabSlotIndex = -1;
         clearPendingSelection();
 
-        return "Cangrejo araña colocó la carta recuperada boca abajo en el tablero.";
+        recomputeBottleAdjustments();
+        return "Cangrejo araña colocó la carta recuperada boca abajo, reemplazando una carta boca abajo y devolviendo la reemplazada al mazo.";
     }
+
 
     public String chooseAtunReroll(boolean reroll) {
         if (!awaitingAtunDecision) {
@@ -1716,16 +1748,17 @@ public class GameState {
             return "No hay cartas descartadas por fallo para recuperar.";
         }
 
-        boolean hasFaceDown = false;
+        boolean hasFaceDownNoDice = false;
         for (BoardSlot s : board) {
-            if (s.getCard() != null && !s.isFaceUp()) {
-                hasFaceDown = true;
+            if (s.getCard() != null && !s.isFaceUp() && s.getDice().isEmpty()) {
+                hasFaceDownNoDice = true;
                 break;
             }
         }
-        if (!hasFaceDown) {
-            return "No hay cartas boca abajo para reemplazar con el Cangrejo araña.";
+        if (!hasFaceDownNoDice) {
+            return "No hay cartas boca abajo sin dados para reemplazar con el Cangrejo araña.";
         }
+
 
         spiderCrabSlotIndex = slotIndex;
         pendingSelection = PendingSelection.SPIDER_CRAB_CHOOSE_CARD;
@@ -2654,21 +2687,69 @@ public class GameState {
 
     private String triggerAdjacentClams(int triggeredSlotIndex) {
         StringBuilder log = new StringBuilder();
+
         for (Integer idx : adjacentIndices(triggeredSlotIndex, true)) {
             BoardSlot adj = board[idx];
+
             if (adj.getCard() == null || !adj.isFaceUp() || adj.getCard().getId() != CardId.ALMEJAS) {
                 continue;
             }
             if (adj.getDice().size() >= 2 || lostDice.isEmpty()) {
                 continue;
             }
+
             Die recovered = lostDice.remove(lostDice.size() - 1);
             Die rolled = Die.roll(recovered.getType(), rng);
             adj.addDie(rolled);
-            adj.getStatus().lastTriggeredBySlot = triggeredSlotIndex;
+            if (adj.getStatus() != null) {
+                adj.getStatus().lastTriggeredBySlot = triggeredSlotIndex;
+            }
+
             if (log.length() > 0) log.append(" ");
             log.append("Almejas lanzó un ").append(rolled.getLabel()).append(".");
+
+            // ✅ FIX: si ahora tiene 2 dados, debe resolverse captura/fallo
+            if (adj.getDice().size() >= 2) {
+                String outcome = resolveFishingOutcome(idx, rolled.getValue(), "", false); // sin corrientes
+                if (outcome != null && !outcome.isEmpty()) {
+                    log.append(" ").append(outcome);
+                }
+            }
         }
+
+        return log.toString();
+    }
+
+    private String resolveAllReadySlots() {
+        // No intentes resolver si el juego está esperando decisiones del jugador
+        if (hasPendingTurnResolutions() || selectedDie != null) {
+            return "";
+        }
+
+        StringBuilder log = new StringBuilder();
+
+        for (int i = 0; i < board.length; i++) {
+            BoardSlot s = board[i];
+            if (s.getCard() == null) continue;
+            if (!s.isFaceUp()) continue;
+            if (s.getDice().size() < 2) continue;
+
+            // Resolver SIN corrientes (esto no es "colocar dado", es "estado listo")
+            int triggerValue = s.getDice().get(s.getDice().size() - 1).getValue();
+            String outcome = resolveFishingOutcome(i, triggerValue, "", false);
+
+            if (outcome != null && !outcome.isEmpty()) {
+                if (log.length() > 0) log.append(" ");
+                log.append(outcome);
+            }
+
+            // Si esto abrió una decisión pendiente (p.ej. falló y pide elegir dado),
+            // corta aquí para no encadenar más cosas.
+            if (hasPendingTurnResolutions()) {
+                break;
+            }
+        }
+
         return log.toString();
     }
 
@@ -3093,6 +3174,7 @@ public class GameState {
     }
 
     public List<Link> getBoardLinks() {
+        recomputeBottleAdjustments();
         List<Link> links = new ArrayList<>();
 
         for (int i = 0; i < board.length; i++) {
@@ -3130,14 +3212,15 @@ public class GameState {
                     }
                     break;
 
-                case BOTELLA_PLASTICO:
-                    for (Integer adj : adjacentIndices(i, true)) {
-                        BoardSlot t = board[adj];
-                        if (t.getCard() != null && t.getCard().getType() == CardType.PEZ) {
-                            links.add(new Link(i, adj, LinkType.BOTELLA_PLASTICO_AJUSTA));
-                        }
+                case BOTELLA_PLASTICO: {
+                    // Solo dibujar enlace hacia el pez marcado (si existe y sigue siendo válido)
+                    Integer target = bottleTargets.get(i);
+                    if (target != null && isBottleLinkActive(i, target)) {
+                        links.add(new Link(i, target, LinkType.BOTELLA_PLASTICO_AJUSTA));
                     }
                     break;
+                }
+
 
                 default:
                     break;

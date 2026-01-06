@@ -165,7 +165,32 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         scoreRecordsAdapter.clear();
         scoreRecordsAdapter.addAll(labels);
         scoreRecordsAdapter.notifyDataSetChanged();
+
+        // ✅ CLAVE: ListView dentro de ScrollView => fijar altura
+        binding.startMenu.scoreRecordsList.post(() ->
+                setListViewHeightBasedOnChildren(binding.startMenu.scoreRecordsList)
+        );
     }
+    private static void setListViewHeightBasedOnChildren(android.widget.ListView listView) {
+        android.widget.ListAdapter listAdapter = listView.getAdapter();
+        if (listAdapter == null) return;
+
+        int totalHeight = 0;
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(listView.getWidth(), View.MeasureSpec.UNSPECIFIED);
+
+        for (int i = 0; i < listAdapter.getCount(); i++) {
+            View item = listAdapter.getView(i, null, listView);
+            item.measure(widthSpec, View.MeasureSpec.UNSPECIFIED);
+            totalHeight += item.getMeasuredHeight();
+        }
+
+        int dividers = listView.getDividerHeight() * Math.max(0, listAdapter.getCount() - 1);
+        ViewGroup.LayoutParams params = listView.getLayoutParams();
+        params.height = totalHeight + dividers;
+        listView.setLayoutParams(params);
+        listView.requestLayout();
+    }
+
 
     private void persistFinalScore(int finalScore) {
         if (!viewModel.isFinalScoreRecorded()) {
@@ -180,6 +205,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.startMenu.getRoot().setVisibility(View.VISIBLE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.gamePanel.getRoot().setVisibility(View.GONE);
+        refreshScoreRecords(); // ✅ asegura recarga al mostrar menú
     }
 
     private void showDiceSelectionPanel() {
@@ -1114,18 +1140,32 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             completePlacement(position);
             return;
         }
+
+        BoardSlot slot = gameState.getBoard()[position];
+        boolean shouldFlip = slot != null && !slot.isFaceUp(); // 👈 solo si está boca abajo
+
+        if (!shouldFlip) {
+            completePlacement(position); // no giro si ya estaba boca arriba
+            return;
+        }
+
         View cardView = binding.gamePanel.boardRecycler.getLayoutManager() != null
                 ? binding.gamePanel.boardRecycler.getLayoutManager().findViewByPosition(position)
                 : null;
+
         if (cardView == null) {
             completePlacement(position);
             return;
         }
+
         cardView.setHasTransientState(true);
+
         ObjectAnimator firstHalf = ObjectAnimator.ofFloat(cardView, View.ROTATION_Y, 0f, 90f);
         firstHalf.setDuration(150);
+
         ObjectAnimator secondHalf = ObjectAnimator.ofFloat(cardView, View.ROTATION_Y, 90f, 0f);
         secondHalf.setDuration(150);
+
         firstHalf.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
@@ -1134,21 +1174,23 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 cardView.post(secondHalf::start);
             }
         });
+
         secondHalf.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
                 cardView.setRotationY(0f);
                 cardView.setHasTransientState(false);
             }
-
             @Override
             public void onAnimationCancel(Animator animation) {
                 cardView.setRotationY(0f);
                 cardView.setHasTransientState(false);
             }
         });
+
         firstHalf.start();
     }
+
 
     private void completePlacement(int position) {
         String result = gameState.placeSelectedDie(position);
