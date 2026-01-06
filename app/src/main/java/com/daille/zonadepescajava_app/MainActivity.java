@@ -229,8 +229,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void setupDiceSelectionUi() {
         binding.diceSelectionPanel.diceSelectionZone.setOnDragListener(createDragListener());
         binding.diceSelectionPanel.diceWarehouseZone.setOnDragListener(createDragListener());
-        binding.diceSelectionPanel.diceWarehouseZone.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) ->
-                layoutDiceInWarehouse());
         createDiceTokens();
         binding.diceSelectionPanel.diceWarehouseZone.post(this::layoutDiceInWarehouse);
     }
@@ -608,25 +606,56 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void renderCapturedCards() {
         ViewGroup container = binding.gamePanel.captureCardsContainer;
         container.removeAllViews();
-        int cardWidth = dpToPx(120);
-        int cardHeight = dpToPx(170);
-        int margin = dpToPx(6);
 
-        for (Card card : gameState.getCaptures()) {
-            Bitmap image = cardImageResolver.getImageFor(card, true);
-            if (image == null) {
-                image = cardImageResolver.getCardBack();
+        // Espera a que la zona de capturas tenga tamaño real
+        binding.gamePanel.captureScroll.post(() -> {
+            int zoneH = binding.gamePanel.captureScroll.getHeight();
+            if (zoneH <= 0) return;
+
+            int margin = dpToPx(6);
+
+            // Queremos que la carta use, por ejemplo, 80% del alto de la zona.
+            float heightFactor = 0.80f;
+
+            // Resta un poco por padding interno (lo tienes en el contenedor: paddingVertical=4dp)
+            int innerPadding = dpToPx(8);
+            int cardHeight = Math.round((zoneH - innerPadding) * heightFactor);
+
+            // Mantén proporción 120x170 (tu proporción actual)
+            int cardWidth = Math.round(cardHeight * (120f / 170f));
+
+            for (Card card : gameState.getCaptures()) {
+                Bitmap image = cardImageResolver.getImageFor(card, true);
+                if (image == null) image = cardImageResolver.getCardBack();
+
+                ImageView cardView = new ImageView(this);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(cardWidth, cardHeight);
+                params.setMargins(margin, 0, margin, 0);
+                cardView.setLayoutParams(params);
+
+                // Elige cómo se ajusta la imagen dentro del rectángulo:
+                // - CENTER_CROP: llena y puede recortar un poco
+                // - FIT_CENTER: se ve completa (recomendado si no quieres recortes)
+                cardView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+
+                cardView.setImageBitmap(image);
+                cardView.setContentDescription(card != null ? card.getName() : getString(R.string.card_image_content_description));
+
+                // 👇 CLICK LARGO = CARTA EN GRANDE
+                cardView.setOnLongClickListener(v -> {
+                    Bitmap fullImage = cardImageResolver.getImageFor(card, true);
+                    if (fullImage == null) {
+                        fullImage = cardImageResolver.getCardBack();
+                    }
+                    CardFullscreenDialog.show(this, fullImage);
+                    return true;
+                });
+
+                container.addView(cardView);
             }
-            ImageView cardView = new ImageView(this);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(cardWidth, cardHeight);
-            params.setMargins(margin, 0, margin, 0);
-            cardView.setLayoutParams(params);
-            cardView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            cardView.setImageBitmap(image);
-            cardView.setContentDescription(card != null ? card.getName() : getString(R.string.card_image_content_description));
-            container.addView(cardView);
-        }
+        });
     }
+
 
     private void runCaptureAnimationQueue(List<CaptureAnimationRequest> queue, Runnable onComplete) {
         if (queue == null || queue.isEmpty()) {
