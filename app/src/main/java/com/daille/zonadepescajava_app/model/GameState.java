@@ -56,6 +56,7 @@ public class GameState {
     private final List<Card> pendingArenqueChosen = new ArrayList<>();
     private boolean awaitingArenqueChoice = false;
     private int arenqueSlotIndex = -1;
+    private int arenquePlacementSlots = 0;
     private boolean awaitingPulpoChoice = false;
     private int pulpoSlotIndex = -1;
     private int pulpoPlacedValue = 0;
@@ -169,6 +170,7 @@ public class GameState {
         pendingArenqueChosen.clear();
         awaitingArenqueChoice = false;
         arenqueSlotIndex = -1;
+        arenquePlacementSlots = 0;
         awaitingPulpoChoice = false;
         pulpoSlotIndex = -1;
         pulpoPlacedValue = 0;
@@ -678,13 +680,17 @@ public class GameState {
         if (pendingSelection != PendingSelection.SPIDER_CRAB_CHOOSE_SLOT) {
             return "No hay colocación pendiente del Cangrejo araña.";
         }
-        if (slotIndex < 0 || slotIndex >= board.length || board[slotIndex].getCard() != null) {
-            return "Debes elegir un espacio vacío válido.";
+        if (slotIndex < 0 || slotIndex >= board.length) {
+            return "Debes elegir una carta boca abajo válida.";
+        }
+        BoardSlot slot = board[slotIndex];
+        if (slot.getCard() == null || slot.isFaceUp()) {
+            return "Debes elegir una carta boca abajo válida.";
         }
 
-        board[slotIndex].setCard(pendingSpiderCrabCard);
-        board[slotIndex].setFaceUp(false);
-        board[slotIndex].setStatus(new SlotStatus());
+        slot.setCard(pendingSpiderCrabCard);
+        slot.setFaceUp(false);
+        slot.setStatus(new SlotStatus());
 
         pendingSpiderCrabCard = null;
         spiderCrabSlotIndex = -1;
@@ -1500,6 +1506,7 @@ public class GameState {
         pendingArenqueChosen.clear();
         awaitingArenqueChoice = false;
         arenqueSlotIndex = -1;
+        arenquePlacementSlots = 0;
     }
 
     private void clearPulpoState() {
@@ -1709,15 +1716,15 @@ public class GameState {
             return "No hay cartas descartadas por fallo para recuperar.";
         }
 
-        boolean hasEmpty = false;
+        boolean hasFaceDown = false;
         for (BoardSlot s : board) {
-            if (s.getCard() == null) {
-                hasEmpty = true;
+            if (s.getCard() != null && !s.isFaceUp()) {
+                hasFaceDown = true;
                 break;
             }
         }
-        if (!hasEmpty) {
-            return "No hay espacios vacíos donde colocar la carta recuperada.";
+        if (!hasFaceDown) {
+            return "No hay cartas boca abajo para reemplazar con el Cangrejo araña.";
         }
 
         spiderCrabSlotIndex = slotIndex;
@@ -1743,7 +1750,7 @@ public class GameState {
 
         pendingSpiderCrabCard = failedDiscards.remove(index);
         pendingSelection = PendingSelection.SPIDER_CRAB_CHOOSE_SLOT;
-        return "Elige un espacio vacío para colocar " + pendingSpiderCrabCard.getName() + ".";
+        return "Elige una carta boca abajo para reemplazar por " + pendingSpiderCrabCard.getName() + ".";
     }
 
     private List<Integer> adjacentIndices(int slotIndex, boolean includeDiagonals) {
@@ -2499,11 +2506,23 @@ public class GameState {
     }
 
     private String startArenqueSelection(int slotIndex) {
+        int availableSlots = 0;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && !adj.isFaceUp()) {
+                availableSlots++;
+            }
+        }
+        if (availableSlots == 0) {
+            return "Arenque: no hay cartas boca abajo adyacentes para reemplazar.";
+        }
+
         List<Card> remaining = new ArrayList<>(deck);
         deck.clear();
         pendingArenquePool.clear();
         pendingArenqueChosen.clear();
         arenqueSlotIndex = slotIndex;
+        arenquePlacementSlots = availableSlots;
         for (Card c : remaining) {
             if (c.getType() == CardType.PEZ) {
                 pendingArenquePool.add(c);
@@ -2514,10 +2533,13 @@ public class GameState {
         if (pendingArenquePool.isEmpty()) {
             deck.addAll(remaining);
             arenqueSlotIndex = -1;
+            arenquePlacementSlots = 0;
             return "No hay peces pequeños en el mazo.";
         }
         awaitingArenqueChoice = true;
-        return "Arenque: elige hasta 2 peces pequeños del mazo.";
+        return availableSlots == 1
+                ? "Arenque: elige 1 pez pequeño del mazo para colocarlo adyacente."
+                : "Arenque: elige hasta 2 peces pequeños del mazo.";
     }
 
     public String chooseArenqueFish(List<Integer> indices) {
@@ -2532,7 +2554,7 @@ public class GameState {
             if (i < 0 || i >= pendingArenquePool.size()) continue;
             if (unique.contains(i)) continue;
             unique.add(i);
-            if (unique.size() >= 2) break;
+            if (unique.size() >= arenquePlacementSlots) break;
         }
         for (int idx : unique) {
             pendingArenqueChosen.add(pendingArenquePool.get(idx));
@@ -2550,7 +2572,8 @@ public class GameState {
         }
         pendingSelection = PendingSelection.ARENQUE_DESTINATION;
         pendingSelectionActor = arenqueSlotIndex;
-        return pendingArenqueChosen.size() == 1
+        int remainingSlots = Math.min(arenquePlacementSlots, pendingArenqueChosen.size());
+        return remainingSlots == 1
                 ? "Coloca el pez pequeño elegido adyacente al Arenque."
                 : "Coloca los 2 peces pequeños adyacentes al Arenque.";
     }
@@ -2565,15 +2588,13 @@ public class GameState {
             return "Debes elegir una casilla adyacente al Arenque.";
         }
         BoardSlot target = board[slotIndex];
+        if (target.getCard() == null || target.isFaceUp()) {
+            return "Debes elegir una carta boca abajo adyacente al Arenque.";
+        }
         if (!target.getDice().isEmpty()) {
             return "Debes elegir una casilla sin dados.";
         }
-        if (target.getCard() != null && target.isFaceUp()) {
-            return "Solo puedes reemplazar cartas boca abajo o espacios vacíos.";
-        }
-        if (target.getCard() != null) {
-            deck.push(target.getCard());
-        }
+        deck.push(target.getCard());
         Card placing = pendingArenqueChosen.remove(0);
         target.setCard(placing);
         target.setFaceUp(false);
