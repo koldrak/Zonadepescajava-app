@@ -912,6 +912,24 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .show();
     }
 
+    private void promptCancelAbility() {
+        if (!gameState.isAwaitingCancelConfirmation()) return;
+
+        new AlertDialog.Builder(this)
+                .setTitle("Cancelar habilidad")
+                .setMessage(gameState.getPendingCancelMessage() +
+                        "\n¿Deseas cancelar la habilidad?")
+                .setPositiveButton("Cancelar", (d, w) -> {
+                    String msg = gameState.resolveCancelConfirmation(true);
+                    handleGameResult(msg);
+                })
+                .setNegativeButton("Seguir intentando", (d, w) -> {
+                    String msg = gameState.resolveCancelConfirmation(false);
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
 
     private void promptAtunDecision() {
         if (!gameState.isAwaitingAtunDecision()) return;
@@ -1133,6 +1151,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (gameState.isAwaitingArenqueChoice()) { promptArenqueChoice(); return; }
         if (gameState.isAwaitingAtunDecision()) { promptAtunDecision(); return; }
         if (gameState.isAwaitingDieLoss()) { promptDieLossChoice(); return; }
+        if (gameState.isAwaitingCancelConfirmation()) {promptCancelAbility();
+        }
+
     }
 
 

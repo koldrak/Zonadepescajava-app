@@ -271,6 +271,8 @@ public class GameState {
                 || awaitingPulpoChoice
                 || awaitingValueAdjustment
                 || awaitingGhostShrimpDecision
+                || awaitingCancelConfirmation
+
                 || (pendingSelection == PendingSelection.BLUE_WHALE_PLACE && !pendingBallenaDice.isEmpty());
         // OJO: recentlyRevealedCards NO debe bloquear el game over (es UI, no resolución).
     }
@@ -1696,6 +1698,8 @@ public class GameState {
                 || awaitingPulpoChoice
                 || awaitingValueAdjustment
                 || awaitingGhostShrimpDecision
+                || awaitingCancelConfirmation
+
                 || (pendingSelection == PendingSelection.BLUE_WHALE_PLACE && !pendingBallenaDice.isEmpty());
     }
 
@@ -2026,6 +2030,34 @@ public class GameState {
         return "Selecciona la carta adyacente destino (máx. 2 dados).";
     }
 
+    private String offerCancelAbility(String abilityName) {
+        awaitingCancelConfirmation = true;
+        pendingCancelMessage = abilityName + ": esa opción no es válida. ¿Quieres cancelar la habilidad?";
+        return pendingCancelMessage;
+    }
+
+    private boolean awaitingCancelConfirmation = false;
+    private String pendingCancelMessage = null;
+
+    public boolean isAwaitingCancelConfirmation() {
+        return awaitingCancelConfirmation;
+    }
+
+    public String getPendingCancelMessage() {
+        return pendingCancelMessage;
+    }
+    public String resolveCancelConfirmation(boolean cancel) {
+        awaitingCancelConfirmation = false;
+        String ability = pendingCancelMessage;
+        pendingCancelMessage = null;
+
+        if (cancel) {
+            clearPendingSelection();
+            return ability + ": habilidad cancelada.";
+        }
+
+        return ability + ": continúa seleccionando.";
+    }
 
     private String chooseRedCrabDestination(int slotIndex) {
         if (!isAdjacentToActor(slotIndex)) {
@@ -2310,9 +2342,9 @@ public class GameState {
         Die die = slot.getDice().get(idx);
         int max = die.getType().getSides();
         if (die.getValue() == max) {
-            clearPendingSelection(); // ✅ cerrar selección para que NO se trabe
-            return "Pez globo: el dado ya estaba al máximo, se omite la habilidad.";
+            return offerCancelAbility("Pez globo");
         }
+
 
         slot.setDie(idx, new Die(die.getType(), max));
         clearPendingSelection();
