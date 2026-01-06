@@ -151,7 +151,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void refreshScoreRecords() {
-        List<ScoreRecord> records = scoreDatabaseHelper.getTopScores(3);
+        List<ScoreRecord> records = scoreDatabaseHelper.getTopScores(10);
         List<String> labels = new ArrayList<>();
         DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault());
 
@@ -205,7 +205,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
                 Arrays.asList(gameState.getBoard()),
                 gameState.getHighlightSlots(),
-                gameState.getRemoraBorderSlots()
+                gameState.computeRemoraBorderSlots()
 
         );
 
@@ -213,6 +213,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (boardLinksDecoration != null) {
             boardLinksDecoration.setLinks(gameState.getBoardLinks());
             binding.gamePanel.boardRecycler.invalidateItemDecorations();
+            binding.gamePanel.boardRecycler.postInvalidateOnAnimation();
         }
 
         binding.gamePanel.score.setText(String.format(Locale.getDefault(), "Puntaje: %d", gameState.getScore()));
@@ -776,6 +777,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             return;
         }
 
+        float originalAlpha = target.getAlpha();
+        target.setAlpha(0f);
+
         Bitmap image = cardImageResolver.getCardBack();
         int width = target.getWidth();
         int height = target.getHeight();
@@ -809,6 +813,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setDuration(350)
                 .withEndAction(() -> {
                     overlay.removeView(floating);
+                    target.setAlpha(originalAlpha);
                     if (onComplete != null) {
                         onComplete.run();
                     }
