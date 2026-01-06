@@ -2471,9 +2471,8 @@ public class GameState {
         if (targets.isEmpty()) {
             return "No hay cartas boca arriba adyacentes para devorar.";
         }
-        if (targets.size() == 1) {
-            return devourChosenFaceUp(slotIndex, targets.get(0));
-        }
+
+        // IMPORTANTE: aunque exista solo 1 opción, igual debe seleccionarse manualmente.
         return queueableSelection(
                 PendingSelection.WHITE_SHARK_TARGET,
                 slotIndex,
