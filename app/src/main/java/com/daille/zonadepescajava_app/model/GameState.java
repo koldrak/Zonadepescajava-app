@@ -523,6 +523,17 @@ public class GameState {
         if (slots != null) remoraBorderSlots.addAll(slots);
     }
 
+    public java.util.List<Integer> computeRemoraBorderSlots() {
+        java.util.List<Integer> slots = new java.util.ArrayList<>();
+        for (int i = 0; i < board.length; i++) {
+            if (shouldShowRemoraBorder(i)) {
+                slots.add(i);
+            }
+        }
+        setRemoraBorderSlots(slots);
+        return getRemoraBorderSlots();
+    }
+
     public List<Die> getPendingDiceChoices() {
         if (pendingDieLossSlot == null) {
             return java.util.Collections.emptyList();
@@ -940,39 +951,7 @@ public class GameState {
             return checkDefeatOrContinue(msg + extraLog);
         }
 
-        if (slot.getCard().getCondition().isSatisfied(slotIndex, this)) {
-            String onCaptureLog = capture(slotIndex);
-            String corrientes = buildCurrentsLog(placedValue);
-            String result = "¡Captura exitosa!" + onCaptureLog + extraLog;
-            if (!corrientes.isEmpty()) {
-                result += " " + corrientes;
-            }
-            return checkDefeatOrContinue(result);
-        }
-
-        if (slot.getStatus().protectedOnce) {
-            String protectedFail = handleProtectedFailure(slotIndex);
-            String corrientes = buildCurrentsLog(placedValue);
-            if (!corrientes.isEmpty()) {
-                protectedFail += " " + corrientes;
-            }
-            return checkDefeatOrContinue(protectedFail + extraLog);
-        }
-
-        boolean loseTwo = isHookActive();
-        if (loseTwo) {
-            markHookPenaltyUsed();
-            String failMsg = handleFailedCatchImmediate(slotIndex, true);
-            String corrientes = buildCurrentsLog(placedValue);
-            if (!corrientes.isEmpty()) {
-                failMsg += " " + corrientes;
-            }
-            return checkDefeatOrContinue(failMsg + extraLog);
-        }
-
-        pendingDieLossSlot = slotIndex;
-        pendingLossTriggerValue = placedValue;
-        return checkDefeatOrContinue("La pesca falló. Elige qué dado perder." + extraLog);
+        return resolveFishingOutcome(slotIndex, placedValue, extraLog.toString(), true);
     }
 
     private String addDieToSlot(int slotIndex, Die die) {
@@ -987,6 +966,56 @@ public class GameState {
         String reveal = handleOnReveal(slotIndex, die.getValue());
         recomputeBottleAdjustments();
         return reveal == null ? "" : reveal;
+    }
+
+    private String resolveFishingOutcome(int slotIndex, int triggerValue, String extraLog, boolean applyCurrents) {
+        BoardSlot slot = board[slotIndex];
+
+        if (slot.getDice().size() < 2) {
+            return extraLog;
+        }
+
+        String corrientes = applyCurrents ? buildCurrentsLog(triggerValue) : "";
+        StringBuilder combinedLog = new StringBuilder(extraLog == null ? "" : extraLog);
+        if (!corrientes.isEmpty()) {
+            if (combinedLog.length() > 0) combinedLog.append(" ");
+            combinedLog.append(corrientes);
+        }
+
+        if (slot.getCard().getCondition().isSatisfied(slotIndex, this)) {
+            String onCaptureLog = capture(slotIndex);
+            String result = "¡Captura exitosa!" + onCaptureLog;
+            if (combinedLog.length() > 0) {
+                result += " " + combinedLog;
+            }
+            return checkDefeatOrContinue(result.trim());
+        }
+
+        if (slot.getStatus().protectedOnce) {
+            String protectedFail = handleProtectedFailure(slotIndex);
+            if (combinedLog.length() > 0) {
+                protectedFail += " " + combinedLog;
+            }
+            return checkDefeatOrContinue(protectedFail.trim());
+        }
+
+        boolean loseTwo = isHookActive();
+        if (loseTwo) {
+            markHookPenaltyUsed();
+            String failMsg = handleFailedCatchImmediate(slotIndex, true);
+            if (combinedLog.length() > 0) {
+                failMsg += " " + combinedLog;
+            }
+            return checkDefeatOrContinue(failMsg.trim());
+        }
+
+        pendingDieLossSlot = slotIndex;
+        pendingLossTriggerValue = triggerValue;
+        String fail = "La pesca falló. Elige qué dado perder.";
+        if (combinedLog.length() > 0) {
+            fail += " " + combinedLog;
+        }
+        return checkDefeatOrContinue(fail.trim());
     }
 
     private String capture(int slotIndex) {
@@ -2231,14 +2260,9 @@ public class GameState {
         adj.setCard(deck.isEmpty() ? null : deck.pop());
         adj.setFaceUp(false);
         adj.setStatus(new SlotStatus());
-        StringBuilder extra = new StringBuilder();
         for (Die d : preservedDice) {
             if (adj.getDice().size() < 2) {
-                String reveal = addDieToSlot(targetIndex, d);
-                if (!reveal.isEmpty()) {
-                    if (extra.length() > 0) extra.append(" ");
-                    extra.append(reveal);
-                }
+                adj.addDie(d);
             } else {
                 reserve.add(d.getType());
             }
@@ -2247,7 +2271,7 @@ public class GameState {
         if (pendingSelection == PendingSelection.PIRANA_TARGET) {
             clearPendingSelection();
         }
-        return extra.length() == 0 ? base : base + " " + extra;
+        return base;
     }
 
     private String hideAdjacentFaceUp(int slotIndex) {
@@ -2591,9 +2615,20 @@ public class GameState {
         if (pendingSelection == PendingSelection.WHITE_SHARK_TARGET) {
             clearPendingSelection();
         }
-        return reveal.length() == 0
+        String baseLog = reveal.length() == 0
                 ? "Tiburón blanco devoró una carta adyacente."
                 : "Tiburón blanco devoró una carta adyacente. " + reveal;
+
+        int lastValue = shark.getDice().isEmpty()
+                ? 0
+                : shark.getDice().get(shark.getDice().size() - 1).getValue();
+        if (shark.getDice().size() >= 2) {
+            String outcome = resolveFishingOutcome(sharkSlot, lastValue, "", false);
+            if (!outcome.isEmpty()) {
+                return baseLog + " " + outcome;
+            }
+        }
+        return baseLog;
     }
 
     private String flipAdjacentCardsDown(int slotIndex) {
