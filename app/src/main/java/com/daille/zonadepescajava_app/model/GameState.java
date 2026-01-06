@@ -60,6 +60,9 @@ public class GameState {
     private int pulpoPlacedValue = 0;
     private boolean pendingGameOver = false;
     private String pendingGameOverMessage = null;
+    private Card pendingSpiderCrabCard = null;
+    private int spiderCrabSlotIndex = -1;
+
     private enum PendingSelection {
         NONE,
         RED_CRAB_FROM,
@@ -80,7 +83,9 @@ public class GameState {
         MORENA_FROM,
         MORENA_TO,
         ARENQUE_DESTINATION,
-        BLUE_WHALE_PLACE
+        BLUE_WHALE_PLACE,
+        SPIDER_CRAB_CHOOSE_CARD,
+        SPIDER_CRAB_CHOOSE_SLOT
     }
     private PendingSelection pendingSelection = PendingSelection.NONE;
     private int pendingSelectionActor = -1;
@@ -492,6 +497,14 @@ public class GameState {
                     }
                 }
                 break;
+            case SPIDER_CRAB_CHOOSE_SLOT:
+                for (int i = 0; i < board.length; i++) {
+                    if (board[i].getCard() == null) {
+                        highlight.add(i);
+                    }
+                }
+                break;
+
             case NONE:
             default:
                 break;
@@ -607,10 +620,32 @@ public class GameState {
             case BLUE_WHALE_PLACE:
                 result = placeBlueWhaleDie(slotIndex);
                 break;
+            case SPIDER_CRAB_CHOOSE_SLOT:
+                result = placeSpiderCrabRevivedCard(slotIndex);
+                break;
+
             default:
                 result = "No hay acciones pendientes.";
         }
         return result;
+    }
+    private String placeSpiderCrabRevivedCard(int slotIndex) {
+        if (pendingSelection != PendingSelection.SPIDER_CRAB_CHOOSE_SLOT) {
+            return "No hay colocación pendiente del Cangrejo araña.";
+        }
+        if (slotIndex < 0 || slotIndex >= board.length || board[slotIndex].getCard() != null) {
+            return "Debes elegir un espacio vacío válido.";
+        }
+
+        board[slotIndex].setCard(pendingSpiderCrabCard);
+        board[slotIndex].setFaceUp(false);
+        board[slotIndex].setStatus(new SlotStatus());
+
+        pendingSpiderCrabCard = null;
+        spiderCrabSlotIndex = -1;
+        clearPendingSelection();
+
+        return "Cangrejo araña colocó la carta recuperada boca abajo en el tablero.";
     }
 
     public String chooseAtunReroll(boolean reroll) {
@@ -1495,8 +1530,9 @@ public class GameState {
                         "Nautilus: elige un dado para ajustar ±2.");
                 break;
             case CANGREJO_ARANA:
-                result = reviveFailedCard();
+                result = startSpiderCrabRevive(slotIndex);
                 break;
+
             case BOTELLA_PLASTICO:
                 recomputeBottleAdjustments();
                 result = "Botella: los peces adyacentes requieren +3 a la suma.";
@@ -1564,18 +1600,46 @@ public class GameState {
         return result;
     }
 
-    private String reviveFailedCard() {
-        if (failedDiscards.isEmpty()) return "";
-        for (int i = 0; i < board.length; i++) {
-            if (board[i].getCard() == null) {
-                Card rescued = failedDiscards.remove(failedDiscards.size() - 1);
-                board[i].setCard(rescued);
-                board[i].setFaceUp(false);
-                board[i].setStatus(new SlotStatus());
-                return "Cangrejo araña devolvió una carta descartada.";
+    private String startSpiderCrabRevive(int slotIndex) {
+        if (failedDiscards.isEmpty()) {
+            return "No hay cartas descartadas por fallo para recuperar.";
+        }
+
+        boolean hasEmpty = false;
+        for (BoardSlot s : board) {
+            if (s.getCard() == null) {
+                hasEmpty = true;
+                break;
             }
         }
-        return "";
+        if (!hasEmpty) {
+            return "No hay espacios vacíos donde colocar la carta recuperada.";
+        }
+
+        spiderCrabSlotIndex = slotIndex;
+        pendingSelection = PendingSelection.SPIDER_CRAB_CHOOSE_CARD;
+        return "Cangrejo araña: elige una carta descartada por fallo para recuperar.";
+    }
+
+    public List<String> getFailedDiscardNames() {
+        List<String> names = new ArrayList<>();
+        for (Card c : failedDiscards) {
+            names.add(c.getName());
+        }
+        return names;
+    }
+
+    public String chooseSpiderCrabCard(int index) {
+        if (pendingSelection != PendingSelection.SPIDER_CRAB_CHOOSE_CARD) {
+            return "No hay selección pendiente del Cangrejo araña.";
+        }
+        if (index < 0 || index >= failedDiscards.size()) {
+            return "Debes elegir una carta descartada válida.";
+        }
+
+        pendingSpiderCrabCard = failedDiscards.remove(index);
+        pendingSelection = PendingSelection.SPIDER_CRAB_CHOOSE_SLOT;
+        return "Elige un espacio vacío para colocar " + pendingSpiderCrabCard.getName() + ".";
     }
 
     private List<Integer> adjacentIndices(int slotIndex, boolean includeDiagonals) {
