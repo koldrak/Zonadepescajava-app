@@ -685,6 +685,11 @@ public class GameState {
             default:
                 result = "No hay acciones pendientes.";
         }
+        // Si al resolver esta selección se abrió otra resolución pendiente, NO encadenar nada todavía.
+        if (hasPendingTurnResolutions()) {
+            return result;
+        }
+
         String revealLog = continueRevealChain("");
         if (!revealLog.isEmpty()) {
             result = result.isEmpty() ? revealLog : result + " " + revealLog;
@@ -697,7 +702,6 @@ public class GameState {
         }
 
         return result;
-
     }
 
     private String resolveKoiSwap(int koiSlotIndex, int targetIndex) {
@@ -812,8 +816,24 @@ public class GameState {
         }
         if (!useAbility) {
             clearBlueCrabState();
-            return "Omitiste la habilidad de la Jaiba azul.";
+
+            String msg = "Omitiste la habilidad de la Jaiba azul.";
+
+            // ✅ Reanudar cadena de revelaciones
+            String revealLog = continueRevealChain("");
+            if (!revealLog.isEmpty()) {
+                msg = msg.isEmpty() ? revealLog : msg + " " + revealLog;
+            }
+
+            // ✅ Safety net
+            String endTurn = resolveAllReadySlots();
+            if (!endTurn.isEmpty()) {
+                msg = msg.isEmpty() ? endTurn : msg + " " + endTurn;
+            }
+
+            return msg;
         }
+
         String msg = queueableSelection(
                 PendingSelection.BLUE_CRAB,
                 blueCrabSlotIndex,
@@ -834,8 +854,24 @@ public class GameState {
         if (!useAbility) {
             awaitingBlowfishDecision = false;
             blowfishSlotIndex = -1;
-            return "Omitiste la habilidad del Pez globo.";
+
+            String msg = "Omitiste la habilidad del Pez globo.";
+
+            // ✅ Reanudar cadena de revelaciones
+            String revealLog = continueRevealChain("");
+            if (!revealLog.isEmpty()) {
+                msg = msg.isEmpty() ? revealLog : msg + " " + revealLog;
+            }
+
+            // ✅ Safety net
+            String endTurn = resolveAllReadySlots();
+            if (!endTurn.isEmpty()) {
+                msg = msg.isEmpty() ? endTurn : msg + " " + endTurn;
+            }
+
+            return msg;
         }
+
         awaitingBlowfishDecision = false;
         String msg = queueableSelection(
                 PendingSelection.BLOWFISH,
@@ -861,8 +897,24 @@ public class GameState {
         if (!reroll) {
             Die current = slot.getDice().get(pezVelaDieIndex);
             clearPezVelaState();
-            return "Pez vela conserva el " + current.getLabel() + ".";
+
+            String msg = "Pez vela conserva el " + current.getLabel() + ".";
+
+            // ✅ Reanudar cadena de revelaciones
+            String revealLog = continueRevealChain("");
+            if (!revealLog.isEmpty()) {
+                msg = msg.isEmpty() ? revealLog : msg + " " + revealLog;
+            }
+
+            // ✅ Safety net: resolver cartas que quedaron con 2 dados por efectos
+            String endTurn = resolveAllReadySlots();
+            if (!endTurn.isEmpty()) {
+                msg = msg.isEmpty() ? endTurn : msg + " " + endTurn;
+            }
+
+            return msg;
         }
+
         pezVelaRerolledDie = Die.roll(slot.getDice().get(pezVelaDieIndex).getType(), rng);
         awaitingPezVelaDecision = false;
         awaitingPezVelaResultChoice = true;
@@ -890,7 +942,26 @@ public class GameState {
         slot.setDie(pezVelaDieIndex, chosen);
         String msg = "Pez vela conserva el resultado " + chosen.getLabel() + ".";
         clearPezVelaState();
+
+// ✅ Si esto abrió una resolución pendiente, NO encadenar nada todavía.
+        if (hasPendingTurnResolutions()) {
+            return msg;
+        }
+
+// ✅ Reanudar cadena de revelaciones (Mero gigante / Pez volador / etc.)
+        String revealLog = continueRevealChain("");
+        if (!revealLog.isEmpty()) {
+            msg = msg.isEmpty() ? revealLog : msg + " " + revealLog;
+        }
+
+// ✅ Safety net
+        String endTurn = resolveAllReadySlots();
+        if (!endTurn.isEmpty()) {
+            msg = msg.isEmpty() ? endTurn : msg + " " + endTurn;
+        }
+
         return msg;
+
     }
 
     public String chooseDieToLose(int dieIndex) {
@@ -925,7 +996,19 @@ public class GameState {
         if (!corrientes.isEmpty()) {
             result += " " + corrientes;
         }
-        return checkDefeatOrContinue(result);
+        String msg = checkDefeatOrContinue(result);
+
+// Si se abrió otra resolución pendiente, no seguimos.
+        if (hasPendingTurnResolutions()) {
+            return msg;
+        }
+
+        String endTurn = resolveAllReadySlots();
+        if (!endTurn.isEmpty()) {
+            msg = msg.isEmpty() ? endTurn : msg + " " + endTurn;
+        }
+        return msg;
+
     }
 
     public String rollFromReserve(DieType type) {
@@ -1416,6 +1499,17 @@ public class GameState {
                 clearPulpoState();
             }
         }
+        // ✅ Remap pending reveal chain indices after currents
+        if (!pendingRevealChain.isEmpty()) {
+            java.util.Deque<Integer> remapped = new java.util.ArrayDeque<>();
+            for (Integer idx : pendingRevealChain) {
+                int m = remapIndex(idx, indexMap);
+                if (m >= 0) remapped.add(m);
+            }
+            pendingRevealChain.clear();
+            pendingRevealChain.addAll(remapped);
+        }
+
     }
 
     private void remapCurrentSelection(int[] indexMap) {
@@ -1906,13 +2000,32 @@ public class GameState {
     }
 
     private String chooseRedCrabOrigin(int slotIndex) {
+
+        // ✅ Si ya no existe ningún dado adyacente, NO podemos completar la habilidad.
+        // Esto evita el "bucle" de selección eterna.
+        boolean anyAdjacentWithDice = false;
+        for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+            if (!board[idx].getDice().isEmpty()) {
+                anyAdjacentWithDice = true;
+                break;
+            }
+        }
+        if (!anyAdjacentWithDice) {
+            clearPendingSelection();
+            recomputeBottleAdjustments();
+            return "Cangrejo rojo: no hay dados adyacentes para mover (se omite la habilidad).";
+        }
+
+        // Validación normal
         if (!isAdjacentToActor(slotIndex) || board[slotIndex].getDice().isEmpty()) {
             return "Elige una carta adyacente con dado para mover.";
         }
+
         pendingSelectionAux = slotIndex;
         pendingSelection = PendingSelection.RED_CRAB_TO;
         return "Selecciona la carta adyacente destino (máx. 2 dados).";
     }
+
 
     private String chooseRedCrabDestination(int slotIndex) {
         if (!isAdjacentToActor(slotIndex)) {
@@ -2048,14 +2161,31 @@ public class GameState {
             clearGhostShrimpState();
             return "Las cartas a intercambiar ya no están disponibles.";
         }
+        String msg;
         if (swap) {
             swapSlots(ghostShrimpFirstChoice, ghostShrimpSecondChoice);
             recomputeBottleAdjustments();
             clearGhostShrimpState();
-            return "Intercambiaste las cartas vistas por el Camarón fantasma.";
+            msg = "Intercambiaste las cartas vistas por el Camarón fantasma.";
+        } else {
+            clearGhostShrimpState();
+            msg = "Decidiste mantener las cartas en su lugar.";
         }
-        clearGhostShrimpState();
-        return "Decidiste mantener las cartas en su lugar.";
+
+// ✅ Reanudar cadena de revelaciones (Mero gigante / etc.)
+        String revealLog = continueRevealChain("");
+        if (!revealLog.isEmpty()) {
+            msg = msg.isEmpty() ? revealLog : msg + " " + revealLog;
+        }
+
+// ✅ Safety net: resolver cartas que quedaron con 2 dados por efectos
+        String endTurn = resolveAllReadySlots();
+        if (!endTurn.isEmpty()) {
+            msg = msg.isEmpty() ? endTurn : msg + " " + endTurn;
+        }
+
+        return msg;
+
     }
 
     private void clearGhostShrimpState() {
@@ -2339,7 +2469,23 @@ public class GameState {
             }
             clearPendingSelection();
             clearValueAdjustmentState();
-            return result + " No hay un segundo dado disponible.";
+
+            String msg = result + " No hay un segundo dado disponible.";
+
+// ✅ Reanudar cadena de revelaciones
+            String revealLog = continueRevealChain("");
+            if (!revealLog.isEmpty()) {
+                msg = msg.isEmpty() ? revealLog : msg + " " + revealLog;
+            }
+
+// ✅ Safety net
+            String endTurn = resolveAllReadySlots();
+            if (!endTurn.isEmpty()) {
+                msg = msg.isEmpty() ? endTurn : msg + " " + endTurn;
+            }
+
+            return msg;
+
         }
 
         if (fromNautilus && pendingSelection == PendingSelection.NAUTILUS_SECOND) {
@@ -2349,7 +2495,22 @@ public class GameState {
         }
 
         clearValueAdjustmentState();
-        return result;
+
+// ✅ Reanudar cadena de revelaciones
+        String msg = result;
+        String revealLog = continueRevealChain("");
+        if (!revealLog.isEmpty()) {
+            msg = msg.isEmpty() ? revealLog : msg + " " + revealLog;
+        }
+
+// ✅ Safety net
+        String endTurn = resolveAllReadySlots();
+        if (!endTurn.isEmpty()) {
+            msg = msg.isEmpty() ? endTurn : msg + " " + endTurn;
+        }
+
+        return msg;
+
     }
 
     private void clearValueAdjustmentState() {
