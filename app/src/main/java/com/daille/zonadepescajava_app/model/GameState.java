@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class GameState {
@@ -62,6 +63,9 @@ public class GameState {
     private String pendingGameOverMessage = null;
     private Card pendingSpiderCrabCard = null;
     private int spiderCrabSlotIndex = -1;
+    private final java.util.Deque<Integer> pendingRevealChain = new java.util.ArrayDeque<>();
+    private boolean processingRevealChain = false;
+    private final java.util.Map<Integer, Integer> bottleTargets = new java.util.HashMap<>();
 
     private enum PendingSelection {
         NONE,
@@ -82,6 +86,7 @@ public class GameState {
         ATUN_DESTINATION,
         MORENA_FROM,
         MORENA_TO,
+        BOTTLE_TARGET,
         ARENQUE_DESTINATION,
         BLUE_WHALE_PLACE,
         SPIDER_CRAB_CHOOSE_CARD,
@@ -169,6 +174,9 @@ public class GameState {
         pulpoPlacedValue = 0;
         pendingGameOver = false;
         pendingGameOverMessage = null;
+        pendingRevealChain.clear();
+        processingRevealChain = false;
+        bottleTargets.clear();
 
         if (startingReserve == null || startingReserve.isEmpty()) {
             reserve.add(DieType.D6);
@@ -396,6 +404,14 @@ public class GameState {
                 for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
                     if (idx != pendingSelectionAux && board[idx].getCard() != null
                             && board[idx].getDice().size() < 2) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case BOTTLE_TARGET:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    if (board[idx].getCard() != null && board[idx].isFaceUp()
+                            && board[idx].getCard().getType() == CardType.PEZ) {
                         highlight.add(idx);
                     }
                 }
@@ -636,6 +652,9 @@ public class GameState {
             case MORENA_TO:
                 result = chooseMorenaDestination(slotIndex);
                 break;
+            case BOTTLE_TARGET:
+                result = chooseBottleTarget(slotIndex);
+                break;
             case ARENQUE_DESTINATION:
                 result = placeArenqueFish(slotIndex);
                 break;
@@ -648,6 +667,10 @@ public class GameState {
 
             default:
                 result = "No hay acciones pendientes.";
+        }
+        String revealLog = continueRevealChain("");
+        if (!revealLog.isEmpty()) {
+            result = result.isEmpty() ? revealLog : result + " " + revealLog;
         }
         return result;
     }
@@ -958,13 +981,16 @@ public class GameState {
         BoardSlot target = board[slotIndex];
         target.addDie(die);
         if (target.getCard() == null || target.isFaceUp()) {
-            return "";
+            return target.getDice().size() < 2 ? "" : resolveFishingOutcome(slotIndex, die.getValue(), "", false);
         }
         target.setFaceUp(true);
         target.getStatus().calamarForcedFaceDown = false;
         markRevealed(slotIndex);
         String reveal = handleOnReveal(slotIndex, die.getValue());
         recomputeBottleAdjustments();
+        if (target.getDice().size() >= 2) {
+            return resolveFishingOutcome(slotIndex, die.getValue(), reveal == null ? "" : reveal, false);
+        }
         return reveal == null ? "" : reveal;
     }
 
@@ -1120,6 +1146,10 @@ public class GameState {
     }
 
     private String checkDefeatOrContinue(String base) {
+        String revealLog = continueRevealChain("");
+        if (!revealLog.isEmpty()) {
+            base = base.isEmpty() ? revealLog : base + " " + revealLog;
+        }
         String ending = null;
         if (reserve.isEmpty() && selectedDie == null) {
             ending = "Sin dados en reserva: derrota.";
@@ -1486,6 +1516,38 @@ public class GameState {
         }
     }
 
+    private boolean hasBlockingRevealState() {
+        return isAwaitingDieLoss()
+                || awaitingAtunDecision
+                || awaitingBlueCrabDecision
+                || awaitingBlowfishDecision
+                || awaitingPezVelaDecision
+                || awaitingPezVelaResultChoice
+                || awaitingLanternChoice
+                || isAwaitingBoardSelection()
+                || awaitingArenqueChoice
+                || awaitingPulpoChoice
+                || awaitingValueAdjustment
+                || awaitingGhostShrimpDecision
+                || (pendingSelection == PendingSelection.BLUE_WHALE_PLACE && !pendingBallenaDice.isEmpty());
+    }
+
+    private String continueRevealChain(String currentLog) {
+        StringBuilder log = new StringBuilder(currentLog == null ? "" : currentLog);
+        if (processingRevealChain) return log.toString();
+        processingRevealChain = true;
+        while (!pendingRevealChain.isEmpty() && !hasBlockingRevealState()) {
+            int idx = pendingRevealChain.poll();
+            String reveal = revealAndTrigger(idx);
+            if (!reveal.isEmpty()) {
+                if (log.length() > 0) log.append(" ");
+                log.append(reveal);
+            }
+        }
+        processingRevealChain = false;
+        return log.toString();
+    }
+
     private String queueableSelection(PendingSelection selection, int actor, int aux, String message) {
         if (pendingSelection == PendingSelection.NONE) {
             pendingSelection = selection;
@@ -1577,8 +1639,7 @@ public class GameState {
                 break;
 
             case BOTELLA_PLASTICO:
-                recomputeBottleAdjustments();
-                result = "Botella: los peces adyacentes requieren +3 a la suma.";
+                result = startBottleTargetSelection(slotIndex);
                 break;
             case BOTA_VIEJA:
                 result = "Bota vieja: −1 a la suma de adyacentes.";
@@ -1699,6 +1760,24 @@ public class GameState {
         return indices;
     }
 
+    private String startBottleTargetSelection(int slotIndex) {
+        boolean hasOption = false;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() == CardType.PEZ) {
+                hasOption = true;
+                break;
+            }
+        }
+        if (!hasOption) {
+            return "Botella de Plástico: no hay peces pequeños boca arriba adyacentes para marcar.";
+        }
+        return queueableSelection(
+                PendingSelection.BOTTLE_TARGET,
+                slotIndex,
+                "Botella de Plástico: elige un pez pequeño adyacente boca arriba.");
+    }
+
     private String moveOneDieBetweenAdjacents(int slotIndex) {
         List<Integer> adjs = adjacentIndices(slotIndex, true);
         Integer from = null, to = null;
@@ -1757,6 +1836,21 @@ public class GameState {
         return reveal.isEmpty()
                 ? "Cangrejo rojo movió un dado entre cartas adyacentes."
                 : "Cangrejo rojo movió un dado entre cartas adyacentes. " + reveal;
+    }
+
+    private String chooseBottleTarget(int slotIndex) {
+        if (!isAdjacentToActor(slotIndex)) {
+            return "Elige un pez pequeño adyacente boca arriba.";
+        }
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null || !target.isFaceUp() || target.getCard().getType() != CardType.PEZ) {
+            return "Debes seleccionar un pez pequeño boca arriba.";
+        }
+        bottleTargets.put(pendingSelectionActor, slotIndex);
+        recomputeBottleAdjustments();
+        String message = "Botella de Plástico marcó " + target.getCard().getName() + ": sus dados reciben +3.";
+        clearPendingSelection();
+        return message;
     }
 
     private String adjustLastDie(int slotIndex) {
@@ -2498,18 +2592,34 @@ public class GameState {
     private void recomputeBottleAdjustments() {
         for (BoardSlot slot : board) {
             slot.getStatus().sumConditionShift = 0;
+            slot.getStatus().bottleDieBonus = 0;
         }
-        for (int i = 0; i < board.length; i++) {
-            BoardSlot slot = board[i];
-            if (slot.getCard() == null || !slot.isFaceUp()) continue;
-            if (slot.getCard().getId() != CardId.BOTELLA_PLASTICO) continue;
-            for (Integer adjIndex : adjacentIndices(i, true)) {
-                BoardSlot adj = board[adjIndex];
-                if (adj.getCard() != null && adj.getCard().getType() == CardType.PEZ) {
-                    adj.getStatus().sumConditionShift += 3;
-                }
+        List<Integer> invalid = new ArrayList<>();
+        for (Map.Entry<Integer, Integer> entry : bottleTargets.entrySet()) {
+            int bottleIndex = entry.getKey();
+            int targetIndex = entry.getValue();
+            if (isBottleLinkActive(bottleIndex, targetIndex)) {
+                board[targetIndex].getStatus().bottleDieBonus += 3;
+            } else {
+                invalid.add(bottleIndex);
             }
         }
+        for (Integer key : invalid) {
+            bottleTargets.remove(key);
+        }
+    }
+
+    private boolean isBottleLinkActive(int bottleIndex, int targetIndex) {
+        if (bottleIndex < 0 || bottleIndex >= board.length || targetIndex < 0 || targetIndex >= board.length) {
+            return false;
+        }
+        if (!adjacentIndices(bottleIndex, true).contains(targetIndex)) return false;
+        BoardSlot bottle = board[bottleIndex];
+        BoardSlot target = board[targetIndex];
+        return bottle.getCard() != null && bottle.isFaceUp()
+                && bottle.getCard().getId() == CardId.BOTELLA_PLASTICO
+                && target.getCard() != null && target.isFaceUp()
+                && target.getCard().getType() == CardType.PEZ;
     }
 
     private void shuffleDeck() {
@@ -2632,22 +2742,24 @@ public class GameState {
     }
 
     private String flipAdjacentCardsDown(int slotIndex) {
-        int flipped = 0;
-        StringBuilder chain = new StringBuilder();
+        List<Integer> toReveal = new ArrayList<>();
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
             if (adj.getCard() != null && !adj.isFaceUp()) {
-                String reveal = revealAndTrigger(idx);
-                if (!reveal.isEmpty()) {
-                    if (chain.length() > 0) chain.append(" ");
-                    chain.append(reveal);
-                }
-                flipped++;
+                toReveal.add(idx);
             }
         }
-        String base = flipped == 0 ? "" : "Mero gigante volteó " + flipped + " carta(s).";
-        if (chain.length() > 0) {
-            base = base.isEmpty() ? chain.toString() : base + " " + chain;
+        if (toReveal.isEmpty()) return "";
+        pendingRevealChain.addAll(toReveal);
+        int before = pendingRevealChain.size();
+        String chain = continueRevealChain("");
+        int processed = before - pendingRevealChain.size();
+        String base = processed == 0 ? "" : "Mero gigante volteó " + processed + " carta(s).";
+        if (!chain.isEmpty()) {
+            base = base.isEmpty() ? chain : base + " " + chain;
+        }
+        if (!pendingRevealChain.isEmpty()) {
+            base = base.isEmpty() ? "Revelaciones adicionales en espera." : base + " Revelaciones adicionales en espera.";
         }
         return base;
     }

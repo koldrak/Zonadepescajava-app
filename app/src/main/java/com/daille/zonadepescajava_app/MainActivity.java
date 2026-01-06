@@ -22,6 +22,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.daille.zonadepescajava_app.databinding.ActivityMainBinding;
 import com.daille.zonadepescajava_app.data.ScoreDatabaseHelper;
@@ -235,9 +236,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         binding.gamePanel.log.setText(log);
         renderCapturedCards();
-        binding.getRoot().post(() ->
-                runCaptureAnimationQueue(new ArrayList<>(captureAnimations),
-                        () -> runRefillAnimationQueue(new ArrayList<>(refillSlots), null)));
+        binding.getRoot().post(() -> {
+            hideRefillSlots(refillSlots);
+            runCaptureAnimationQueue(new ArrayList<>(captureAnimations),
+                    () -> runRefillAnimationQueue(new ArrayList<>(refillSlots), null));
+        });
         snapshotBoardState();
         List<Card> revealed = gameState.consumeRecentlyRevealedCards();
         if (revealed.isEmpty()) {
@@ -813,12 +816,25 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setDuration(350)
                 .withEndAction(() -> {
                     overlay.removeView(floating);
-                    target.setAlpha(originalAlpha);
+                    target.setAlpha(originalAlpha > 0f ? originalAlpha : 1f);
                     if (onComplete != null) {
                         onComplete.run();
                     }
                 })
                 .start();
+    }
+
+    private void hideRefillSlots(List<Integer> slots) {
+        if (slots == null || slots.isEmpty()) return;
+        RecyclerView.LayoutManager layoutManager = binding.gamePanel.boardRecycler.getLayoutManager();
+        if (layoutManager == null) return;
+        for (Integer idx : slots) {
+            if (idx == null) continue;
+            View target = layoutManager.findViewByPosition(idx);
+            if (target != null) {
+                target.setAlpha(0f);
+            }
+        }
     }
 
     private ImageView createFloatingCard(Bitmap image, int width, int height) {
