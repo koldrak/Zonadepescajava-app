@@ -499,6 +499,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void checkForFinalScoring() {
+        String pending = gameState.resolvePendingGameOverIfReady();
+        if (pending != null) {
+            binding.gamePanel.log.setText(pending);
+        }
         if (!gameState.isGameOver() || endScoringShown) {
             return;
         }
@@ -1117,6 +1121,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             completePlacement(position);
             return;
         }
+        cardView.setHasTransientState(true);
         ObjectAnimator firstHalf = ObjectAnimator.ofFloat(cardView, View.ROTATION_Y, 0f, 90f);
         firstHalf.setDuration(150);
         ObjectAnimator secondHalf = ObjectAnimator.ofFloat(cardView, View.ROTATION_Y, 90f, 0f);
@@ -1133,6 +1138,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             @Override
             public void onAnimationEnd(Animator animation) {
                 cardView.setRotationY(0f);
+                cardView.setHasTransientState(false);
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                cardView.setRotationY(0f);
+                cardView.setHasTransientState(false);
             }
         });
         firstHalf.start();
