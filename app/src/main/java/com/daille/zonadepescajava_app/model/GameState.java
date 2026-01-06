@@ -2120,8 +2120,10 @@ public class GameState {
         Die die = slot.getDice().get(idx);
         int max = die.getType().getSides();
         if (die.getValue() == max) {
-            return "Elige un dado que no esté ya en su valor máximo.";
+            clearPendingSelection(); // ✅ cerrar selección para que NO se trabe
+            return "Pez globo: el dado ya estaba al máximo, se omite la habilidad.";
         }
+
         slot.setDie(idx, new Die(die.getType(), max));
         clearPendingSelection();
         return "Pez globo infló un dado a " + max + ".";

@@ -272,11 +272,16 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (revealed.isEmpty()) {
             if (afterReveals != null) {
                 afterReveals.run();
+            } else {
+                // ✅ CLAVE: aunque nadie haya pasado afterReveals,
+                // revisa prompts igual (pérdida de dado incluida).
+                triggerPendingPrompts();
             }
-            checkForFinalScoring();
+            checkForFinalScoring(); // si no quieres game over, luego lo sacas, pero esto no afecta al prompt
             return;
         }
         showRevealedCardsSequential(new ArrayList<>(revealed), afterReveals);
+
     }
 
     private void setupDiceSelectionUi() {
@@ -518,11 +523,17 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void finishRevealSequence(Runnable onComplete) {
         isRevealingCard = false;
+
         if (onComplete != null) {
             onComplete.run();
+        } else {
+            // ✅ Si nadie pasó onComplete, igual revisa prompts.
+            triggerPendingPrompts();
         }
-        checkForFinalScoring();
+
+        checkForFinalScoring(); // si no quieres game over, luego lo quitas
     }
+
 
     private void checkForFinalScoring() {
         String pending = gameState.resolvePendingGameOverIfReady();
@@ -879,8 +890,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void promptDieLossChoice() {
         if (!gameState.isAwaitingDieLoss()) return;
+
         java.util.List<Die> options = gameState.getPendingDiceChoices();
-        if (options.isEmpty()) return;
+        if (options == null || options.isEmpty()) {
+            Toast.makeText(this, "ERROR: Falta lista de dados para perder (pendingDiceChoices vacío).", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         CharSequence[] labels = new CharSequence[options.size()];
         for (int i = 0; i < options.size(); i++) {
             labels[i] = options.get(i).getLabel();
@@ -895,6 +911,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setCancelable(false)
                 .show();
     }
+
 
     private void promptAtunDecision() {
         if (!gameState.isAwaitingAtunDecision()) return;
@@ -1098,42 +1115,26 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void handleGameResult(String message) {
-        refreshUi(message, this::triggerPendingPrompts);
+        refreshUi(message, () -> {
+            triggerPendingPrompts();
+            checkForFinalScoring(); // ✅ ahora sí: después de decidir si hay prompts
+        });
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
     private void triggerPendingPrompts() {
-        if (gameState.isAwaitingValueAdjustment()) {
-            promptValueAdjustmentChoice();
-        }
-        if (gameState.isAwaitingBlueCrabDecision()) {
-            promptBlueCrabDecision();
-        }
-        if (gameState.isAwaitingBlowfishDecision()) {
-            promptBlowfishDecision();
-        }
-        if (gameState.isAwaitingPezVelaDecision()) {
-            promptPezVelaDecision();
-        }
-        if (gameState.isAwaitingPezVelaResultChoice()) {
-            promptPezVelaResultChoice();
-        }
-        if (gameState.isAwaitingGhostShrimpDecision()) {
-            promptGhostShrimpDecision();
-        }
-        if (gameState.isAwaitingPulpoChoice()) {
-            promptPulpoChoice();
-        }
-        if (gameState.isAwaitingArenqueChoice()) {
-            promptArenqueChoice();
-        }
-        if (gameState.isAwaitingAtunDecision()) {
-            promptAtunDecision();
-        }
-        if (gameState.isAwaitingDieLoss()) {
-            promptDieLossChoice();
-        }
+        if (gameState.isAwaitingValueAdjustment()) { promptValueAdjustmentChoice(); return; }
+        if (gameState.isAwaitingBlueCrabDecision()) { promptBlueCrabDecision(); return; }
+        if (gameState.isAwaitingBlowfishDecision()) { promptBlowfishDecision(); return; }
+        if (gameState.isAwaitingPezVelaDecision()) { promptPezVelaDecision(); return; }
+        if (gameState.isAwaitingPezVelaResultChoice()) { promptPezVelaResultChoice(); return; }
+        if (gameState.isAwaitingGhostShrimpDecision()) { promptGhostShrimpDecision(); return; }
+        if (gameState.isAwaitingPulpoChoice()) { promptPulpoChoice(); return; }
+        if (gameState.isAwaitingArenqueChoice()) { promptArenqueChoice(); return; }
+        if (gameState.isAwaitingAtunDecision()) { promptAtunDecision(); return; }
+        if (gameState.isAwaitingDieLoss()) { promptDieLossChoice(); return; }
     }
+
 
     private void animatePlacement(int position) {
         if (gameState.getSelectedDie() == null) {
