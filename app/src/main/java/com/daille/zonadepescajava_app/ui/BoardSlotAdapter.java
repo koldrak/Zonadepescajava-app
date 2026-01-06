@@ -32,6 +32,8 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
     private final DiceImageResolver diceImageResolver;
     private final Context context;
     private final List<Integer> highlighted = new ArrayList<>();
+    private final List<Integer> remoraBorderSlots = new ArrayList<>();
+
 
     public BoardSlotAdapter(Context context, List<BoardSlot> data, OnSlotInteractionListener listener) {
         this.context = context;
@@ -51,8 +53,10 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
 
     @Override
     public void onBindViewHolder(@NonNull SlotViewHolder holder, int position) {
-        holder.bind(slots.get(position), highlighted.contains(position));
+        holder.bind(slots.get(position), highlighted.contains(position), remoraBorderSlots.contains(position)
+        );
     }
+
 
     @Override
     public int getItemCount() {
@@ -60,14 +64,26 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
     }
 
     public void update(List<BoardSlot> updated, List<Integer> highlights) {
+        update(updated, highlights, null);
+    }
+
+    public void update(List<BoardSlot> updated, List<Integer> highlights, List<Integer> remoraSlots) {
         slots.clear();
         slots.addAll(updated);
+
         highlighted.clear();
         if (highlights != null) {
             highlighted.addAll(highlights);
         }
+
+        remoraBorderSlots.clear();
+        if (remoraSlots != null) {
+            remoraBorderSlots.addAll(remoraSlots);
+        }
+
         notifyDataSetChanged();
     }
+
 
     static class SlotViewHolder extends RecyclerView.ViewHolder {
         private final ItemBoardSlotBinding binding;
@@ -92,7 +108,7 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
             });
         }
 
-        void bind(BoardSlot slot, boolean highlighted) {
+        void bind(BoardSlot slot, boolean highlighted, boolean remoraBorder) {
             Card card = slot.getCard();
             Bitmap image = imageResolver.getImageFor(card, slot.isFaceUp());
             if (image == null) {
@@ -101,21 +117,28 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
 
             binding.cardImage.setImageBitmap(image);
 
-            int strokePx = highlighted
-                    ? (int) (context.getResources().getDisplayMetrics().density * 6)
-                    : 0;
+            int strokePx;
+            int strokeColor;
+
+            if (remoraBorder) {
+                strokePx = (int) (context.getResources().getDisplayMetrics().density * 6);
+                strokeColor = ContextCompat.getColor(context, R.color.remora_highlight);
+            } else if (highlighted) {
+                strokePx = (int) (context.getResources().getDisplayMetrics().density * 6);
+                strokeColor = ContextCompat.getColor(context, R.color.selection_highlight);
+            } else {
+                strokePx = 0;
+                strokeColor = ContextCompat.getColor(context, R.color.selection_highlight);
+            }
+
             binding.getRoot().setStrokeWidth(strokePx);
-            binding.getRoot().setStrokeColor(
-                    ContextCompat.getColor(context, R.color.selection_highlight));
+            binding.getRoot().setStrokeColor(strokeColor);
+
 
             binding.cardImage.setContentDescription(slot.isFaceUp() && card != null
                     ? card.getName()
                     : context.getString(R.string.card_image_content_description));
 
-            binding.getRoot().setOnLongClickListener(v -> {
-                listener.onSlotLongPressed(getBindingAdapterPosition());
-                return true;
-            });
 
             List<Die> dice = slot.getDice();
             binding.cardDiceContainer.setVisibility(dice.isEmpty() ? ViewGroup.GONE : ViewGroup.VISIBLE);

@@ -511,6 +511,17 @@ public class GameState {
         }
         return highlight;
     }
+    // === UI helpers ===
+    private final java.util.List<Integer> remoraBorderSlots = new java.util.ArrayList<>();
+
+    public java.util.List<Integer> getRemoraBorderSlots() {
+        return remoraBorderSlots;
+    }
+
+    public void setRemoraBorderSlots(java.util.List<Integer> slots) {
+        remoraBorderSlots.clear();
+        if (slots != null) remoraBorderSlots.addAll(slots);
+    }
 
     public List<Die> getPendingDiceChoices() {
         if (pendingDieLossSlot == null) {
@@ -804,6 +815,7 @@ public class GameState {
     }
 
     public String rollFromReserve(DieType type) {
+        clearTransientVisualMarks();
         if (gameOver) {
             return "La partida ha terminado";
         }
@@ -1064,6 +1076,8 @@ public class GameState {
 
     private String handleProtectedFailure(int slotIndex) {
         BoardSlot slot = board[slotIndex];
+        slot.getStatus().protectedOnce = false;
+        slot.getStatus().protectedBySlot = -1;
         for (Die d : slot.getDice()) {
             reserve.add(d.getType());
         }
@@ -2151,6 +2165,8 @@ public class GameState {
             return "No puedes proteger objetos.";
         }
         target.getStatus().protectedOnce = true;
+        target.getStatus().protectedBySlot = pendingSelectionActor; // <-- clave para dibujar vínculo
+
         clearPendingSelection();
         return "Pez payaso protege la carta seleccionada.";
     }
@@ -2494,6 +2510,7 @@ public class GameState {
             Die recovered = lostDice.remove(lostDice.size() - 1);
             Die rolled = Die.roll(recovered.getType(), rng);
             adj.addDie(rolled);
+            adj.getStatus().lastTriggeredBySlot = triggeredSlotIndex;
             if (log.length() > 0) log.append(" ");
             log.append("Almejas lanzó un ").append(rolled.getLabel()).append(".");
         }
@@ -2899,4 +2916,77 @@ public class GameState {
         }
         captures.remove(highest);
     }
+    private void clearTransientVisualMarks() {
+        for (BoardSlot s : board) {
+            if (s.getStatus() != null) {
+                s.getStatus().lastTriggeredBySlot = -1;
+            }
+        }
+    }
+
+    public List<Link> getBoardLinks() {
+        List<Link> links = new ArrayList<>();
+
+        for (int i = 0; i < board.length; i++) {
+            BoardSlot s = board[i];
+            if (s.getCard() == null || !s.isFaceUp()) continue;
+
+            CardId id = s.getCard().getId();
+
+            switch (id) {
+                case PEZ_PAYASO:
+                    // buscar cartas que estén protegidas por ESTE payaso (tracked)
+                    for (Integer adj : adjacentIndices(i, true)) {
+                        BoardSlot t = board[adj];
+                        if (t.getCard() != null && t.isFaceUp()
+                                && t.getStatus() != null
+                                && t.getStatus().protectedOnce
+                                && t.getStatus().protectedBySlot == i) {
+                            links.add(new Link(i, adj, LinkType.PAYASO_PROTEGE));
+                        }
+                    }
+                    break;
+
+                case ALMEJAS:
+                    if (s.getStatus() != null && s.getStatus().lastTriggeredBySlot >= 0) {
+                        links.add(new Link(s.getStatus().lastTriggeredBySlot, i, LinkType.ALMEJAS_REACCION));
+                    }
+                    break;
+
+                case BOTA_VIEJA:
+                    for (Integer adj : adjacentIndices(i, true)) {
+                        BoardSlot t = board[adj];
+                        if (t.getCard() != null) {
+                            links.add(new Link(i, adj, LinkType.BOTA_VIEJA_PENALIZA));
+                        }
+                    }
+                    break;
+
+                case BOTELLA_PLASTICO:
+                    for (Integer adj : adjacentIndices(i, true)) {
+                        BoardSlot t = board[adj];
+                        if (t.getCard() != null && t.getCard().getType() == CardType.PEZ) {
+                            links.add(new Link(i, adj, LinkType.BOTELLA_PLASTICO_AJUSTA));
+                        }
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        return links;
+    }
+    public boolean shouldShowRemoraBorder(int slotIndex) {
+        if (slotIndex < 0 || slotIndex >= board.length) return false;
+        BoardSlot s = board[slotIndex];
+        return s.getCard() != null
+                && s.isFaceUp()
+                && s.getStatus() != null
+                && s.getStatus().attachedRemoras != null
+                && !s.getStatus().attachedRemoras.isEmpty();
+    }
+
+
 }

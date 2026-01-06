@@ -32,6 +32,7 @@ import com.daille.zonadepescajava_app.model.CardId;
 import com.daille.zonadepescajava_app.model.Die;
 import com.daille.zonadepescajava_app.model.DieType;
 import com.daille.zonadepescajava_app.model.GameState;
+import com.daille.zonadepescajava_app.ui.BoardLinksDecoration;
 import com.daille.zonadepescajava_app.ui.BoardSlotAdapter;
 import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 import com.daille.zonadepescajava_app.ui.CardImageResolver;
@@ -61,6 +62,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private ArrayAdapter<String> scoreRecordsAdapter;
     private final List<ImageView> diceTokens = new ArrayList<>();
     private final Card[] lastBoardCards = new Card[9];
+    private BoardLinksDecoration boardLinksDecoration;
 
     private static class CaptureAnimationRequest {
         private final Card card;
@@ -107,7 +109,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         adapter = new BoardSlotAdapter(this, Arrays.asList(gameState.getBoard()), this);
         binding.gamePanel.boardRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.gamePanel.boardRecycler.setAdapter(adapter);
+
+        // ✅ Instalar decoration UNA vez
+        if (boardLinksDecoration == null) {
+            boardLinksDecoration = new BoardLinksDecoration(this);
+            binding.gamePanel.boardRecycler.addItemDecoration(boardLinksDecoration);
+        }
     }
+
+
 
     private void setupMenuButtons() {
         binding.startMenu.startNewGame.setOnClickListener(v -> {
@@ -191,7 +201,20 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void refreshUi(String log, Runnable afterReveals) {
         List<CaptureAnimationRequest> captureAnimations = collectCaptureAnimations();
         List<Integer> refillSlots = collectRefillSlots();
-        adapter.update(Arrays.asList(gameState.getBoard()), gameState.getHighlightSlots());
+        adapter.update(
+
+                Arrays.asList(gameState.getBoard()),
+                gameState.getHighlightSlots(),
+                gameState.getRemoraBorderSlots()
+
+        );
+
+// ✅ Pasa links al decoration (necesitas un getter en GameState)
+        if (boardLinksDecoration != null) {
+            boardLinksDecoration.setLinks(gameState.getBoardLinks());
+            binding.gamePanel.boardRecycler.invalidateItemDecorations();
+        }
+
         binding.gamePanel.score.setText(String.format(Locale.getDefault(), "Puntaje: %d", gameState.getScore()));
         binding.gamePanel.deckInfo.setText(String.format(Locale.getDefault(), "Mazo restante: %d", gameState.getDeckSize()));
         binding.gamePanel.captures.setText(String.format(Locale.getDefault(), "Capturas: %d", gameState.getCaptures().size()));

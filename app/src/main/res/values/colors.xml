@@ -2,5 +2,7 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="selection_highlight">#FFFFD54F</color>
+    <color name="selection_highlight">#5BC7B5</color>
+    <color name="remora_highlight">#0F0404</color>
+
 </resources>
