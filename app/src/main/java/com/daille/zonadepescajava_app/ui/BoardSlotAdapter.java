@@ -120,12 +120,16 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
             int strokePx;
             int strokeColor;
 
+            boolean bottleBuffed = slot.getStatus().bottleDieBonus > 0;
             if (remoraBorder) {
                 strokePx = (int) (context.getResources().getDisplayMetrics().density * 6);
                 strokeColor = ContextCompat.getColor(context, R.color.remora_highlight);
             } else if (highlighted) {
                 strokePx = (int) (context.getResources().getDisplayMetrics().density * 6);
                 strokeColor = ContextCompat.getColor(context, R.color.selection_highlight);
+            } else if (bottleBuffed) {
+                strokePx = (int) (context.getResources().getDisplayMetrics().density * 4);
+                strokeColor = ContextCompat.getColor(context, R.color.bottle_highlight);
             } else {
                 strokePx = 0;
                 strokeColor = ContextCompat.getColor(context, R.color.selection_highlight);

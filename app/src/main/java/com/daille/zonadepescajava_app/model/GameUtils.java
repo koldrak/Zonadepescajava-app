@@ -159,7 +159,7 @@ public final class GameUtils {
                 condSumLessOrEqual(6), "Aplica −1 a adyacentes.", "", ""));
 
         cards.add(new Card(CardId.BOTELLA_PLASTICO, "Botella de Plástico", CardType.OBJETO, 0,
-                condSumExact(8), "Sube condición de suma en adyacentes +3.", "", ""));
+                condSumExact(8), "Elige 1 pez pequeño adyacente boca arriba; sus dados obtienen +3.", "", ""));
 
         cards.add(new Card(CardId.RED_ENREDADA, "Red Enredada", CardType.OBJETO, 0,
                 (slotIndex, g) -> {
@@ -193,6 +193,7 @@ public final class GameUtils {
         BoardSlot s = g.getBoard()[slotIndex];
         int sum = 0;
         for (Die d : s.getDice()) sum += d.getValue();
+        sum += s.getStatus().bottleDieBonus * s.getDice().size();
 
         int penalty = 0;
         int r = slotIndex / 3, c = slotIndex % 3;
