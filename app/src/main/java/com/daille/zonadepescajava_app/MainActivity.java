@@ -1364,11 +1364,46 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (gameState.isAwaitingArenqueChoice()) { promptArenqueChoice(); return; }
         if (gameState.isAwaitingAtunDecision()) { promptAtunDecision(); return; }
         if (gameState.isAwaitingDieLoss()) { promptDieLossChoice(); return; }
+        if (gameState.isAwaitingSpiderCrabCardChoice()) {promptSpiderCrabCardChoice();return;}
         if (gameState.isAwaitingCancelConfirmation()) {promptCancelAbility();
         }
 
     }
 
+    private void promptSpiderCrabCardChoice() {
+        // Si hay animación/revelado bloqueando input, evita abrir dialog repetido
+        if (isRevealingCard) return;
+
+        java.util.List<String> names = gameState.getFailedDiscardNames();
+        if (names == null || names.isEmpty()) {
+            // Si por algún motivo ya no hay descartes, no dejes el estado colgado
+            handleGameResult("No hay cartas descartadas por fallo para recuperar.");
+            return;
+        }
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_list_item_1,
+                names
+        );
+
+        new AlertDialog.Builder(this)
+                .setTitle("Cangrejo araña")
+                .setMessage("Elige una carta descartada por fallo para recuperar:")
+                .setAdapter(adapter, (dialog, which) -> {
+                    String msg = gameState.chooseSpiderCrabCard(which);
+                    handleGameResult(msg);
+                    // Luego de elegir carta, el siguiente paso es tocar una CASILLA del tablero:
+                    // SPIDER_CRAB_CHOOSE_SLOT (eso ya lo toma tu onSlotClicked con isAwaitingBoardSelection()).
+                })
+                .setNegativeButton("Cancelar", (dialog, which) -> {
+                    // Opción 1 (recomendada): cancelar deja al juego sin prompt colgado
+                    // y evita soft-lock. Necesitas un método para cancelar.
+                    // Si NO quieres implementar cancelación, quita este botón.
+                })
+                .setCancelable(false)
+                .show();
+    }
 
     private void animatePlacement(int position) {
         if (gameState.getSelectedDie() == null) {

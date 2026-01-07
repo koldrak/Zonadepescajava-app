@@ -642,6 +642,21 @@ public class GameState {
         recomputeBottleAdjustments();
         return log.toString();
     }
+    public boolean isAwaitingSpiderCrabCardChoice() {
+        return pendingSelection == PendingSelection.SPIDER_CRAB_CHOOSE_CARD;
+    }
+    public String cancelSpiderCrab() {
+        if (pendingSelection == PendingSelection.SPIDER_CRAB_CHOOSE_CARD ||
+                pendingSelection == PendingSelection.SPIDER_CRAB_CHOOSE_SLOT) {
+
+            pendingSpiderCrabCard = null;
+            spiderCrabSlotIndex = -1;
+            clearPendingSelection();
+            recomputeBottleAdjustments();
+            return "Cangrejo araña: acción cancelada.";
+        }
+        return "No hay acción del Cangrejo araña para cancelar.";
+    }
 
     public String handleBoardSelection(int slotIndex) {
         if (!isAwaitingBoardSelection()) {
