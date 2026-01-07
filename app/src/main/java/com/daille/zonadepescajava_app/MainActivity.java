@@ -709,6 +709,25 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 cardView.setImageBitmap(image);
                 cardView.setContentDescription(card != null ? card.getName() : getString(R.string.card_image_content_description));
 
+                // ✅ CLICK NORMAL = LIBERAR PEZ
+                cardView.setOnClickListener(v -> {
+                    // Si hay revelaciones/prompt activos, mejor bloquear para no romper flujos.
+                    if (isRevealingCard) {
+                        Toast.makeText(this, "Toca la carta para continuar.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    new AlertDialog.Builder(this)
+                            .setTitle("Liberar pez")
+                            .setMessage("¿Quieres liberar este pez?")
+                            .setPositiveButton("Sí", (dialog, which) -> {
+                                String msg = gameState.startReleaseFromCapture(card);
+                                handleGameResult(msg); // refresca UI + toast + prompts
+                            })
+                            .setNegativeButton("No", null)
+                            .show();
+                });
+
                 // 👇 CLICK LARGO = CARTA EN GRANDE
                 cardView.setOnLongClickListener(v -> {
                     Bitmap fullImage = cardImageResolver.getImageFor(card, true);

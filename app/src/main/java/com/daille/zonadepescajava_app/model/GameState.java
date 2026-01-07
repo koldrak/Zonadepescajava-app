@@ -67,6 +67,7 @@ public class GameState {
     private final java.util.Deque<Integer> pendingRevealChain = new java.util.ArrayDeque<>();
     private boolean processingRevealChain = false;
     private final java.util.Map<Integer, Integer> bottleTargets = new java.util.HashMap<>();
+    private Card pendingReleaseCard = null;
 
     private enum PendingSelection {
         NONE,
@@ -92,7 +93,8 @@ public class GameState {
         BLUE_WHALE_PLACE,
         SPIDER_CRAB_CHOOSE_CARD,
         SPIDER_CRAB_CHOOSE_SLOT,
-        KOI_TARGET
+        KOI_TARGET,
+        RELEASE_CHOOSE_SLOT
     }
     private PendingSelection pendingSelection = PendingSelection.NONE;
     private int pendingSelectionActor = -1;
@@ -286,6 +288,26 @@ public class GameState {
         }
         return null;
     }
+
+    public String startReleaseFromCapture(Card capturedCard) {
+        if (capturedCard == null) {
+            return "No se puede liberar: carta inválida.";
+        }
+        if (!captures.contains(capturedCard)) {
+            return "No se puede liberar: esa carta no está en capturas.";
+        }
+
+        // Si ya hay una selección pendiente, lo encolamos (tu sistema ya soporta cola).
+        pendingReleaseCard = capturedCard;
+
+        return queueableSelection(
+                PendingSelection.RELEASE_CHOOSE_SLOT,
+                -1,
+                0,
+                "Liberación: toca una carta BOCA ABAJO de la zona de pesca para reemplazarla."
+        );
+    }
+
 
     public boolean isAwaitingPezVelaDecision() {
         return awaitingPezVelaDecision;
@@ -683,6 +705,9 @@ public class GameState {
             case KOI_TARGET:
                 result = resolveKoiSwap(pendingSelectionActor, slotIndex);
                 break;
+            case RELEASE_CHOOSE_SLOT:
+                result = resolveReleaseIntoSlot(slotIndex);
+                break;
 
             default:
                 result = "No hay acciones pendientes.";
@@ -705,6 +730,62 @@ public class GameState {
 
         return result;
     }
+
+    private String resolveReleaseIntoSlot(int slotIndex) {
+        if (pendingReleaseCard == null) {
+            pendingSelection = PendingSelection.NONE;
+            return "Liberación cancelada: no hay carta seleccionada.";
+        }
+
+        BoardSlot slot = board[slotIndex];
+
+        if (slot.getCard() == null) {
+            return "Debes elegir una carta válida del tablero.";
+        }
+
+        // Debe ser BOCA ABAJO
+        if (slot.isFaceUp()) {
+            return "Debes elegir una carta BOCA ABAJO para reemplazar.";
+        }
+
+        // 1) Si el slot tenía dados, vuelven a la reserva
+        if (!slot.getDice().isEmpty()) {
+            for (Die d : new ArrayList<>(slot.getDice())) {
+                reserve.add(d.getType());
+            }
+            slot.clearDice();
+        }
+
+        // 2) La carta que estaba en el tablero vuelve al mazo (cardumen)
+        Card replaced = slot.getCard();
+        if (replaced != null) {
+            deck.addLast(replaced); // vuelve al mazo
+        }
+
+        // 3) Poner la carta liberada en ese slot BOCA ABAJO
+        slot.setCard(pendingReleaseCard);
+        slot.setFaceUp(false);
+        slot.setStatus(new SlotStatus()); // resetea estados del slot
+
+        // 4) Sacarla de capturas (pierdes su puntaje automáticamente porque score se calcula desde captures)
+        captures.remove(pendingReleaseCard);
+
+        String name = pendingReleaseCard.getName();
+        clearReleaseState();
+
+        // Recalcula cualquier ajuste dependiente del tablero (tú ya lo haces en otras acciones)
+        recomputeBottleAdjustments();
+
+        return "Liberaste " + name + ". Reemplazo realizado.";
+    }
+
+    private void clearReleaseState() {
+        pendingReleaseCard = null;
+        pendingSelection = PendingSelection.NONE;
+        pendingSelectionActor = -1;
+        pendingSelectionAux = -1;
+    }
+
 
     private String resolveKoiSwap(int koiSlotIndex, int targetIndex) {
         if (!adjacentIndices(koiSlotIndex, true).contains(targetIndex)) {
