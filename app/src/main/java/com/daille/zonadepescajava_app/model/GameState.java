@@ -290,6 +290,10 @@ public class GameState {
     }
 
     public String startReleaseFromCapture(Card capturedCard) {
+        if (hasPendingTurnResolutions() || selectedDie != null) {
+            return "No puedes liberar ahora: termina primero las resoluciones pendientes.";
+        }
+
         if (capturedCard == null) {
             return "No se puede liberar: carta inválida.";
         }
@@ -415,7 +419,15 @@ public class GameState {
                         highlight.add(idx);
                     }
                 }
+            case RELEASE_CHOOSE_SLOT:
+                for (int i = 0; i < board.length; i++) {
+                    BoardSlot s = board[i];
+                    if (s.getCard() != null && !s.isFaceUp()) {
+                        highlight.add(i); // todas las boca abajo válidas
+                    }
+                }
                 break;
+
             case KOI_TARGET:
                 for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
                     BoardSlot t = board[idx];
@@ -1997,11 +2009,15 @@ public class GameState {
         if (!hasFaceDownNoDice) {
             return "No hay cartas boca abajo sin dados para reemplazar con el Cangrejo araña.";
         }
-
-
         spiderCrabSlotIndex = slotIndex;
-        pendingSelection = PendingSelection.SPIDER_CRAB_CHOOSE_CARD;
-        return "Cangrejo araña: elige una carta descartada por fallo para recuperar.";
+
+        return queueableSelection(
+                PendingSelection.SPIDER_CRAB_CHOOSE_CARD,
+                slotIndex,
+                -1,
+                "Cangrejo araña: elige una carta descartada por fallo para recuperar."
+        );
+
     }
 
     public List<String> getFailedDiscardNames() {
