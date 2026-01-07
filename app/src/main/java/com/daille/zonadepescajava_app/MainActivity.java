@@ -65,6 +65,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private final Card[] lastBoardCards = new Card[9];
     private BoardLinksDecoration boardLinksDecoration;
     private final List<Card> lastCaptures = new ArrayList<>();
+    private boolean spiderCrabDialogOpen = false;
 
     private static class CaptureAnimationRequest {
         private final Card card;
@@ -1371,15 +1372,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void promptSpiderCrabCardChoice() {
-        // Si hay animación/revelado bloqueando input, evita abrir dialog repetido
         if (isRevealingCard) return;
+        if (spiderCrabDialogOpen) return;
 
         java.util.List<String> names = gameState.getFailedDiscardNames();
         if (names == null || names.isEmpty()) {
-            // Si por algún motivo ya no hay descartes, no dejes el estado colgado
+            // IMPORTANTE: no dejes el flag en true si no abriste diálogo
+            spiderCrabDialogOpen = false;
             handleGameResult("No hay cartas descartadas por fallo para recuperar.");
             return;
         }
+
+        spiderCrabDialogOpen = true;
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this,
@@ -1387,23 +1391,28 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 names
         );
 
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Cangrejo araña")
                 .setMessage("Elige una carta descartada por fallo para recuperar:")
-                .setAdapter(adapter, (dialog, which) -> {
+                .setAdapter(adapter, (d, which) -> {
                     String msg = gameState.chooseSpiderCrabCard(which);
                     handleGameResult(msg);
-                    // Luego de elegir carta, el siguiente paso es tocar una CASILLA del tablero:
-                    // SPIDER_CRAB_CHOOSE_SLOT (eso ya lo toma tu onSlotClicked con isAwaitingBoardSelection()).
+                    // OJO: luego el juego queda esperando tocar una casilla (SPIDER_CRAB_CHOOSE_SLOT)
+                    // Tu onSlotClicked lo resolverá con gameState.handleBoardSelection(...)
+                    d.dismiss();
                 })
-                .setNegativeButton("Cancelar", (dialog, which) -> {
-                    // Opción 1 (recomendada): cancelar deja al juego sin prompt colgado
-                    // y evita soft-lock. Necesitas un método para cancelar.
-                    // Si NO quieres implementar cancelación, quita este botón.
+                .setNegativeButton("Cancelar", (d, which) -> {
+                    String msg = gameState.cancelSpiderCrab();
+                    handleGameResult(msg);
+                    d.dismiss();
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+
+        dialog.setOnDismissListener(d -> spiderCrabDialogOpen = false);
+        dialog.show();
     }
+
 
     private void animatePlacement(int position) {
         if (gameState.getSelectedDie() == null) {

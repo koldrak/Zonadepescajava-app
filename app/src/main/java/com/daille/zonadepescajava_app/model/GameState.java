@@ -419,6 +419,7 @@ public class GameState {
                         highlight.add(idx);
                     }
                 }
+                break;
             case RELEASE_CHOOSE_SLOT:
                 for (int i = 0; i < board.length; i++) {
                     BoardSlot s = board[i];
