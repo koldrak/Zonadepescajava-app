@@ -64,6 +64,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private final List<ImageView> diceTokens = new ArrayList<>();
     private final Card[] lastBoardCards = new Card[9];
     private BoardLinksDecoration boardLinksDecoration;
+    private final List<Card> lastCaptures = new ArrayList<>();
 
     private static class CaptureAnimationRequest {
         private final Card card;
@@ -227,7 +228,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void refreshUi(String log, Runnable afterReveals) {
         List<CaptureAnimationRequest> captureAnimations = collectCaptureAnimations();
+        List<ReleaseAnimationRequest> releaseAnimations = collectReleaseAnimations();
         List<Integer> refillSlots = collectRefillSlots();
+
         adapter.update(
 
                 Arrays.asList(gameState.getBoard()),
@@ -265,8 +268,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.getRoot().post(() -> {
             hideRefillSlots(refillSlots);
             runCaptureAnimationQueue(new ArrayList<>(captureAnimations),
-                    () -> runRefillAnimationQueue(new ArrayList<>(refillSlots), null));
+                    () -> runReleaseAnimationQueue(new ArrayList<>(releaseAnimations),
+                            () -> runRefillAnimationQueue(new ArrayList<>(refillSlots), null)
+                    )
+            );
         });
+
         snapshotBoardState();
         List<Card> revealed = gameState.consumeRecentlyRevealedCards();
         if (revealed.isEmpty()) {
@@ -643,18 +650,191 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         return events;
     }
 
-    private List<Integer> collectRefillSlots() {
-        List<Integer> slots = new ArrayList<>();
+    private List<ReleaseAnimationRequest> collectReleaseAnimations() {
+        List<ReleaseAnimationRequest> events = new ArrayList<>();
+
+        // 1) ¿Qué carta estaba en capturas y ya no está? (salió de capturas)
+        List<Card> currentCaptures = gameState.getCaptures();
+        Card removedFromCaptures = null;
+        for (Card c : lastCaptures) {
+            if (!currentCaptures.contains(c)) {
+                removedFromCaptures = c;
+                break;
+            }
+        }
+        if (removedFromCaptures == null) return events;
+
+        // 2) ¿En qué slot del tablero apareció esa carta?
         BoardSlot[] board = gameState.getBoard();
         for (int i = 0; i < board.length; i++) {
             Card previous = lastBoardCards[i];
             Card current = board[i].getCard();
-            if (current != null && current != previous && !wasCardOnBoard(current)) {
+
+            if (current == removedFromCaptures) {
+                // En ese slot, "previous" fue la carta que volvió al mazo
+                if (previous != null) {
+                    events.add(new ReleaseAnimationRequest(removedFromCaptures, previous, i));
+                }
+                break;
+            }
+        }
+        return events;
+    }
+
+
+    private List<Integer> collectRefillSlots() {
+        List<Integer> slots = new ArrayList<>();
+        BoardSlot[] board = gameState.getBoard();
+
+        for (int i = 0; i < board.length; i++) {
+            Card previous = lastBoardCards[i];
+            Card current = board[i].getCard();
+
+            // Reposición real: entra una carta nueva que NO venía del tablero y NO venía de capturas
+            boolean cameFromCaptures = lastCaptures.contains(current);
+
+            if (current != null && current != previous && !wasCardOnBoard(current) && !cameFromCaptures) {
                 slots.add(i);
             }
         }
         return slots;
     }
+
+    private void runReleaseAnimationQueue(List<ReleaseAnimationRequest> events, Runnable onComplete) {
+        if (events == null || events.isEmpty()) {
+            if (onComplete != null) onComplete.run();
+            return;
+        }
+
+        ReleaseAnimationRequest ev = events.remove(0);
+        animateRelease(ev, () -> runReleaseAnimationQueue(events, onComplete));
+    }
+    private void animateRelease(ReleaseAnimationRequest ev, Runnable onComplete) {
+        animateSlotToDeck(ev.slotIndex, ev.returnedToDeck, () ->
+                animateCapturesToSlot(ev.slotIndex, ev.releasedFromCaptures, onComplete)
+        );
+    }
+    private void animateSlotToDeck(int slotIndex, Card card, Runnable onComplete) {
+        FrameLayout overlay = binding.animationOverlay;
+        View deckView = binding.gamePanel.cardumenDeckImage;
+        RecyclerView.LayoutManager lm = binding.gamePanel.boardRecycler.getLayoutManager();
+
+        if (overlay == null || deckView == null || lm == null || card == null) {
+            if (onComplete != null) onComplete.run();
+            return;
+        }
+
+        View source = lm.findViewByPosition(slotIndex);
+        if (source == null) {
+            if (onComplete != null) onComplete.run();
+            return;
+        }
+
+        Bitmap image = cardImageResolver.getImageFor(card, true);
+        if (image == null) image = cardImageResolver.getCardBack();
+
+        int width = source.getWidth();
+        int height = source.getHeight();
+        if (width == 0 || height == 0) {
+            if (onComplete != null) onComplete.run();
+            return;
+        }
+
+        ImageView floating = createFloatingCard(image, width, height);
+
+        int[] overlayLocation = new int[2];
+        overlay.getLocationOnScreen(overlayLocation);
+
+        int[] sourceLocation = new int[2];
+        source.getLocationOnScreen(sourceLocation);
+
+        int[] deckLocation = new int[2];
+        deckView.getLocationOnScreen(deckLocation);
+
+        float startX = sourceLocation[0] - overlayLocation[0];
+        float startY = sourceLocation[1] - overlayLocation[1];
+
+        float endX = deckLocation[0] - overlayLocation[0] + deckView.getWidth() / 2f - width / 2f;
+        float endY = deckLocation[1] - overlayLocation[1] + deckView.getHeight() / 2f - height / 2f;
+
+        floating.setX(startX);
+        floating.setY(startY);
+        overlay.addView(floating);
+
+        floating.animate()
+                .x(endX)
+                .y(endY)
+                .setDuration(350)
+                .withEndAction(() -> {
+                    overlay.removeView(floating);
+                    if (onComplete != null) onComplete.run();
+                })
+                .start();
+    }
+    private void animateCapturesToSlot(int slotIndex, Card card, Runnable onComplete) {
+        FrameLayout overlay = binding.animationOverlay;
+        View capturesView = binding.gamePanel.captureScroll; // origen aproximado
+        RecyclerView.LayoutManager lm = binding.gamePanel.boardRecycler.getLayoutManager();
+
+        if (overlay == null || capturesView == null || lm == null || card == null) {
+            if (onComplete != null) onComplete.run();
+            return;
+        }
+
+        View target = lm.findViewByPosition(slotIndex);
+        if (target == null) {
+            if (onComplete != null) onComplete.run();
+            return;
+        }
+
+        float originalAlpha = target.getAlpha();
+        target.setAlpha(0f);
+
+        Bitmap image = cardImageResolver.getImageFor(card, true);
+        if (image == null) image = cardImageResolver.getCardBack();
+
+        int width = target.getWidth();
+        int height = target.getHeight();
+        if (width == 0 || height == 0) {
+            target.setAlpha(originalAlpha > 0f ? originalAlpha : 1f);
+            if (onComplete != null) onComplete.run();
+            return;
+        }
+
+        ImageView floating = createFloatingCard(image, width, height);
+
+        int[] overlayLocation = new int[2];
+        overlay.getLocationOnScreen(overlayLocation);
+
+        int[] capturesLocation = new int[2];
+        capturesView.getLocationOnScreen(capturesLocation);
+
+        int[] targetLocation = new int[2];
+        target.getLocationOnScreen(targetLocation);
+
+        // start: desde la zona de capturas (similar a tu animateCardToCaptureZone pero al revés)
+        float startX = capturesLocation[0] - overlayLocation[0] + dpToPx(8);
+        float startY = capturesLocation[1] - overlayLocation[1] + dpToPx(4);
+
+        float endX = targetLocation[0] - overlayLocation[0];
+        float endY = targetLocation[1] - overlayLocation[1];
+
+        floating.setX(startX);
+        floating.setY(startY);
+        overlay.addView(floating);
+
+        floating.animate()
+                .x(endX)
+                .y(endY)
+                .setDuration(400)
+                .withEndAction(() -> {
+                    overlay.removeView(floating);
+                    target.setAlpha(originalAlpha > 0f ? originalAlpha : 1f);
+                    if (onComplete != null) onComplete.run();
+                })
+                .start();
+    }
+
 
     private boolean wasCardOnBoard(Card card) {
         if (card == null) return false;
@@ -669,6 +849,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         for (int i = 0; i < board.length; i++) {
             lastBoardCards[i] = board[i].getCard();
         }
+        // NUEVO: snapshot de capturas
+        lastCaptures.clear();
+        lastCaptures.addAll(gameState.getCaptures());
     }
 
     private void renderCapturedCards() {
@@ -1157,6 +1340,17 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             checkForFinalScoring(); // ✅ ahora sí: después de decidir si hay prompts
         });
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+    }
+    private static class ReleaseAnimationRequest {
+        final Card releasedFromCaptures; // la carta que salió de capturas y entró al tablero
+        final Card returnedToDeck;       // la carta que salió del tablero al mazo
+        final int slotIndex;             // el slot del tablero donde ocurrió el recambio
+
+        ReleaseAnimationRequest(Card releasedFromCaptures, Card returnedToDeck, int slotIndex) {
+            this.releasedFromCaptures = releasedFromCaptures;
+            this.returnedToDeck = returnedToDeck;
+            this.slotIndex = slotIndex;
+        }
     }
 
     private void triggerPendingPrompts() {
