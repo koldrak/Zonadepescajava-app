@@ -474,10 +474,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             promptPulpoChoice();
             return;
         }
+        if (gameState.isAwaitingSpiderCrabCardChoice()) {
+            promptSpiderCrabCardChoice();
+            return;
+        }
         if (gameState.isAwaitingDieLoss()) {
             promptDieLossChoice();
             return;
         }
+
         if (gameState.isAwaitingBoardSelection()) {
             handleGameResult(gameState.handleBoardSelection(position));
         } else if (gameState.isAwaitingLanternChoice()) {
@@ -1366,53 +1371,35 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (gameState.isAwaitingAtunDecision()) { promptAtunDecision(); return; }
         if (gameState.isAwaitingDieLoss()) { promptDieLossChoice(); return; }
         if (gameState.isAwaitingSpiderCrabCardChoice()) {promptSpiderCrabCardChoice();return;}
-        if (gameState.isAwaitingCancelConfirmation()) {promptCancelAbility();
+        if (gameState.isAwaitingCancelConfirmation()) { promptCancelAbility(); return;
         }
 
     }
 
-    private void promptSpiderCrabCardChoice() {
-        if (isRevealingCard) return;
-        if (spiderCrabDialogOpen) return;
+private void promptSpiderCrabCardChoice() {
+        List<String> names = new ArrayList<>(gameState.getFailedDiscardNames());
+        names.removeIf(s -> s == null || s.trim().isEmpty());
 
-        java.util.List<String> names = gameState.getFailedDiscardNames();
-        if (names == null || names.isEmpty()) {
-            // IMPORTANTE: no dejes el flag en true si no abriste diálogo
-            spiderCrabDialogOpen = false;
+        if (names.isEmpty()) {
             handleGameResult("No hay cartas descartadas por fallo para recuperar.");
             return;
         }
 
-        spiderCrabDialogOpen = true;
+        CharSequence[] items = names.toArray(new CharSequence[0]);
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this,
-                android.R.layout.simple_list_item_1,
-                names
-        );
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        new AlertDialog.Builder(this)
                 .setTitle("Cangrejo araña")
-                .setMessage("Elige una carta descartada por fallo para recuperar:")
-                .setAdapter(adapter, (d, which) -> {
+                .setItems(items, (d, which) -> {
                     String msg = gameState.chooseSpiderCrabCard(which);
                     handleGameResult(msg);
-                    // OJO: luego el juego queda esperando tocar una casilla (SPIDER_CRAB_CHOOSE_SLOT)
-                    // Tu onSlotClicked lo resolverá con gameState.handleBoardSelection(...)
-                    d.dismiss();
                 })
                 .setNegativeButton("Cancelar", (d, which) -> {
                     String msg = gameState.cancelSpiderCrab();
                     handleGameResult(msg);
-                    d.dismiss();
                 })
                 .setCancelable(false)
-                .create();
-
-        dialog.setOnDismissListener(d -> spiderCrabDialogOpen = false);
-        dialog.show();
+                .show();
     }
-
 
     private void animatePlacement(int position) {
         if (gameState.getSelectedDie() == null) {
