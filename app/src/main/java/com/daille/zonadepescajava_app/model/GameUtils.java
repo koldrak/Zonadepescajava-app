@@ -112,6 +112,7 @@ public final class GameUtils {
         cards.add(new Card(CardId.ARENQUE, "Arenque", CardType.PEZ, 5,
                 condSumRange(5, 7), "Busca 2 peces pequeños y colócalos boca abajo.", "", ""));
 
+
         cards.add(new Card(CardId.REMORA, "Rémora", CardType.PEZ, 1,
                 (slotIndex, g) -> containsDieType(slotIndex, g, DieType.D4) && containsDieType(slotIndex, g, DieType.D6),
                 "Si está adyacente a un pez grande se adhiere.", "", ""));
