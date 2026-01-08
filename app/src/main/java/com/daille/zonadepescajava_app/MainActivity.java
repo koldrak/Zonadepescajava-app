@@ -12,6 +12,7 @@ import android.view.DragEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.widget.ImageView;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -65,7 +66,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private final Card[] lastBoardCards = new Card[9];
     private BoardLinksDecoration boardLinksDecoration;
     private final List<Card> lastCaptures = new ArrayList<>();
-    private boolean spiderCrabDialogOpen = false;
+    private float lastReserveTapCenterX = Float.NaN;
+    private float lastReserveTapCenterY = Float.NaN;
+    private long lastReserveTapAtMs = 0L;
+
 
     private static class CaptureAnimationRequest {
         private final Card card;
@@ -628,7 +632,17 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 bmp = diceImageResolver.getTypePreview(type);
                 contentDescription = type.getLabel();
                 if (allowReserveTap) {
-                    chip.setOnClickListener(v -> handleReserveDieTap(type));
+                    chip.setOnClickListener(v -> {
+                        int[] loc = new int[2];
+                        v.getLocationOnScreen(loc);
+
+                        lastReserveTapCenterX = loc[0] + (v.getWidth() / 2f);
+                        lastReserveTapCenterY = loc[1] + (v.getHeight() / 2f);
+                        lastReserveTapAtMs = android.os.SystemClock.uptimeMillis();
+
+                        handleReserveDieTap(type);
+                    });
+
                 }
             } else if (item instanceof com.daille.zonadepescajava_app.model.Die) {
                 com.daille.zonadepescajava_app.model.Die die = (com.daille.zonadepescajava_app.model.Die) item;
@@ -1314,31 +1328,219 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void startRollingAnimation(DieType type) {
         if (animationHandler == null) return;
+
+        // Cancela runnable anterior (si estaba en cola)
         if (rollingRunnable != null) {
             animationHandler.removeCallbacks(rollingRunnable);
         }
 
-        rollingRunnable = new Runnable() {
-            private int frames = 12;
+        // ✅ Retry solo 1 vez (para arreglar el primer lanzamiento cuando aún no hay medidas)
+        final boolean[] retried = {false};
 
+        rollingRunnable = new Runnable() {
             @Override
             public void run() {
-                if (frames-- <= 0) {
-                    animationHandler.removeCallbacks(this);
+                // Cancela animación anterior (si estaba corriendo)
+                Object previous = binding.animationOverlay.getTag();
+                if (previous instanceof android.animation.Animator) {
+                    ((android.animation.Animator) previous).cancel();
+                }
+
+                final FrameLayout overlay = binding.animationOverlay;
+                final View reserveView = binding.gamePanel.reserveDiceContainer;
+                final ImageView target = binding.gamePanel.selectedDieImage;
+
+                if (overlay == null || reserveView == null || target == null) {
                     updateSelectedDiePreview();
                     return;
                 }
-                Bitmap preview = diceImageResolver.randomFace(type);
-                if (preview != null) {
-                    binding.gamePanel.selectedDieImage.setVisibility(View.VISIBLE);
-                    binding.gamePanel.selectedDieImage.setImageBitmap(preview);
+
+                // Limpia “dados voladores” anteriores
+                for (int i = overlay.getChildCount() - 1; i >= 0; i--) {
+                    View child = overlay.getChildAt(i);
+                    Object tag = child.getTag();
+                    if ("ROLLING_DIE_FLYING".equals(tag)) {
+                        child.animate().cancel();
+                        overlay.removeViewAt(i);
+                    }
                 }
-                animationHandler.postDelayed(this, 70);
+
+                // ✅ Asegura que el target esté visible para que pueda medirse en el próximo layout pass
+                target.setVisibility(View.VISIBLE);
+
+                // ✅ Si aún no está medido, reintenta 1 vez en el próximo frame
+                if (overlay.getWidth() == 0 || overlay.getHeight() == 0
+                        || reserveView.getWidth() == 0 || reserveView.getHeight() == 0
+                        || target.getWidth() == 0 || target.getHeight() == 0) {
+
+                    if (!retried[0]) {
+                        retried[0] = true;
+                        overlay.post(this);
+                        return;
+                    }
+
+                    // Fallback legacy (si aun así no hay medidas)
+                    final Runnable legacy = new Runnable() {
+                        int frames = 12;
+
+                        @Override
+                        public void run() {
+                            if (frames-- <= 0) {
+                                animationHandler.removeCallbacks(this);
+                                updateSelectedDiePreview();
+                                return;
+                            }
+                            Bitmap preview = diceImageResolver.randomFace(type);
+                            if (preview != null) {
+                                binding.gamePanel.selectedDieImage.setVisibility(View.VISIBLE);
+                                binding.gamePanel.selectedDieImage.setImageBitmap(preview);
+                            }
+                            animationHandler.postDelayed(this, 70);
+                        }
+                    };
+                    animationHandler.post(legacy);
+                    return;
+                }
+
+                overlay.setVisibility(View.VISIBLE);
+
+                // Tamaño del dado volador
+                int size = target.getWidth() > 0 ? target.getWidth() : dpToPx(56);
+                size = Math.max(size, dpToPx(48));
+
+                // ✅ Context correcto dentro de Runnable
+                final ImageView flying = new ImageView(MainActivity.this);
+                flying.setTag("ROLLING_DIE_FLYING");
+                flying.setScaleType(ImageView.ScaleType.FIT_CENTER);
+
+                Bitmap first = diceImageResolver.randomFace(type);
+                if (first != null) flying.setImageBitmap(first);
+
+                FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(size, size);
+                overlay.addView(flying, lp);
+
+                // Coordenadas en pantalla -> overlay
+                int[] overlayLoc = new int[2];
+                int[] reserveLoc = new int[2];
+                int[] targetLoc = new int[2];
+                overlay.getLocationOnScreen(overlayLoc);
+                reserveView.getLocationOnScreen(reserveLoc);
+                target.getLocationOnScreen(targetLoc);
+
+                float overlayX = overlayLoc[0];
+                float overlayY = overlayLoc[1];
+
+                // ✅ ORIGEN REAL: chip exacto tocado (guardado en onClick)
+                float startX, startY;
+
+// si el tap fue “reciente”, úsalo (evita usar coords viejas)
+                boolean haveTap = !Float.isNaN(lastReserveTapCenterX)
+                        && (android.os.SystemClock.uptimeMillis() - lastReserveTapAtMs) < 800;
+
+                if (haveTap) {
+                    startX = (lastReserveTapCenterX - overlayX) - (size / 2f);
+                    startY = (lastReserveTapCenterY - overlayY) - (size / 2f);
+                } else {
+                    // fallback: centro de la reserva
+                    startX = (reserveLoc[0] - overlayX) + (reserveView.getWidth() * 0.5f) - (size / 2f);
+                    startY = (reserveLoc[1] - overlayY) + (reserveView.getHeight() * 0.5f) - (size / 2f);
+                }
+
+
+                // Destino: centro del preview
+                float endX = (targetLoc[0] - overlayX) + (target.getWidth() / 2f) - (size / 2f);
+                float endY = (targetLoc[1] - overlayY) + (target.getHeight() / 2f) - (size / 2f);
+
+                // Control point para arco
+                float cx = (startX + endX) / 2f + (dpToPx(18) * ((float) Math.random() * 2f - 1f));
+                float cy = Math.min(startY, endY) - dpToPx(160);
+
+                // Target se “materializa” al final
+                target.setAlpha(0f);
+
+                flying.setX(startX);
+                flying.setY(startY);
+
+                final long[] lastSwap = {0L};
+                final long[] swapEveryMs = {22L};
+                final float density = getResources().getDisplayMetrics().density;
+
+                android.animation.ValueAnimator va = android.animation.ValueAnimator.ofFloat(0f, 1f);
+                va.setDuration(780L);
+                va.setInterpolator(new android.view.animation.DecelerateInterpolator(1.25f));
+
+                va.addUpdateListener(anim -> {
+                    float t = (float) anim.getAnimatedValue();
+                    float u = 1f - t;
+
+                    // Bézier (arco)
+                    float x = (u * u * startX) + (2f * u * t * cx) + (t * t * endX);
+                    float y = (u * u * startY) + (2f * u * t * cy) + (t * t * endY);
+
+                    // Shake decae
+                    float shake = (1f - t) * (2.0f * density);
+                    x += (float) (Math.sin(t * 18.0 * Math.PI) * shake);
+                    y += (float) (Math.cos(t * 14.0 * Math.PI) * shake);
+
+                    flying.setX(x);
+                    flying.setY(y);
+
+                    // Spin 3D decae
+                    float energy = 1f - t;
+                    flying.setRotation((float) (t * 720f + Math.sin(t * 10.0 * Math.PI) * 120f * energy));
+                    flying.setRotationX((float) (Math.cos(t * 8.0 * Math.PI) * 55f * energy));
+                    flying.setRotationY((float) (Math.sin(t * 9.0 * Math.PI) * 55f * energy));
+
+                    // Squash & stretch
+                    float s = 0.92f + 0.16f * (float) Math.sin(t * Math.PI);
+                    flying.setScaleX(s);
+                    flying.setScaleY(s);
+
+                    // Swap de caras: rápido al inicio, lento al final
+                    long now = android.os.SystemClock.uptimeMillis();
+                    if (now - lastSwap[0] >= swapEveryMs[0]) {
+                        Bitmap face = diceImageResolver.randomFace(type);
+                        if (face != null) flying.setImageBitmap(face);
+                        lastSwap[0] = now;
+                        swapEveryMs[0] = 22L + (long) (140L * (t * t));
+                    }
+                });
+
+                va.addListener(new android.animation.AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationCancel(android.animation.Animator animation) {
+                        try { overlay.removeView(flying); } catch (Exception ignore) {}
+                        overlay.setTag(null);
+                    }
+
+                    @Override
+                    public void onAnimationEnd(android.animation.Animator animation) {
+                        try { overlay.removeView(flying); } catch (Exception ignore) {}
+                        overlay.setTag(null);
+
+                        // Resultado real (ya calculado por rollFromReserve)
+                        updateSelectedDiePreview();
+
+                        // “Aterrizaje”
+                        target.setAlpha(1f);
+                        target.setScaleX(0.92f);
+                        target.setScaleY(0.92f);
+                        target.animate()
+                                .scaleX(1f).scaleY(1f)
+                                .setDuration(220L)
+                                .setInterpolator(new android.view.animation.OvershootInterpolator(1.15f))
+                                .start();
+                    }
+                });
+
+                overlay.setTag(va);
+                va.start();
             }
         };
 
         animationHandler.post(rollingRunnable);
     }
+
 
     private void handleGameResult(String message) {
         refreshUi(message, () -> {
