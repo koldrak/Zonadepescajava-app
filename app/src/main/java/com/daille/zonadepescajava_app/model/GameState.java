@@ -2515,6 +2515,11 @@ public class GameState {
             BoardSlot adj = board[idx];
             if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() == CardType.OBJETO) {
                 failedDiscards.add(adj.getCard());
+
+                // ✅ DEVOLVER DADOS A RESERVA (como en capture)
+                for (Die d : new ArrayList<>(adj.getDice())) {
+                    reserve.add(d.getType());
+                }
                 adj.clearDice();
                 adj.setCard(deck.isEmpty() ? null : deck.pop());
                 adj.setFaceUp(false);

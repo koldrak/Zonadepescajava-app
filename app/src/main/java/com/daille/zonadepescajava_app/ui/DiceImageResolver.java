@@ -39,8 +39,10 @@ public class DiceImageResolver {
     }
 
     public Bitmap getTypePreview(DieType type) {
-        return getFace(type, 1);
+        if (type == null) return null;
+        return getFace(type, type.getSides()); // D44, D66, D88, D1212
     }
+
 
     public Bitmap randomFace(DieType type) {
         int value = 1 + rng.nextInt(type.getSides());
