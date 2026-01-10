@@ -1113,26 +1113,97 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptDieLossChoice() {
         if (!gameState.isAwaitingDieLoss()) return;
 
-        java.util.List<Die> options = gameState.getPendingDiceChoices();
+        final java.util.List<Die> options = gameState.getPendingDiceChoices();
         if (options == null || options.isEmpty()) {
             Toast.makeText(this, "ERROR: Falta lista de dados para perder (pendingDiceChoices vacío).", Toast.LENGTH_LONG).show();
             return;
         }
 
-        CharSequence[] labels = new CharSequence[options.size()];
-        for (int i = 0; i < options.size(); i++) {
-            labels[i] = options.get(i).getLabel();
-        }
+        // Adapter que muestra la CARA del dado (ej: D43.png, D87.png) usando DiceImageResolver
+        android.widget.ListAdapter adapter = new android.widget.BaseAdapter() {
+            @Override
+            public int getCount() {
+                return options.size();
+            }
 
-        new AlertDialog.Builder(this)
+            @Override
+            public Object getItem(int position) {
+                return options.get(position);
+            }
+
+            @Override
+            public long getItemId(int position) {
+                return position;
+            }
+
+            @Override
+            public android.view.View getView(int position, android.view.View convertView, android.view.ViewGroup parent) {
+                final int paddingH = dpToPx(14);
+                final int paddingV = dpToPx(10);
+                final int imgSize = dpToPx(56);
+
+                android.widget.LinearLayout row;
+                android.widget.ImageView img;
+                android.widget.TextView fallbackText;
+
+                if (convertView instanceof android.widget.LinearLayout) {
+                    row = (android.widget.LinearLayout) convertView;
+                    img = (android.widget.ImageView) row.getChildAt(0);
+                    fallbackText = (android.widget.TextView) row.getChildAt(1);
+                } else {
+                    row = new android.widget.LinearLayout(MainActivity.this);
+                    row.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+                    row.setPadding(paddingH, paddingV, paddingH, paddingV);
+                    row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+
+                    img = new android.widget.ImageView(MainActivity.this);
+                    android.widget.LinearLayout.LayoutParams imgParams =
+                            new android.widget.LinearLayout.LayoutParams(imgSize, imgSize);
+                    img.setLayoutParams(imgParams);
+                    img.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+
+                    // Fallback SOLO si no existe la imagen (por ejemplo, PNG faltante)
+                    fallbackText = new android.widget.TextView(MainActivity.this);
+                    android.widget.LinearLayout.LayoutParams textParams =
+                            new android.widget.LinearLayout.LayoutParams(
+                                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                            );
+                    textParams.leftMargin = dpToPx(12);
+                    fallbackText.setLayoutParams(textParams);
+
+                    row.addView(img);
+                    row.addView(fallbackText);
+                }
+
+                Die die = options.get(position);
+                android.graphics.Bitmap face = diceImageResolver.getFace(die);
+
+                if (face != null) {
+                    img.setImageBitmap(face);
+                    // Pediste que NO se muestre como texto, así que lo ocultamos cuando hay imagen
+                    fallbackText.setVisibility(android.view.View.GONE);
+                } else {
+                    // Si por algún motivo falta el asset, al menos que el usuario pueda elegir igual
+                    img.setImageBitmap(null);
+                    fallbackText.setVisibility(android.view.View.VISIBLE);
+                    fallbackText.setText(die.getLabel());
+                }
+
+                return row;
+            }
+        };
+
+        new android.app.AlertDialog.Builder(this)
                 .setTitle("Elige qué dado perder")
-                .setItems(labels, (dialog, which) -> {
+                .setAdapter(adapter, (dialog, which) -> {
                     String msg = gameState.chooseDieToLose(which);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
                 .show();
     }
+
 
     private void promptCancelAbility() {
         if (!gameState.isAwaitingCancelConfirmation()) return;
