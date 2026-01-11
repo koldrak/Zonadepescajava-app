@@ -26,6 +26,11 @@
             layout="@layout/layout_game_panel"
             android:visibility="gone" />
 
+        <include
+            android:id="@+id/collectionsPanel"
+            layout="@layout/layout_collections"
+            android:visibility="gone" />
+
     </FrameLayout>
 
     <FrameLayout

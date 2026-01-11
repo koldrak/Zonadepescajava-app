@@ -34,16 +34,19 @@ import com.daille.zonadepescajava_app.model.CardId;
 import com.daille.zonadepescajava_app.model.Die;
 import com.daille.zonadepescajava_app.model.DieType;
 import com.daille.zonadepescajava_app.model.GameState;
+import com.daille.zonadepescajava_app.model.GameUtils;
 import com.daille.zonadepescajava_app.ui.BoardLinksDecoration;
 import com.daille.zonadepescajava_app.ui.BoardSlotAdapter;
 import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 import com.daille.zonadepescajava_app.ui.CardImageResolver;
+import com.daille.zonadepescajava_app.ui.CollectionCardAdapter;
 import com.daille.zonadepescajava_app.ui.DiceImageResolver;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.text.DateFormat;
 import java.util.Date;
@@ -62,6 +65,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private boolean isRevealingCard = false;
     private ScoreDatabaseHelper scoreDatabaseHelper;
     private ArrayAdapter<String> scoreRecordsAdapter;
+    private CollectionCardAdapter collectionCardAdapter;
     private final List<ImageView> diceTokens = new ArrayList<>();
     private final Card[] lastBoardCards = new Card[9];
     private BoardLinksDecoration boardLinksDecoration;
@@ -97,6 +101,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setupScoreRecordsList();
         setupMenuButtons();
         setupDiceSelectionUi();
+        setupCollectionsPanel();
 
         if (viewModel.isInitialized()) {
             setupBoard();
@@ -146,8 +151,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         });
         binding.startMenu.openSettings.setOnClickListener(v ->
                 Toast.makeText(this, "Configuraciones próximamente.", Toast.LENGTH_SHORT).show());
-        binding.startMenu.openCollections.setOnClickListener(v ->
-                Toast.makeText(this, "Colecciones disponibles próximamente.", Toast.LENGTH_SHORT).show());
+        binding.startMenu.openCollections.setOnClickListener(v -> showCollectionsPanel());
     }
 
     private void setupScoreRecordsList() {
@@ -155,6 +159,26 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.startMenu.scoreRecordsList.setAdapter(scoreRecordsAdapter);
         binding.startMenu.scoreRecordsList.setEmptyView(binding.startMenu.scoreRecordsEmpty);
         refreshScoreRecords();
+    }
+
+    private void setupCollectionsPanel() {
+        collectionCardAdapter = new CollectionCardAdapter(this);
+        binding.collectionsPanel.collectionsRecycler.setLayoutManager(new GridLayoutManager(this, 3));
+        binding.collectionsPanel.collectionsRecycler.setAdapter(collectionCardAdapter);
+        binding.collectionsPanel.closeCollections.setOnClickListener(v -> showStartMenu());
+    }
+
+    private void refreshCollections() {
+        Map<CardId, Integer> counts = scoreDatabaseHelper.getCaptureCounts();
+        List<CollectionCardAdapter.CollectionEntry> entries = new ArrayList<>();
+        for (Card card : GameUtils.createAllCards()) {
+            int count = 0;
+            if (counts.containsKey(card.getId())) {
+                count = counts.get(card.getId());
+            }
+            entries.add(new CollectionCardAdapter.CollectionEntry(card, count));
+        }
+        collectionCardAdapter.submitList(entries);
     }
 
     private void refreshScoreRecords() {
@@ -211,6 +235,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.startMenu.getRoot().setVisibility(View.VISIBLE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.gamePanel.getRoot().setVisibility(View.GONE);
+        binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         refreshScoreRecords(); // ✅ asegura recarga al mostrar menú
     }
 
@@ -219,12 +244,22 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.VISIBLE);
         binding.gamePanel.getRoot().setVisibility(View.GONE);
+        binding.collectionsPanel.getRoot().setVisibility(View.GONE);
     }
 
     private void showGameLayout() {
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.gamePanel.getRoot().setVisibility(View.VISIBLE);
+        binding.collectionsPanel.getRoot().setVisibility(View.GONE);
+    }
+
+    private void showCollectionsPanel() {
+        binding.startMenu.getRoot().setVisibility(View.GONE);
+        binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.gamePanel.getRoot().setVisibility(View.GONE);
+        binding.collectionsPanel.getRoot().setVisibility(View.VISIBLE);
+        refreshCollections();
     }
 
     private void refreshUi(String log) {
@@ -279,6 +314,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             );
         });
 
+        recordNewCaptures();
         snapshotBoardState();
         List<Card> revealed = gameState.consumeRecentlyRevealedCards();
         if (revealed.isEmpty()) {
@@ -872,6 +908,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         // NUEVO: snapshot de capturas
         lastCaptures.clear();
         lastCaptures.addAll(gameState.getCaptures());
+    }
+
+    private void recordNewCaptures() {
+        List<Card> currentCaptures = gameState.getCaptures();
+        for (Card card : currentCaptures) {
+            if (!lastCaptures.contains(card)) {
+                scoreDatabaseHelper.incrementCaptureCount(card.getId());
+            }
+        }
     }
 
     private void renderCapturedCards() {
