@@ -2,4 +2,7 @@
     <string name="app_name">Zona de Pesca Android</string>
     <string name="description">Emulación móvil de Zona de Pesca: lanza dados desde la reserva, tócalos sobre las cartas para intentar la captura y usa pulsación prolongada para voltear cartas boca arriba o abajo.</string>
     <string name="card_image_content_description">Imagen de la carta</string>
+    <string name="collections_title">Colecciones</string>
+    <string name="close">Cerrar</string>
+    <string name="collection_capture_count">%1$d capturas</string>
 </resources>
