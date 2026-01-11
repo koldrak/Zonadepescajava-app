@@ -193,7 +193,6 @@ public final class GameUtils {
         BoardSlot s = g.getBoard()[slotIndex];
         int sum = 0;
         for (Die d : s.getDice()) sum += d.getValue();
-        sum += s.getStatus().bottleDieBonus * s.getDice().size();
 
         int penalty = 0;
         int r = slotIndex / 3, c = slotIndex % 3;

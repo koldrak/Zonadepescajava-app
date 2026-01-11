@@ -600,6 +600,31 @@ public class GameState {
         setRemoraBorderSlots(slots);
         return getRemoraBorderSlots();
     }
+    // === Bota Vieja (UI) ===
+// Devuelve slots que actualmente tienen penalización (-1 a la suma) por al menos 1 Bota Vieja adyacente boca arriba.
+    public java.util.List<Integer> computeBotaViejaPenaltySlots() {
+        java.util.List<Integer> affected = new java.util.ArrayList<>();
+        for (int i = 0; i < board.length; i++) {
+            BoardSlot s = board[i];
+            if (s.getDice() == null || s.getDice().isEmpty()) continue;
+
+            boolean hasPenalty = false;
+            for (Integer adj : adjacentIndices(i, true)) { // true = incluye diagonales (consistente con GameUtils hoy)
+                BoardSlot a = board[adj];
+                if (a.getCard() != null
+                        && a.isFaceUp()
+                        && a.getCard().getId() == CardId.BOTA_VIEJA) {
+                    hasPenalty = true;
+                    break;
+                }
+            }
+
+            if (hasPenalty) {
+                affected.add(i);
+            }
+        }
+        return affected;
+    }
 
     public List<Die> getPendingDiceChoices() {
         if (pendingDieLossSlot == null) {
@@ -2200,16 +2225,55 @@ public class GameState {
         if (!isAdjacentToActor(slotIndex)) {
             return "Elige un pez pequeño adyacente boca arriba.";
         }
+
         BoardSlot target = board[slotIndex];
         if (target.getCard() == null || !target.isFaceUp() || target.getCard().getType() != CardType.PEZ) {
             return "Debes seleccionar un pez pequeño boca arriba.";
         }
+
+        if (target.getDice().isEmpty()) {
+            // No modificamos nada ahora, solo dejamos el efecto activo para futuras colocaciones
+            clearPendingSelection();
+            return "Botella de Plástico: objetivo marcado. Cuando coloques dados sobre este pez, se modificarán (+3 con tope).";
+        }
+
+
+
+        // Evita aplicar 2 veces sobre el mismo objetivo
+        if (target.getStatus() != null && target.getStatus().bottleDieBonus > 0) {
+            clearPendingSelection();
+            return "Ese pez ya fue modificado por la Botella de Plástico.";
+        }
+
+        // Guardamos vínculo (solo para que puedas seguir dibujando la línea si quieres)
         bottleTargets.put(pendingSelectionActor, slotIndex);
-        recomputeBottleAdjustments();
-        String message = "Botella de Plástico marcó " + target.getCard().getName() + ": sus dados reciben +3.";
+
+        // APLICAR CAMBIO REAL A LOS DADOS (visible porque cambia la imagen del dado)
+        StringBuilder detail = new StringBuilder();
+        for (int i = 0; i < target.getDice().size(); i++) {
+            Die d = target.getDice().get(i);
+            int oldV = d.getValue();
+            int sides = d.getType().getSides();
+
+            int newV = oldV + 3;
+            if (newV > sides) newV = sides;
+            if (newV < 1) newV = 1;
+
+            target.setDie(i, new Die(d.getType(), newV));
+
+            if (detail.length() > 0) detail.append(", ");
+            detail.append(d.getLabel()).append(" ").append(oldV).append("→").append(newV);
+        }
+
+        // Marcador VISUAL para halo/estado (ya no se usará para sumar a la pesca)
+        if (target.getStatus() != null) {
+            target.getStatus().bottleDieBonus = 3; // “flag” visual
+        }
+
         clearPendingSelection();
-        return message;
+        return "Botella de Plástico modificó los dados de " + target.getCard().getName() + " (+3, con tope). [" + detail + "]";
     }
+
 
     private String adjustLastDie(int slotIndex) {
         BoardSlot slot = board[slotIndex];
@@ -3001,17 +3065,21 @@ public class GameState {
     }
 
     private void recomputeBottleAdjustments() {
+        // Esto se usa por otras mecánicas visuales (corrientes, etc.)
         for (BoardSlot slot : board) {
-            slot.getStatus().sumConditionShift = 0;
-            slot.getStatus().bottleDieBonus = 0;
+            if (slot.getStatus() != null) {
+                slot.getStatus().sumConditionShift = 0;
+                // OJO: NO reseteamos bottleDieBonus.
+                // Ahora bottleDieBonus es un "flag" visual permanente del cambio ya aplicado.
+            }
         }
+
+        // Solo valida y limpia vínculos inválidos para no dibujar líneas fantasmas
         List<Integer> invalid = new ArrayList<>();
         for (Map.Entry<Integer, Integer> entry : bottleTargets.entrySet()) {
             int bottleIndex = entry.getKey();
             int targetIndex = entry.getValue();
-            if (isBottleLinkActive(bottleIndex, targetIndex)) {
-                board[targetIndex].getStatus().bottleDieBonus += 3;
-            } else {
+            if (!isBottleLinkActive(bottleIndex, targetIndex)) {
                 invalid.add(bottleIndex);
             }
         }
@@ -3019,6 +3087,7 @@ public class GameState {
             bottleTargets.remove(key);
         }
     }
+
 
     private boolean isBottleLinkActive(int bottleIndex, int targetIndex) {
         if (bottleIndex < 0 || bottleIndex >= board.length || targetIndex < 0 || targetIndex >= board.length) {

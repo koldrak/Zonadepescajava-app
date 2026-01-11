@@ -237,12 +237,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<Integer> refillSlots = collectRefillSlots();
 
         adapter.update(
-
                 Arrays.asList(gameState.getBoard()),
                 gameState.getHighlightSlots(),
-                gameState.computeRemoraBorderSlots()
-
+                gameState.computeRemoraBorderSlots(),
+                gameState.computeBotaViejaPenaltySlots()
         );
+
 
 // ✅ Pasa links al decoration (necesitas un getter en GameState)
         if (boardLinksDecoration != null) {
