@@ -110,13 +110,16 @@ public class CardImageResolver {
         explicitMap.put(CardId.CABALLITO_DE_MAR, "caballitodemar.png");
         explicitMap.put(CardId.CALAMAR_GIGANTE, "calamargigante.png");
         explicitMap.put(CardId.CAMARON_FANTASMA, "camaronfantasma.png");
+        explicitMap.put(CardId.CAMARON_PISTOLA, "camaronpistola.png");
         explicitMap.put(CardId.CANGREJO_ARANA, "cangrejoaraña.png");
+        explicitMap.put(CardId.CANGREJO_BOXEADOR, "cangrejoboxeador.png");
         explicitMap.put(CardId.CANGREJO_ERMITANO, "cangrejoermitaño.png");
         explicitMap.put(CardId.CANGREJO_ROJO, "cangrejorojo.png");
         explicitMap.put(CardId.CENTOLLA, "centolla.png");
         explicitMap.put(CardId.KOI, "koi.png");
         explicitMap.put(CardId.KRILL, "krill.png");
         explicitMap.put(CardId.LANGOSTA_ESPINOSA, "langostaespinosa.png");
+        explicitMap.put(CardId.LANGOSTINO_MANTIS, "langostinomantis.png");
         explicitMap.put(CardId.LATA_OXIDADA, "lataoxidada.png");
         explicitMap.put(CardId.LIMPIADOR_MARINO, "limpiadormarino.png");
         explicitMap.put(CardId.MANTA_GIGANTE, "mantagigante.png");

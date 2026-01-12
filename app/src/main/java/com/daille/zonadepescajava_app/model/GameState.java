@@ -31,6 +31,10 @@ public class GameState {
     private int blueCrabSlotIndex = -1;
     private boolean awaitingBlowfishDecision = false;
     private int blowfishSlotIndex = -1;
+    private boolean awaitingMantisDecision = false;
+    private boolean awaitingMantisLostDieChoice = false;
+    private int mantisSlotIndex = -1;
+    private Die mantisRerolledDie = null;
     private boolean awaitingValueAdjustment = false;
     private int adjustmentSlotIndex = -1;
     private int adjustmentDieIndex = -1;
@@ -88,6 +92,9 @@ public class GameState {
         ATUN_DESTINATION,
         MORENA_FROM,
         MORENA_TO,
+        BOXER_FROM,
+        BOXER_TO,
+        MANTIS_TARGET,
         BOTTLE_TARGET,
         ARENQUE_DESTINATION,
         BLUE_WHALE_PLACE,
@@ -125,6 +132,10 @@ public class GameState {
     }
 
     public void newGame(List<DieType> startingReserve) {
+        newGame(startingReserve, null);
+    }
+
+    public void newGame(List<DieType> startingReserve, Map<CardId, Integer> captureCounts) {
         captures.clear();
         lostDice.clear();
         failedDiscards.clear();
@@ -147,6 +158,10 @@ public class GameState {
         blueCrabSlotIndex = -1;
         awaitingBlowfishDecision = false;
         blowfishSlotIndex = -1;
+        awaitingMantisDecision = false;
+        awaitingMantisLostDieChoice = false;
+        mantisSlotIndex = -1;
+        mantisRerolledDie = null;
         awaitingValueAdjustment = false;
         adjustmentSlotIndex = -1;
         adjustmentDieIndex = -1;
@@ -195,7 +210,7 @@ public class GameState {
             reserve.addAll(startingReserve);
         }
 
-        List<Card> allCards = GameUtils.buildDeck(rng);
+        List<Card> allCards = GameUtils.buildDeck(rng, captureCounts);
         for (Card c : allCards) {
             deck.push(c);
         }
@@ -260,11 +275,21 @@ public class GameState {
         return awaitingBlowfishDecision;
     }
 
+    public boolean isAwaitingMantisDecision() {
+        return awaitingMantisDecision;
+    }
+
+    public boolean isAwaitingMantisLostDieChoice() {
+        return awaitingMantisLostDieChoice;
+    }
+
     private boolean hasPendingTurnResolutions() {
         return isAwaitingDieLoss()
                 || awaitingAtunDecision
                 || awaitingBlueCrabDecision
                 || awaitingBlowfishDecision
+                || awaitingMantisDecision
+                || awaitingMantisLostDieChoice
                 || awaitingPezVelaDecision
                 || awaitingPezVelaResultChoice
                 || awaitingLanternChoice
@@ -454,6 +479,28 @@ public class GameState {
                     if (idx != pendingSelectionAux && board[idx].getCard() != null
                             && board[idx].getDice().size() < 2) {
                         highlight.add(idx);
+                    }
+                }
+                break;
+            case BOXER_FROM:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    if (board[idx].getDice().size() >= 2) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case BOXER_TO:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    if (idx != pendingSelectionAux && board[idx].getCard() != null
+                            && board[idx].getDice().isEmpty()) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case MANTIS_TARGET:
+                for (int i = 0; i < board.length; i++) {
+                    if (!board[i].getDice().isEmpty()) {
+                        highlight.add(i);
                     }
                 }
                 break;
@@ -742,6 +789,15 @@ public class GameState {
                 break;
             case MORENA_TO:
                 result = chooseMorenaDestination(slotIndex);
+                break;
+            case BOXER_FROM:
+                result = chooseBoxerOrigin(slotIndex);
+                break;
+            case BOXER_TO:
+                result = chooseBoxerDestination(slotIndex);
+                break;
+            case MANTIS_TARGET:
+                result = replaceWithMantisDie(slotIndex);
                 break;
             case BOTTLE_TARGET:
                 result = chooseBottleTarget(slotIndex);
@@ -1161,6 +1217,9 @@ public class GameState {
         if (awaitingBlueCrabDecision) {
             return "Resuelve la decisión de la Jaiba azul antes de continuar.";
         }
+        if (awaitingMantisDecision || awaitingMantisLostDieChoice) {
+            return "Resuelve la habilidad del Langostino mantis antes de continuar.";
+        }
         if (awaitingPezVelaDecision || awaitingPezVelaResultChoice) {
             return "Resuelve la decisión del Pez Vela antes de lanzar otro dado.";
         }
@@ -1210,6 +1269,9 @@ public class GameState {
         }
         if (awaitingBlowfishDecision) {
             return "Decide primero si usarás la habilidad del Pez globo.";
+        }
+        if (awaitingMantisDecision || awaitingMantisLostDieChoice) {
+            return "Resuelve primero la habilidad del Langostino Mantis.";
         }
         if (awaitingPezVelaDecision || awaitingPezVelaResultChoice) {
             return "Resuelve primero la habilidad del Pez Vela.";
@@ -1263,6 +1325,10 @@ public class GameState {
                 extraLog.append(" ").append(reveal);
             }
         }
+        String pistolLog = tryPistolShrimpReposition(slotIndex);
+        if (!pistolLog.isEmpty()) {
+            extraLog.append(" ").append(pistolLog);
+        }
 
         if (slot.getDice().size() < 2) {
             String msg = "Necesitas otro dado para intentar la pesca.";
@@ -1277,20 +1343,77 @@ public class GameState {
     }
 
     private String addDieToSlot(int slotIndex, Die die) {
+        return addDieToSlotInternal(slotIndex, die, true);
+    }
+
+    private String addDieToSlotInternal(int slotIndex, Die die, boolean allowPistolEffect) {
         BoardSlot target = board[slotIndex];
         target.addDie(die);
+        String revealLog = "";
+        boolean revealed = false;
+        if (target.getCard() != null && !target.isFaceUp()) {
+            target.setFaceUp(true);
+            target.getStatus().calamarForcedFaceDown = false;
+            markRevealed(slotIndex);
+            String reveal = handleOnReveal(slotIndex, die.getValue());
+            revealLog = reveal == null ? "" : reveal;
+            revealed = true;
+        }
+        if (revealed) {
+            recomputeBottleAdjustments();
+        }
+        if (allowPistolEffect) {
+            String pistolLog = tryPistolShrimpReposition(slotIndex);
+            if (!pistolLog.isEmpty()) {
+                return revealLog.isEmpty() ? pistolLog : revealLog + " " + pistolLog;
+            }
+        }
         if (target.getCard() == null || target.isFaceUp()) {
-            return target.getDice().size() < 2 ? "" : resolveFishingOutcome(slotIndex, die.getValue(), "", false);
+            String outcome = target.getDice().size() < 2
+                    ? ""
+                    : resolveFishingOutcome(slotIndex, die.getValue(), "", false);
+            if (revealLog.isEmpty()) {
+                return outcome;
+            }
+            if (outcome.isEmpty()) {
+                return revealLog;
+            }
+            return revealLog + " " + outcome;
         }
-        target.setFaceUp(true);
-        target.getStatus().calamarForcedFaceDown = false;
-        markRevealed(slotIndex);
-        String reveal = handleOnReveal(slotIndex, die.getValue());
-        recomputeBottleAdjustments();
-        if (target.getDice().size() >= 2) {
-            return resolveFishingOutcome(slotIndex, die.getValue(), reveal == null ? "" : reveal, false);
+        return revealLog;
+    }
+
+    private String tryPistolShrimpReposition(int slotIndex) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getCard() == null || slot.getCard().getId() != CardId.CAMARON_PISTOLA) {
+            return "";
         }
-        return reveal == null ? "" : reveal;
+        if (slot.getDice().isEmpty()) {
+            return "";
+        }
+        if (!rng.nextBoolean()) {
+            return "";
+        }
+
+        Die moved = slot.removeDie(slot.getDice().size() - 1);
+        List<Integer> candidates = new ArrayList<>();
+        for (int i = 0; i < board.length; i++) {
+            if (i == slotIndex) continue;
+            BoardSlot target = board[i];
+            if (target.getCard() != null && target.getDice().size() < 2) {
+                candidates.add(i);
+            }
+        }
+        if (candidates.isEmpty()) {
+            slot.addDie(moved);
+            return "Camarón pistola no pudo reposicionar el dado.";
+        }
+
+        int targetIndex = candidates.get(rng.nextInt(candidates.size()));
+        String reveal = addDieToSlotInternal(targetIndex, moved, false);
+        return reveal.isEmpty()
+                ? "Camarón pistola reposicionó un dado."
+                : "Camarón pistola reposicionó un dado. " + reveal;
     }
 
     private String resolveFishingOutcome(int slotIndex, int triggerValue, String extraLog, boolean applyCurrents) {
@@ -1782,6 +1905,9 @@ public class GameState {
             case ARENQUE_DESTINATION:
                 clearArenqueState();
                 break;
+            case MANTIS_TARGET:
+                clearMantisState();
+                break;
             default:
                 break;
         }
@@ -1803,6 +1929,13 @@ public class GameState {
         awaitingArenqueChoice = false;
         arenqueSlotIndex = -1;
         arenquePlacementSlots = 0;
+    }
+
+    private void clearMantisState() {
+        awaitingMantisDecision = false;
+        awaitingMantisLostDieChoice = false;
+        mantisSlotIndex = -1;
+        mantisRerolledDie = null;
     }
 
     private void clearPulpoState() {
@@ -1909,10 +2042,16 @@ public class GameState {
                         slotIndex,
                         "Cangrejo rojo: elige un dado adyacente para mover.");
                 break;
+            case CANGREJO_BOXEADOR:
+                result = startBoxerCrabMove(slotIndex);
+                break;
             case JAIBA_AZUL:
                 awaitingBlueCrabDecision = true;
                 blueCrabSlotIndex = slotIndex;
                 result = "Jaiba azul: ¿quieres ajustar un dado ±1?";
+                break;
+            case LANGOSTINO_MANTIS:
+                result = startMantisDecision(slotIndex);
                 break;
             case CAMARON_FANTASMA:
                 result = startGhostShrimpPeek(slotIndex);
@@ -2572,6 +2711,148 @@ public class GameState {
         clearPendingSelection();
         return reveal.isEmpty() ? "Morena movió un dado entre cartas adyacentes." :
                 "Morena movió un dado entre cartas adyacentes. " + reveal;
+    }
+
+    private String startBoxerCrabMove(int slotIndex) {
+        boolean hasOrigin = false;
+        boolean hasTarget = false;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getDice().size() >= 2) {
+                hasOrigin = true;
+            }
+            if (adj.getCard() != null && adj.getDice().isEmpty()) {
+                hasTarget = true;
+            }
+        }
+        if (!hasOrigin || !hasTarget) {
+            return "Cangrejo boxeador: no hay movimientos válidos.";
+        }
+        return queueableSelection(
+                PendingSelection.BOXER_FROM,
+                slotIndex,
+                "Cangrejo boxeador: elige una carta adyacente con 2 dados."
+        );
+    }
+
+    private String chooseBoxerOrigin(int slotIndex) {
+        if (!isAdjacentToActor(slotIndex) || board[slotIndex].getDice().size() < 2) {
+            return "Elige una carta adyacente con 2 dados.";
+        }
+        pendingSelectionAux = slotIndex;
+        pendingSelection = PendingSelection.BOXER_TO;
+        return "Selecciona una carta adyacente destino sin dados.";
+    }
+
+    private String chooseBoxerDestination(int slotIndex) {
+        if (!isAdjacentToActor(slotIndex)) {
+            return "La carta destino debe ser adyacente al cangrejo boxeador.";
+        }
+        if (slotIndex == pendingSelectionAux) {
+            return "Elige una carta distinta como destino.";
+        }
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null || !target.getDice().isEmpty()) {
+            return "La carta destino debe estar vacía de dados.";
+        }
+        BoardSlot origin = board[pendingSelectionAux];
+        if (origin.getDice().size() < 2) {
+            clearPendingSelection();
+            return "No hay suficientes dados para mover.";
+        }
+        List<Die> moving = new ArrayList<>();
+        for (int i = 0; i < 2; i++) {
+            moving.add(origin.removeDie(origin.getDice().size() - 1));
+        }
+        StringBuilder log = new StringBuilder();
+        for (Die die : moving) {
+            String reveal = addDieToSlot(slotIndex, die);
+            if (!reveal.isEmpty()) {
+                if (log.length() > 0) log.append(" ");
+                log.append(reveal);
+            }
+        }
+        clearPendingSelection();
+        if (log.length() == 0) {
+            return "Cangrejo boxeador movió 2 dados entre cartas adyacentes.";
+        }
+        return "Cangrejo boxeador movió 2 dados entre cartas adyacentes. " + log;
+    }
+
+    private String startMantisDecision(int slotIndex) {
+        if (lostDice.isEmpty()) {
+            return "Langostino mantis: no hay dados perdidos para relanzar.";
+        }
+        boolean hasTarget = false;
+        for (BoardSlot s : board) {
+            if (!s.getDice().isEmpty()) {
+                hasTarget = true;
+                break;
+            }
+        }
+        if (!hasTarget) {
+            return "Langostino mantis: no hay dados en la zona de pesca.";
+        }
+        awaitingMantisDecision = true;
+        mantisSlotIndex = slotIndex;
+        return "Langostino mantis: ¿quieres relanzar un dado perdido?";
+    }
+
+    public String chooseMantisReroll(boolean use) {
+        if (!awaitingMantisDecision) {
+            return "No hay decisión pendiente del Langostino mantis.";
+        }
+        awaitingMantisDecision = false;
+        if (!use) {
+            mantisSlotIndex = -1;
+            return "Langostino mantis: habilidad omitida.";
+        }
+        if (lostDice.isEmpty()) {
+            mantisSlotIndex = -1;
+            return "Langostino mantis: no hay dados perdidos para relanzar.";
+        }
+        awaitingMantisLostDieChoice = true;
+        return "Elige un dado perdido para relanzar.";
+    }
+
+    public String chooseMantisLostDie(int index) {
+        if (!awaitingMantisLostDieChoice) {
+            return "No hay selección pendiente del Langostino mantis.";
+        }
+        if (index < 0 || index >= lostDice.size()) {
+            return "Debes elegir un dado perdido válido.";
+        }
+        Die chosen = lostDice.remove(index);
+        mantisRerolledDie = Die.roll(chosen.getType(), rng);
+        awaitingMantisLostDieChoice = false;
+        pendingSelection = PendingSelection.MANTIS_TARGET;
+        pendingSelectionActor = mantisSlotIndex;
+        return "Langostino mantis lanzó un " + mantisRerolledDie.getLabel()
+                + ". Elige una carta con dado para reemplazarlo.";
+    }
+
+    private String replaceWithMantisDie(int slotIndex) {
+        if (mantisRerolledDie == null) {
+            clearPendingSelection();
+            clearMantisState();
+            return "No hay dado del Langostino mantis para colocar.";
+        }
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null) {
+            return offerCancelAbility("Langostino mantis");
+        }
+        if (target.getDice().isEmpty()) {
+            return offerCancelAbility("Langostino mantis");
+        }
+        Die replaced = target.removeDie(target.getDice().size() - 1);
+        lostDice.add(replaced);
+        String reveal = addDieToSlot(slotIndex, mantisRerolledDie);
+        clearPendingSelection();
+        clearMantisState();
+        if (reveal.isEmpty()) {
+            return "Langostino mantis reemplazó un dado en la zona de pesca.";
+        }
+        return "Langostino mantis reemplazó un dado en la zona de pesca. " + reveal;
     }
 
     private String replaceAdjacentObject(int slotIndex) {

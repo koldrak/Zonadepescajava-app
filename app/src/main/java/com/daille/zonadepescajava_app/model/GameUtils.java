@@ -3,6 +3,7 @@ package com.daille.zonadepescajava_app.model;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public final class GameUtils {
@@ -17,11 +18,20 @@ public final class GameUtils {
         cards.add(new Card(CardId.CANGREJO_ROJO, "Cangrejo Rojo", CardType.CRUSTACEO, 8,
                 condSumRange(6, 8), "Mueve 1 dado entre peces adyacentes.", "", ""));
 
+        cards.add(new Card(CardId.CANGREJO_BOXEADOR, "Cangrejo Boxeador", CardType.CRUSTACEO, 8,
+                condSumExact(5), "Mueve 2 dados entre cartas adyacentes.", "", ""));
+
         cards.add(new Card(CardId.JAIBA_AZUL, "Jaiba Azul", CardType.CRUSTACEO, 6,
                 (slotIndex, g) -> bothDiceEven(slotIndex, g), "Ajusta el último dado ±1.", "", ""));
 
+        cards.add(new Card(CardId.LANGOSTINO_MANTIS, "Langostino Mantis", CardType.CRUSTACEO, 9,
+                GameUtils::oneDieIsDouble, "Relanza un dado perdido y reemplaza uno en la zona de pesca.", "", ""));
+
         cards.add(new Card(CardId.CAMARON_FANTASMA, "Camarón Fantasma", CardType.CRUSTACEO, 2,
                 (slotIndex, g) -> atLeastOneIs(slotIndex, g, 1, 2), "Mira 2 cartas boca abajo adyacentes.", "", ""));
+
+        cards.add(new Card(CardId.CAMARON_PISTOLA, "Camarón Pistola", CardType.CRUSTACEO, 4,
+                condSumRange(7, 9), "El dado colocado puede moverse aleatoriamente.", "", ""));
 
         cards.add(new Card(CardId.LANGOSTA_ESPINOSA, "Langosta Espinosa", CardType.CRUSTACEO, 9,
                 condSumExact(9), "", "", ""));
@@ -183,10 +193,41 @@ public final class GameUtils {
         return cards;
     }
 
-    public static List<Card> buildDeck(Random rng) {
+    public static List<Card> buildDeck(Random rng, Map<CardId, Integer> captureCounts) {
         List<Card> deck = new ArrayList<>(createAllCards());
+        if (captureCounts != null) {
+            applyUnlocks(deck, captureCounts);
+        } else {
+            removeLockedCards(deck);
+        }
         Collections.shuffle(deck, rng);
         return deck;
+    }
+
+    public static List<Card> buildDeck(Random rng) {
+        return buildDeck(rng, null);
+    }
+
+    private static void applyUnlocks(List<Card> deck, Map<CardId, Integer> captureCounts) {
+        if (captureCounts.getOrDefault(CardId.CANGREJO_ROJO, 0) < 3) {
+            removeCard(deck, CardId.CANGREJO_BOXEADOR);
+        }
+        if (captureCounts.getOrDefault(CardId.JAIBA_AZUL, 0) < 3) {
+            removeCard(deck, CardId.LANGOSTINO_MANTIS);
+        }
+        if (captureCounts.getOrDefault(CardId.CAMARON_FANTASMA, 0) < 3) {
+            removeCard(deck, CardId.CAMARON_PISTOLA);
+        }
+    }
+
+    private static void removeLockedCards(List<Card> deck) {
+        removeCard(deck, CardId.CANGREJO_BOXEADOR);
+        removeCard(deck, CardId.LANGOSTINO_MANTIS);
+        removeCard(deck, CardId.CAMARON_PISTOLA);
+    }
+
+    private static void removeCard(List<Card> deck, CardId id) {
+        deck.removeIf(card -> card.getId() == id);
     }
 
     public static int sumWithModifiers(int slotIndex, GameState g) {
@@ -229,6 +270,14 @@ public final class GameUtils {
         BoardSlot s = g.getBoard()[slotIndex];
         if (s.getDice().size() != 2) return false;
         return (s.getDice().get(0).getValue() % 2) != (s.getDice().get(1).getValue() % 2);
+    }
+
+    public static boolean oneDieIsDouble(int slotIndex, GameState g) {
+        BoardSlot s = g.getBoard()[slotIndex];
+        if (s.getDice().size() != 2) return false;
+        int a = s.getDice().get(0).getValue();
+        int b = s.getDice().get(1).getValue();
+        return a == b * 2 || b == a * 2;
     }
 
     public static boolean atLeastOneIs(int slotIndex, GameState g, int... vals) {
