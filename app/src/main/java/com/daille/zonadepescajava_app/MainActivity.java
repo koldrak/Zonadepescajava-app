@@ -17,6 +17,7 @@ import android.widget.ImageView;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ArrayAdapter;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -141,7 +142,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 Toast.makeText(this, "Selecciona exactamente 7 dados antes de iniciar.", Toast.LENGTH_SHORT).show();
                 return;
             }
-            viewModel.startNewGame(startingReserve);
+            Map<CardId, Integer> captureCounts = scoreDatabaseHelper.getCaptureCounts();
+            viewModel.startNewGame(startingReserve, captureCounts);
             gameState = viewModel.getGameState();
             endScoringShown = false;
             setupBoard();
@@ -1320,6 +1322,93 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .show();
     }
 
+    private void promptMantisDecision() {
+        if (!gameState.isAwaitingMantisDecision()) return;
+        new AlertDialog.Builder(this)
+                .setTitle("Langostino mantis")
+                .setMessage("¿Quieres relanzar un dado perdido?")
+                .setPositiveButton("Usar", (dialog, which) -> {
+                    String msg = gameState.chooseMantisReroll(true);
+                    handleGameResult(msg);
+                })
+                .setNegativeButton("Omitir", (dialog, which) -> {
+                    String msg = gameState.chooseMantisReroll(false);
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptMantisLostDieChoice() {
+        if (!gameState.isAwaitingMantisLostDieChoice()) return;
+        List<Die> options = new ArrayList<>(gameState.getLostDice());
+        if (options.isEmpty()) {
+            handleGameResult("Langostino mantis: no hay dados perdidos para relanzar.");
+            return;
+        }
+
+        ArrayAdapter<Die> adapter = new ArrayAdapter<>(this, android.R.layout.select_dialog_item, options) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                LinearLayout row;
+                ImageView img;
+                TextView fallbackText;
+
+                if (convertView == null) {
+                    row = new LinearLayout(MainActivity.this);
+                    row.setOrientation(LinearLayout.HORIZONTAL);
+                    row.setPadding(dpToPx(8), dpToPx(4), dpToPx(8), dpToPx(4));
+                    row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+
+                    img = new ImageView(MainActivity.this);
+                    LinearLayout.LayoutParams imgParams =
+                            new LinearLayout.LayoutParams(dpToPx(40), dpToPx(40));
+                    img.setLayoutParams(imgParams);
+                    img.setScaleType(ImageView.ScaleType.FIT_CENTER);
+
+                    fallbackText = new TextView(MainActivity.this);
+                    LinearLayout.LayoutParams textParams =
+                            new LinearLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                                    ViewGroup.LayoutParams.WRAP_CONTENT
+                            );
+                    textParams.leftMargin = dpToPx(12);
+                    fallbackText.setLayoutParams(textParams);
+
+                    row.addView(img);
+                    row.addView(fallbackText);
+                } else {
+                    row = (LinearLayout) convertView;
+                    img = (ImageView) row.getChildAt(0);
+                    fallbackText = (TextView) row.getChildAt(1);
+                }
+
+                Die die = options.get(position);
+                Bitmap face = diceImageResolver.getFace(die);
+
+                if (face != null) {
+                    img.setImageBitmap(face);
+                    fallbackText.setVisibility(View.GONE);
+                } else {
+                    img.setImageBitmap(null);
+                    fallbackText.setVisibility(View.VISIBLE);
+                    fallbackText.setText(die.getLabel());
+                }
+
+                return row;
+            }
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Langostino mantis")
+                .setAdapter(adapter, (dialog, which) -> {
+                    String msg = gameState.chooseMantisLostDie(which);
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
     private void promptValueAdjustmentChoice() {
         if (!gameState.isAwaitingValueAdjustment()) return;
         int amount = gameState.getPendingAdjustmentAmount();
@@ -1681,6 +1770,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (gameState.isAwaitingValueAdjustment()) { promptValueAdjustmentChoice(); return; }
         if (gameState.isAwaitingBlueCrabDecision()) { promptBlueCrabDecision(); return; }
         if (gameState.isAwaitingBlowfishDecision()) { promptBlowfishDecision(); return; }
+        if (gameState.isAwaitingMantisDecision()) { promptMantisDecision(); return; }
+        if (gameState.isAwaitingMantisLostDieChoice()) { promptMantisLostDieChoice(); return; }
         if (gameState.isAwaitingPezVelaDecision()) { promptPezVelaDecision(); return; }
         if (gameState.isAwaitingPezVelaResultChoice()) { promptPezVelaResultChoice(); return; }
         if (gameState.isAwaitingGhostShrimpDecision()) { promptGhostShrimpDecision(); return; }

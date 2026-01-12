@@ -2,11 +2,11 @@ package com.daille.zonadepescajava_app;
 
 import androidx.lifecycle.ViewModel;
 
+import com.daille.zonadepescajava_app.model.CardId;
 import com.daille.zonadepescajava_app.model.DieType;
 import com.daille.zonadepescajava_app.model.GameState;
 import java.util.List;
-
-import java.util.List;
+import java.util.Map;
 
 public class GameViewModel extends ViewModel {
     private final GameState gameState = new GameState();
@@ -34,7 +34,12 @@ public class GameViewModel extends ViewModel {
     }
 
     public void startNewGame(List<com.daille.zonadepescajava_app.model.DieType> reserve) {
-        gameState.newGame(reserve);
+        startNewGame(reserve, null);
+    }
+
+    public void startNewGame(List<com.daille.zonadepescajava_app.model.DieType> reserve,
+                             Map<CardId, Integer> captureCounts) {
+        gameState.newGame(reserve, captureCounts);
         initialized = true;
         finalScoreRecorded = false;
     }

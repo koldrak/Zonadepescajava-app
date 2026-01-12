@@ -2,8 +2,11 @@ package com.daille.zonadepescajava_app.model;
 
 public enum CardId {
     CANGREJO_ROJO,
+    CANGREJO_BOXEADOR,
     JAIBA_AZUL,
+    LANGOSTINO_MANTIS,
     CAMARON_FANTASMA,
+    CAMARON_PISTOLA,
     LANGOSTA_ESPINOSA,
     KRILL,
     CANGREJO_ERMITANO,
