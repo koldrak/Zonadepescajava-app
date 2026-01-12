@@ -61,6 +61,14 @@ public class GameState {
     private boolean awaitingArenqueChoice = false;
     private int arenqueSlotIndex = -1;
     private int arenquePlacementSlots = 0;
+    private final List<Card> pendingDecoradorOptions = new ArrayList<>();
+    private boolean awaitingDecoradorChoice = false;
+    private Card pendingDecoradorCard = null;
+    private int decoradorSlotIndex = -1;
+    private boolean awaitingViolinistChoice = false;
+    private int horseshoeSlotIndex = -1;
+    private int horseshoeDieIndex = -1;
+    private boolean awaitingHorseshoeValue = false;
     private boolean awaitingPulpoChoice = false;
     private int pulpoSlotIndex = -1;
     private int pulpoPlacedValue = 0;
@@ -101,7 +109,9 @@ public class GameState {
         SPIDER_CRAB_CHOOSE_CARD,
         SPIDER_CRAB_CHOOSE_SLOT,
         KOI_TARGET,
-        RELEASE_CHOOSE_SLOT
+        RELEASE_CHOOSE_SLOT,
+        DECORADOR_CHOOSE_SLOT,
+        HORSESHOE_DIE
     }
     private PendingSelection pendingSelection = PendingSelection.NONE;
     private int pendingSelectionActor = -1;
@@ -189,6 +199,12 @@ public class GameState {
         awaitingArenqueChoice = false;
         arenqueSlotIndex = -1;
         arenquePlacementSlots = 0;
+        pendingDecoradorOptions.clear();
+        pendingDecoradorCard = null;
+        awaitingDecoradorChoice = false;
+        decoradorSlotIndex = -1;
+        awaitingViolinistChoice = false;
+        clearHorseshoeState();
         awaitingPulpoChoice = false;
         pulpoSlotIndex = -1;
         pulpoPlacedValue = 0;
@@ -283,6 +299,18 @@ public class GameState {
         return awaitingMantisLostDieChoice;
     }
 
+    public boolean isAwaitingDecoradorChoice() {
+        return awaitingDecoradorChoice;
+    }
+
+    public boolean isAwaitingViolinistChoice() {
+        return awaitingViolinistChoice;
+    }
+
+    public boolean isAwaitingHorseshoeValue() {
+        return awaitingHorseshoeValue;
+    }
+
     private boolean hasPendingTurnResolutions() {
         return isAwaitingDieLoss()
                 || awaitingAtunDecision
@@ -295,6 +323,9 @@ public class GameState {
                 || awaitingLanternChoice
                 || isAwaitingBoardSelection()
                 || awaitingArenqueChoice
+                || awaitingDecoradorChoice
+                || awaitingViolinistChoice
+                || awaitingHorseshoeValue
                 || awaitingPulpoChoice
                 || awaitingValueAdjustment
                 || awaitingGhostShrimpDecision
@@ -366,6 +397,14 @@ public class GameState {
         return names;
     }
 
+    public List<String> getPendingDecoradorNames() {
+        List<String> names = new ArrayList<>();
+        for (Card c : pendingDecoradorOptions) {
+            names.add(c.getName());
+        }
+        return names;
+    }
+
     public boolean isAwaitingValueAdjustment() {
         return awaitingValueAdjustment;
     }
@@ -380,6 +419,15 @@ public class GameState {
             names.add(c.getName());
         }
         return names;
+    }
+
+    public int getHorseshoeDieSides() {
+        if (horseshoeSlotIndex < 0 || horseshoeSlotIndex >= board.length) return 0;
+        BoardSlot slot = board[horseshoeSlotIndex];
+        if (slot.getDice().isEmpty() || horseshoeDieIndex < 0 || horseshoeDieIndex >= slot.getDice().size()) {
+            return 0;
+        }
+        return slot.getDice().get(horseshoeDieIndex).getType().getSides();
     }
 
     public int getPendingAdjustmentAmount() {
@@ -617,6 +665,21 @@ public class GameState {
                     }
                 }
                 break;
+            case DECORADOR_CHOOSE_SLOT:
+                for (int i = 0; i < board.length; i++) {
+                    BoardSlot s = board[i];
+                    if (s.getCard() != null && !s.isFaceUp() && s.getDice().isEmpty()) {
+                        highlight.add(i);
+                    }
+                }
+                break;
+            case HORSESHOE_DIE:
+                for (int i = 0; i < board.length; i++) {
+                    if (!board[i].getDice().isEmpty()) {
+                        highlight.add(i);
+                    }
+                }
+                break;
 
 
             case NONE:
@@ -817,6 +880,12 @@ public class GameState {
             case RELEASE_CHOOSE_SLOT:
                 result = resolveReleaseIntoSlot(slotIndex);
                 break;
+            case DECORADOR_CHOOSE_SLOT:
+                result = placeDecoradorObject(slotIndex);
+                break;
+            case HORSESHOE_DIE:
+                result = chooseHorseshoeDie(slotIndex);
+                break;
 
             default:
                 result = "No hay acciones pendientes.";
@@ -966,6 +1035,150 @@ public class GameState {
 
         recomputeBottleAdjustments();
         return "Cangrejo araña colocó la carta recuperada boca abajo, reemplazando una carta boca abajo y devolviendo la reemplazada al mazo.";
+    }
+
+    public String chooseDecoradorCard(int index) {
+        if (!awaitingDecoradorChoice) {
+            return "No hay selección pendiente del Cangrejo decorador.";
+        }
+        if (index < 0 || index >= pendingDecoradorOptions.size()) {
+            return "Debes elegir un objeto válido del mazo.";
+        }
+        pendingDecoradorCard = pendingDecoradorOptions.get(index);
+        if (!deck.remove(pendingDecoradorCard)) {
+            clearDecoradorState();
+            shuffleDeck();
+            return "El objeto elegido ya no está disponible en el mazo.";
+        }
+        pendingDecoradorOptions.clear();
+        awaitingDecoradorChoice = false;
+        pendingSelection = PendingSelection.DECORADOR_CHOOSE_SLOT;
+        pendingSelectionActor = decoradorSlotIndex;
+        return "Cangrejo decorador: elige una carta boca abajo sin dados para reemplazar.";
+    }
+
+    public String cancelDecoradorAbility() {
+        if (!awaitingDecoradorChoice) {
+            return "No hay acción del Cangrejo decorador para cancelar.";
+        }
+        clearDecoradorState();
+        return "Cangrejo decorador: acción cancelada.";
+    }
+
+    private String placeDecoradorObject(int slotIndex) {
+        if (pendingSelection != PendingSelection.DECORADOR_CHOOSE_SLOT) {
+            return "No hay colocación pendiente del Cangrejo decorador.";
+        }
+        if (pendingDecoradorCard == null) {
+            clearPendingSelection();
+            return "No hay objeto seleccionado para colocar.";
+        }
+        if (slotIndex < 0 || slotIndex >= board.length) {
+            return "Selecciona una casilla válida.";
+        }
+        BoardSlot slot = board[slotIndex];
+        if (slot.getCard() == null || slot.isFaceUp()) {
+            return "Debes elegir una carta boca abajo para reemplazar.";
+        }
+        if (!slot.getDice().isEmpty()) {
+            return "Debes elegir una carta boca abajo sin dados.";
+        }
+        Card replaced = slot.getCard();
+        deck.push(replaced);
+        shuffleDeck();
+        slot.setCard(pendingDecoradorCard);
+        slot.setFaceUp(false);
+        slot.setStatus(new SlotStatus());
+        slot.clearDice();
+        clearDecoradorState();
+        clearPendingSelection();
+        recomputeBottleAdjustments();
+        return "Cangrejo decorador reemplazó una carta boca abajo con un objeto del mazo.";
+    }
+
+    private void clearDecoradorState() {
+        pendingDecoradorOptions.clear();
+        pendingDecoradorCard = null;
+        awaitingDecoradorChoice = false;
+        decoradorSlotIndex = -1;
+    }
+
+    public String chooseViolinistCard(int index) {
+        if (!awaitingViolinistChoice) {
+            return "No hay selección pendiente del Cangrejo violinista.";
+        }
+        if (index < 0 || index >= failedDiscards.size()) {
+            return "Debes elegir una carta descartada válida.";
+        }
+        Card chosen = failedDiscards.remove(index);
+        captures.add(chosen);
+        awaitingViolinistChoice = false;
+        return "Cangrejo violinista capturó directamente " + chosen.getName() + ".";
+    }
+
+    public String cancelViolinistAbility() {
+        if (!awaitingViolinistChoice) {
+            return "No hay acción del Cangrejo violinista para cancelar.";
+        }
+        awaitingViolinistChoice = false;
+        return "Cangrejo violinista: acción cancelada.";
+    }
+
+    private String chooseHorseshoeDie(int slotIndex) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getDice().isEmpty()) {
+            return "Elige una carta con un dado para ajustar.";
+        }
+        horseshoeSlotIndex = slotIndex;
+        horseshoeDieIndex = slot.getDice().size() - 1;
+        awaitingHorseshoeValue = true;
+        clearPendingSelection();
+        return "Cangrejo herradura: elige el nuevo valor del dado.";
+    }
+
+    public String chooseHorseshoeValue(int value) {
+        if (!awaitingHorseshoeValue) {
+            return "No hay ajuste pendiente del Cangrejo herradura.";
+        }
+        if (horseshoeSlotIndex < 0 || horseshoeSlotIndex >= board.length) {
+            clearHorseshoeState();
+            return "El dado a ajustar ya no está disponible.";
+        }
+        BoardSlot slot = board[horseshoeSlotIndex];
+        if (slot.getDice().isEmpty() || horseshoeDieIndex < 0 || horseshoeDieIndex >= slot.getDice().size()) {
+            clearHorseshoeState();
+            return "El dado a ajustar ya no está disponible.";
+        }
+        Die die = slot.getDice().get(horseshoeDieIndex);
+        int sides = die.getType().getSides();
+        if (value < 1 || value > sides) {
+            return "Elige un valor dentro del rango del dado.";
+        }
+        slot.setDie(horseshoeDieIndex, new Die(die.getType(), value));
+        String msg = "Cangrejo herradura ajustó el dado a " + value + ".";
+        clearHorseshoeState();
+
+        if (hasPendingTurnResolutions()) {
+            return msg;
+        }
+
+        String revealLog = continueRevealChain("");
+        if (!revealLog.isEmpty()) {
+            msg = msg.isEmpty() ? revealLog : msg + " " + revealLog;
+        }
+
+        String endTurn = resolveAllReadySlots();
+        if (!endTurn.isEmpty()) {
+            msg = msg.isEmpty() ? endTurn : msg + " " + endTurn;
+        }
+
+        return msg;
+    }
+
+    private void clearHorseshoeState() {
+        horseshoeSlotIndex = -1;
+        horseshoeDieIndex = -1;
+        awaitingHorseshoeValue = false;
     }
 
 
@@ -1229,11 +1442,20 @@ public class GameState {
         if (awaitingArenqueChoice) {
             return "Selecciona primero los peces pequeños del Arenque.";
         }
+        if (awaitingDecoradorChoice) {
+            return "Elige el objeto del Cangrejo decorador antes de continuar.";
+        }
+        if (awaitingViolinistChoice) {
+            return "Elige la carta del Cangrejo violinista antes de continuar.";
+        }
         if (awaitingPulpoChoice) {
             return "Elige la carta para reemplazar al Pulpo antes de lanzar otro dado.";
         }
         if (awaitingValueAdjustment) {
             return "Resuelve el ajuste pendiente antes de lanzar otro dado.";
+        }
+        if (awaitingHorseshoeValue) {
+            return "Resuelve el ajuste del Cangrejo herradura antes de lanzar otro dado.";
         }
         if (awaitingGhostShrimpDecision) {
             return "Decide primero si intercambiar las cartas vistas por el Camarón fantasma.";
@@ -1285,11 +1507,20 @@ public class GameState {
         if (awaitingArenqueChoice) {
             return "Selecciona los peces pequeños del Arenque antes de colocar otros dados.";
         }
+        if (awaitingDecoradorChoice) {
+            return "Elige el objeto del Cangrejo decorador antes de colocar dados.";
+        }
+        if (awaitingViolinistChoice) {
+            return "Elige la carta del Cangrejo violinista antes de colocar dados.";
+        }
         if (awaitingPulpoChoice) {
             return "Elige primero la carta que reemplazará al Pulpo.";
         }
         if (awaitingValueAdjustment) {
             return "Resuelve el ajuste pendiente antes de colocar dados.";
+        }
+        if (awaitingHorseshoeValue) {
+            return "Resuelve el ajuste del Cangrejo herradura antes de colocar dados.";
         }
         if (awaitingGhostShrimpDecision) {
             return "Decide si intercambiar las cartas vistas por el Camarón fantasma antes de continuar.";
@@ -1310,12 +1541,16 @@ public class GameState {
         }
         slot.addDie(selectedDie);
         int placedValue = selectedDie.getValue();
+        String cocoLoss = applyCoconutCrabLoss(slotIndex, placedValue);
         selectedDie = null;
         if (forcedSlotIndex != null && slotIndex == forcedSlotIndex) {
             forcedSlotIndex = null;
         }
 
         StringBuilder extraLog = new StringBuilder();
+        if (!cocoLoss.isEmpty()) {
+            extraLog.append(" ").append(cocoLoss);
+        }
         if (!slot.isFaceUp()) {
             slot.setFaceUp(true);
             slot.getStatus().calamarForcedFaceDown = false;
@@ -1349,6 +1584,7 @@ public class GameState {
     private String addDieToSlotInternal(int slotIndex, Die die, boolean allowPistolEffect) {
         BoardSlot target = board[slotIndex];
         target.addDie(die);
+        String coconutLog = applyCoconutCrabLoss(slotIndex, die.getValue());
         String revealLog = "";
         boolean revealed = false;
         if (target.getCard() != null && !target.isFaceUp()) {
@@ -1362,11 +1598,21 @@ public class GameState {
         if (revealed) {
             recomputeBottleAdjustments();
         }
+        if (!coconutLog.isEmpty()) {
+            if (!revealLog.isEmpty()) {
+                revealLog = coconutLog + " " + revealLog;
+            } else {
+                revealLog = coconutLog;
+            }
+        }
         if (allowPistolEffect) {
             String pistolLog = tryPistolShrimpReposition(slotIndex);
             if (!pistolLog.isEmpty()) {
                 return revealLog.isEmpty() ? pistolLog : revealLog + " " + pistolLog;
             }
+        }
+        if (!coconutLog.isEmpty()) {
+            return revealLog;
         }
         if (target.getCard() == null || target.isFaceUp()) {
             String outcome = target.getDice().size() < 2
@@ -1381,6 +1627,22 @@ public class GameState {
             return revealLog + " " + outcome;
         }
         return revealLog;
+    }
+
+    private String applyCoconutCrabLoss(int slotIndex, int placedValue) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getCard() == null || slot.getCard().getId() != CardId.JAIBA_GIGANTE_DE_COCO) {
+            return "";
+        }
+        if (placedValue >= 7) {
+            return "";
+        }
+        if (!slot.getDice().isEmpty()) {
+            Die lost = slot.removeDie(slot.getDice().size() - 1);
+            lostDice.add(lost);
+            return "Jaiba gigante de coco: el dado se perdió automáticamente.";
+        }
+        return "";
     }
 
     private String tryPistolShrimpReposition(int slotIndex) {
@@ -1485,6 +1747,7 @@ public class GameState {
         int sum = 0;
         int crustaceos = 0, peces = 0, pecesGrandes = 0, objetos = 0;
         int krillCount = 0, sardinaCount = 0, tiburonMartilloCount = 0, limpiadorCount = 0, tiburonBallenaCount = 0;
+        int copepodoCount = 0;
         for (Card c : captures) {
             sum += c.getPoints();
             switch (c.getType()) {
@@ -1494,13 +1757,22 @@ public class GameState {
                 case OBJETO: objetos++; break;
             }
             if (c.getId() == CardId.KRILL) krillCount++;
+            if (c.getId() == CardId.COPEPODO_BRILLANTE) copepodoCount++;
             if (c.getId() == CardId.SARDINA) sardinaCount++;
             if (c.getId() == CardId.TIBURON_MARTILLO) tiburonMartilloCount++;
             if (c.getId() == CardId.LIMPIADOR_MARINO) limpiadorCount++;
             if (c.getId() == CardId.TIBURON_BALLENA) tiburonBallenaCount++;
         }
 
+        int crustaceosFallados = 0;
+        for (Card c : failedDiscards) {
+            if (c.getType() == CardType.CRUSTACEO) {
+                crustaceosFallados++;
+            }
+        }
+
         sum += krillCount * crustaceos;
+        sum += copepodoCount * crustaceosFallados;
         sum += sardinaCount * peces;
         sum += tiburonMartilloCount * pecesGrandes * 2;
         sum += limpiadorCount * objetos * 2;
@@ -1725,6 +1997,10 @@ public class GameState {
             adjustmentAmount = 0;
             adjustmentSource = null;
         }
+        horseshoeSlotIndex = remapIndex(horseshoeSlotIndex, indexMap);
+        if (awaitingHorseshoeValue && horseshoeSlotIndex < 0) {
+            clearHorseshoeState();
+        }
 
         pezVelaSlotIndex = remapIndex(pezVelaSlotIndex, indexMap);
         if ((awaitingPezVelaDecision || awaitingPezVelaResultChoice) && pezVelaSlotIndex < 0) {
@@ -1908,6 +2184,16 @@ public class GameState {
             case MANTIS_TARGET:
                 clearMantisState();
                 break;
+            case DECORADOR_CHOOSE_SLOT:
+                if (pendingDecoradorCard != null) {
+                    deck.push(pendingDecoradorCard);
+                    shuffleDeck();
+                }
+                clearDecoradorState();
+                break;
+            case HORSESHOE_DIE:
+                clearHorseshoeState();
+                break;
             default:
                 break;
         }
@@ -1962,6 +2248,9 @@ public class GameState {
                 || awaitingLanternChoice
                 || isAwaitingBoardSelection()
                 || awaitingArenqueChoice
+                || awaitingDecoradorChoice
+                || awaitingViolinistChoice
+                || awaitingHorseshoeValue
                 || awaitingPulpoChoice
                 || awaitingValueAdjustment
                 || awaitingGhostShrimpDecision
@@ -2068,6 +2357,9 @@ public class GameState {
             case CANGREJO_ERMITANO:
                 result = replaceAdjacentObject(slotIndex);
                 break;
+            case CANGREJO_DECORADOR:
+                result = startDecoradorSelection(slotIndex);
+                break;
             case CENTOLLA:
                 forcedSlotIndex = slotIndex;
                 result = "Centolla atrae el próximo dado a esta carta.";
@@ -2078,8 +2370,14 @@ public class GameState {
                         slotIndex,
                         "Nautilus: elige un dado para ajustar ±2.");
                 break;
+            case CANGREJO_HERRADURA:
+                result = startHorseshoeAdjustment(slotIndex);
+                break;
             case CANGREJO_ARANA:
                 result = startSpiderCrabRevive(slotIndex);
+                break;
+            case CANGREJO_VIOLINISTA:
+                result = startViolinistCapture();
                 break;
 
             case BOTELLA_PLASTICO:
@@ -2145,6 +2443,10 @@ public class GameState {
         String clams = triggerAdjacentClams(slotIndex);
         if (!clams.isEmpty()) {
             result = result.isEmpty() ? clams : result + " " + clams;
+        }
+        String oysters = triggerAdjacentOysters(slotIndex, !result.isEmpty());
+        if (!oysters.isEmpty()) {
+            result = result.isEmpty() ? oysters : result + " " + oysters;
         }
         return result;
     }
@@ -2876,6 +3178,56 @@ public class GameState {
         return "";
     }
 
+    private String startDecoradorSelection(int slotIndex) {
+        boolean hasTarget = false;
+        for (BoardSlot s : board) {
+            if (s.getCard() != null && !s.isFaceUp() && s.getDice().isEmpty()) {
+                hasTarget = true;
+                break;
+            }
+        }
+        if (!hasTarget) {
+            return "Cangrejo decorador: no hay cartas boca abajo sin dados para reemplazar.";
+        }
+        pendingDecoradorOptions.clear();
+        for (Card c : deck) {
+            if (c.getType() == CardType.OBJETO) {
+                pendingDecoradorOptions.add(c);
+            }
+        }
+        if (pendingDecoradorOptions.isEmpty()) {
+            return "Cangrejo decorador: no hay objetos en el mazo.";
+        }
+        awaitingDecoradorChoice = true;
+        decoradorSlotIndex = slotIndex;
+        return "Cangrejo decorador: elige un objeto del mazo.";
+    }
+
+    private String startHorseshoeAdjustment(int slotIndex) {
+        boolean hasDice = false;
+        for (BoardSlot s : board) {
+            if (!s.getDice().isEmpty()) {
+                hasDice = true;
+                break;
+            }
+        }
+        if (!hasDice) {
+            return "Cangrejo herradura: no hay dados en la zona de pesca.";
+        }
+        return queueableSelection(
+                PendingSelection.HORSESHOE_DIE,
+                slotIndex,
+                "Cangrejo herradura: elige un dado para ajustar a cualquier valor.");
+    }
+
+    private String startViolinistCapture() {
+        if (failedDiscards.isEmpty()) {
+            return "No hay cartas descartadas por fallo para capturar.";
+        }
+        awaitingViolinistChoice = true;
+        return "Cangrejo violinista: elige una carta descartada para capturarla.";
+    }
+
     private String retuneTwoDice() {
         int adjusted = 0;
         outer: for (BoardSlot s : board) {
@@ -3240,6 +3592,15 @@ public class GameState {
         return "";
     }
 
+    private String recoverAnyLostDie() {
+        if (lostDice.isEmpty()) {
+            return "";
+        }
+        Die recovered = lostDice.remove(lostDice.size() - 1);
+        reserve.add(recovered.getType());
+        return "Recuperaste un dado perdido.";
+    }
+
     private String startArenqueSelection(int slotIndex) {
         int availableSlots = 0;
         for (Integer idx : adjacentIndices(slotIndex, true)) {
@@ -3427,6 +3788,40 @@ public class GameState {
         return log.toString();
     }
 
+    private String triggerAdjacentOysters(int triggeredSlotIndex, boolean abilityTriggered) {
+        if (!abilityTriggered) {
+            return "";
+        }
+        StringBuilder log = new StringBuilder();
+        for (Integer idx : adjacentIndices(triggeredSlotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() == null || !adj.isFaceUp() || adj.getCard().getId() != CardId.OSTRAS) {
+                continue;
+            }
+            if (lostDice.isEmpty()) {
+                continue;
+            }
+            List<Integer> candidates = new ArrayList<>();
+            for (int i = 0; i < board.length; i++) {
+                BoardSlot target = board[i];
+                if (target.getCard() != null && !target.isFaceUp() && target.getDice().size() < 2) {
+                    candidates.add(i);
+                }
+            }
+            if (candidates.isEmpty()) {
+                continue;
+            }
+            Die recovered = lostDice.remove(lostDice.size() - 1);
+            Die rolled = Die.roll(recovered.getType(), rng);
+            int targetIndex = candidates.get(rng.nextInt(candidates.size()));
+            String reveal = addDieToSlotInternal(targetIndex, rolled, false);
+            if (log.length() > 0) log.append(" ");
+            String base = "Ostras lanzó un " + rolled.getLabel() + " y lo colocó al azar.";
+            log.append(reveal.isEmpty() ? base : base + " " + reveal);
+        }
+        return log.toString();
+    }
+
     private String resolveAllReadySlots() {
         // No intentes resolver si el juego está esperando decisiones del jugador
         if (hasPendingTurnResolutions() || selectedDie != null) {
@@ -3582,6 +3977,9 @@ public class GameState {
             case LANGOSTA_ESPINOSA:
                 result = recoverIfD4Used(slotIndex) + remoraLog;
                 break;
+            case BOGAVANTE:
+                result = recoverAnyLostDie() + remoraLog;
+                break;
             case RED_ENREDADA:
                 captureAdjacentFaceDown(slotIndex);
                 result = "Red enredada arrastra una carta adyacente." + remoraLog;
@@ -3597,6 +3995,9 @@ public class GameState {
                 break;
             case PERCEBES:
                 result = startPercebesMove(slotIndex) + remoraLog;
+                break;
+            case LOCO:
+                result = moveLocoDice(slotIndex, diceOnCard) + remoraLog;
                 break;
             case CABALLITO_DE_MAR:
                 result = recoverSpecificDie(DieType.D4) + remoraLog;
@@ -3616,6 +4017,10 @@ public class GameState {
             if (!clams.isEmpty()) {
                 result = result.isEmpty() ? clams : result + " " + clams;
             }
+        }
+        String oysters = triggerAdjacentOysters(slotIndex, !result.isEmpty());
+        if (!oysters.isEmpty()) {
+            result = result.isEmpty() ? oysters : result + " " + oysters;
         }
         return result;
     }
@@ -3697,6 +4102,54 @@ public class GameState {
         return reveal.isEmpty()
                 ? "Percebes movió un dado. Elige otra carta adyacente distinta."
                 : "Percebes movió un dado. " + reveal + " Elige otra carta adyacente distinta.";
+    }
+
+    private String moveLocoDice(int slotIndex, List<Die> diceOnCard) {
+        if (diceOnCard == null || diceOnCard.isEmpty()) {
+            return "";
+        }
+        board[slotIndex].clearDice();
+        List<Integer> available = new ArrayList<>();
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot target = board[idx];
+            if (target.getCard() != null && target.getDice().size() < 2) {
+                available.add(idx);
+            }
+        }
+        if (available.isEmpty()) {
+            for (Die d : diceOnCard) {
+                reserve.add(d.getType());
+            }
+            return "Loco no encontró cartas adyacentes con espacio; los dados regresan a la reserva.";
+        }
+        StringBuilder log = new StringBuilder();
+        for (Die die : diceOnCard) {
+            if (available.isEmpty()) {
+                reserve.add(die.getType());
+                continue;
+            }
+            int targetIndex = available.get(rng.nextInt(available.size()));
+            BoardSlot target = board[targetIndex];
+            int sides = die.getType().getSides();
+            int value = die.getValue();
+            int adjusted;
+            if (value <= 1) {
+                adjusted = value + 1;
+            } else if (value >= sides) {
+                adjusted = value - 1;
+            } else {
+                adjusted = rng.nextBoolean() ? value + 1 : value - 1;
+            }
+            Die adjustedDie = new Die(die.getType(), adjusted);
+            String reveal = addDieToSlotInternal(targetIndex, adjustedDie, false);
+            if (target.getDice().size() >= 2) {
+                available.remove((Integer) targetIndex);
+            }
+            if (log.length() > 0) log.append(" ");
+            String base = "Loco movió un dado a " + target.getCard().getName() + " (" + adjusted + ").";
+            log.append(reveal.isEmpty() ? base : base + " " + reveal);
+        }
+        return log.toString();
     }
 
     private void captureAdjacentFaceDown(int slotIndex) {

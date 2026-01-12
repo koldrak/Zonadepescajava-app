@@ -516,6 +516,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             promptPulpoChoice();
             return;
         }
+        if (gameState.isAwaitingDecoradorChoice()) {
+            promptDecoradorChoice();
+            return;
+        }
+        if (gameState.isAwaitingViolinistChoice()) {
+            promptViolinistChoice();
+            return;
+        }
+        if (gameState.isAwaitingHorseshoeValue()) {
+            promptHorseshoeValue();
+            return;
+        }
         if (gameState.isAwaitingSpiderCrabCardChoice()) {
             promptSpiderCrabCardChoice();
             return;
@@ -1777,6 +1789,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (gameState.isAwaitingGhostShrimpDecision()) { promptGhostShrimpDecision(); return; }
         if (gameState.isAwaitingPulpoChoice()) { promptPulpoChoice(); return; }
         if (gameState.isAwaitingArenqueChoice()) { promptArenqueChoice(); return; }
+        if (gameState.isAwaitingDecoradorChoice()) { promptDecoradorChoice(); return; }
+        if (gameState.isAwaitingViolinistChoice()) { promptViolinistChoice(); return; }
+        if (gameState.isAwaitingHorseshoeValue()) { promptHorseshoeValue(); return; }
         if (gameState.isAwaitingAtunDecision()) { promptAtunDecision(); return; }
         if (gameState.isAwaitingDieLoss()) { promptDieLossChoice(); return; }
         if (gameState.isAwaitingSpiderCrabCardChoice()) {promptSpiderCrabCardChoice();return;}
@@ -1804,6 +1819,70 @@ private void promptSpiderCrabCardChoice() {
                 })
                 .setNegativeButton("Cancelar", (d, which) -> {
                     String msg = gameState.cancelSpiderCrab();
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptDecoradorChoice() {
+        List<String> names = new ArrayList<>(gameState.getPendingDecoradorNames());
+        names.removeIf(s -> s == null || s.trim().isEmpty());
+        if (names.isEmpty()) {
+            handleGameResult("Cangrejo decorador: no hay objetos disponibles.");
+            return;
+        }
+        CharSequence[] items = names.toArray(new CharSequence[0]);
+        new AlertDialog.Builder(this)
+                .setTitle("Cangrejo decorador")
+                .setItems(items, (d, which) -> {
+                    String msg = gameState.chooseDecoradorCard(which);
+                    handleGameResult(msg);
+                })
+                .setNegativeButton("Cancelar", (d, which) -> {
+                    String msg = gameState.cancelDecoradorAbility();
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptViolinistChoice() {
+        List<String> names = new ArrayList<>(gameState.getFailedDiscardNames());
+        names.removeIf(s -> s == null || s.trim().isEmpty());
+        if (names.isEmpty()) {
+            handleGameResult("No hay cartas descartadas por fallo para capturar.");
+            return;
+        }
+        CharSequence[] items = names.toArray(new CharSequence[0]);
+        new AlertDialog.Builder(this)
+                .setTitle("Cangrejo violinista")
+                .setItems(items, (d, which) -> {
+                    String msg = gameState.chooseViolinistCard(which);
+                    handleGameResult(msg);
+                })
+                .setNegativeButton("Cancelar", (d, which) -> {
+                    String msg = gameState.cancelViolinistAbility();
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptHorseshoeValue() {
+        int sides = gameState.getHorseshoeDieSides();
+        if (sides <= 0) {
+            handleGameResult("Cangrejo herradura: no hay dado válido para ajustar.");
+            return;
+        }
+        CharSequence[] items = new CharSequence[sides];
+        for (int i = 0; i < sides; i++) {
+            items[i] = String.valueOf(i + 1);
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Cangrejo herradura")
+                .setItems(items, (d, which) -> {
+                    String msg = gameState.chooseHorseshoeValue(which + 1);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)

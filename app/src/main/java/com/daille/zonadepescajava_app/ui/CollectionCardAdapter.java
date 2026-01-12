@@ -159,6 +159,22 @@ public class CollectionCardAdapter extends RecyclerView.Adapter<CollectionCardAd
                 return CardId.JAIBA_AZUL;
             case CAMARON_PISTOLA:
                 return CardId.CAMARON_FANTASMA;
+            case BOGAVANTE:
+                return CardId.LANGOSTA_ESPINOSA;
+            case COPEPODO_BRILLANTE:
+                return CardId.KRILL;
+            case CANGREJO_DECORADOR:
+                return CardId.CANGREJO_ERMITANO;
+            case LOCO:
+                return CardId.PERCEBES;
+            case JAIBA_GIGANTE_DE_COCO:
+                return CardId.CENTOLLA;
+            case CANGREJO_HERRADURA:
+                return CardId.NAUTILUS;
+            case OSTRAS:
+                return CardId.ALMEJAS;
+            case CANGREJO_VIOLINISTA:
+                return CardId.CANGREJO_ARANA;
             default:
                 return null;
         }
@@ -167,7 +183,15 @@ public class CollectionCardAdapter extends RecyclerView.Adapter<CollectionCardAd
     private static boolean isUnlockSource(CardId cardId) {
         return cardId == CardId.CANGREJO_ROJO
                 || cardId == CardId.JAIBA_AZUL
-                || cardId == CardId.CAMARON_FANTASMA;
+                || cardId == CardId.CAMARON_FANTASMA
+                || cardId == CardId.LANGOSTA_ESPINOSA
+                || cardId == CardId.KRILL
+                || cardId == CardId.CANGREJO_ERMITANO
+                || cardId == CardId.PERCEBES
+                || cardId == CardId.CENTOLLA
+                || cardId == CardId.NAUTILUS
+                || cardId == CardId.ALMEJAS
+                || cardId == CardId.CANGREJO_ARANA;
     }
 
     static class CollectionViewHolder extends RecyclerView.ViewHolder {

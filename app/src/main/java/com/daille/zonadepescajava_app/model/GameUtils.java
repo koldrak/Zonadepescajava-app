@@ -36,8 +36,14 @@ public final class GameUtils {
         cards.add(new Card(CardId.LANGOSTA_ESPINOSA, "Langosta Espinosa", CardType.CRUSTACEO, 9,
                 condSumExact(9), "", "", ""));
 
+        cards.add(new Card(CardId.BOGAVANTE, "Bogavante", CardType.CRUSTACEO, 10,
+                condSumExact(10), "Recupera 1 dado perdido.", "", ""));
+
         cards.add(new Card(CardId.KRILL, "Krill", CardType.CRUSTACEO, 3,
                 condSumExact(7), "", "", "Otorga +1 por cada crustáceo capturado."));
+
+        cards.add(new Card(CardId.COPEPODO_BRILLANTE, "Copépodo Brillante", CardType.CRUSTACEO, 4,
+                condSumRange(2, 3), "", "", "Otorga +1 por cada crustáceo descartado por fallo."));
 
         cards.add(new Card(CardId.CANGREJO_ERMITANO, "Cangrejo Ermitaño", CardType.CRUSTACEO, 6,
                 (slotIndex, g) -> {
@@ -49,20 +55,47 @@ public final class GameUtils {
                             g.getBoard()[slotIndex].getDice().get(1).getValue() % 2 != 0;
                 }, "", "", ""));
 
+        cards.add(new Card(CardId.CANGREJO_DECORADOR, "Cangrejo Decorador", CardType.CRUSTACEO, 4,
+                (slotIndex, g) -> condSumRange(5, 9).isSatisfied(slotIndex, g) && bothDiceEven(slotIndex, g),
+                "Busca un objeto en el mazo y reemplaza una carta boca abajo sin dados.", "", ""));
+
         cards.add(new Card(CardId.PERCEBES, "Percebes", CardType.CRUSTACEO, 5,
                 GameUtils::bothDiceSameValue, "", "", ""));
+
+        cards.add(new Card(CardId.LOCO, "Loco", CardType.CRUSTACEO, 5,
+                GameUtils::bothDiceSameValue,
+                "Mueve los dados de esta carta a cartas adyacentes ajustando ±1.", "", ""));
 
         cards.add(new Card(CardId.CENTOLLA, "Centolla", CardType.CRUSTACEO, 4,
                 condSumGreaterThan(10), "", "", ""));
 
+        cards.add(new Card(CardId.JAIBA_GIGANTE_DE_COCO, "Jaiba Gigante de Coco", CardType.CRUSTACEO, 1,
+                (slotIndex, g) -> {
+                    BoardSlot slot = g.getBoard()[slotIndex];
+                    if (slot.getDice().size() != 2) return false;
+                    return slot.getDice().get(0).getValue() >= 8
+                            && slot.getDice().get(1).getValue() >= 8;
+                }, "Si el dado es < 7 se pierde automáticamente.", "", ""));
+
         cards.add(new Card(CardId.NAUTILUS, "Nautilus", CardType.CRUSTACEO, 7,
                 condSumAtLeast(8), "", "", ""));
+
+        cards.add(new Card(CardId.CANGREJO_HERRADURA, "Cangrejo herradura", CardType.CRUSTACEO, 8,
+                condSumAtLeast(14), "Puedes cambiar el valor de 1 dado en la zona de pesca.", "", ""));
 
         cards.add(new Card(CardId.ALMEJAS, "Almejas", CardType.CRUSTACEO, 4,
                 condSumAtLeast(8), "Lanza un dado descartado y colócalo aquí si se activó una habilidad adyacente.", "", ""));
 
+        cards.add(new Card(CardId.OSTRAS, "Ostras", CardType.CRUSTACEO, 10,
+                condSumExact(4),
+                "Relanza y reposiciona aleatoriamente un dado perdido al activarse una habilidad adyacente.", "", ""));
+
         cards.add(new Card(CardId.CANGREJO_ARANA, "Cangrejo araña", CardType.CRUSTACEO, 5,
                 condSumAtLeast(5), "Devuelve una carta descartada por fallo.", "", ""));
+
+        cards.add(new Card(CardId.CANGREJO_VIOLINISTA, "Cangrejo violinista", CardType.CRUSTACEO, 5,
+                condSumRange(13, 15),
+                "Elige una carta descartada por fallo y captúrala directamente.", "", ""));
 
         // ==== Peces pequeños ====
         cards.add(new Card(CardId.SARDINA, "Sardina", CardType.PEZ, 3,
@@ -218,12 +251,44 @@ public final class GameUtils {
         if (captureCounts.getOrDefault(CardId.CAMARON_FANTASMA, 0) < 3) {
             removeCard(deck, CardId.CAMARON_PISTOLA);
         }
+        if (captureCounts.getOrDefault(CardId.LANGOSTA_ESPINOSA, 0) < 3) {
+            removeCard(deck, CardId.BOGAVANTE);
+        }
+        if (captureCounts.getOrDefault(CardId.KRILL, 0) < 3) {
+            removeCard(deck, CardId.COPEPODO_BRILLANTE);
+        }
+        if (captureCounts.getOrDefault(CardId.CANGREJO_ERMITANO, 0) < 3) {
+            removeCard(deck, CardId.CANGREJO_DECORADOR);
+        }
+        if (captureCounts.getOrDefault(CardId.PERCEBES, 0) < 3) {
+            removeCard(deck, CardId.LOCO);
+        }
+        if (captureCounts.getOrDefault(CardId.CENTOLLA, 0) < 3) {
+            removeCard(deck, CardId.JAIBA_GIGANTE_DE_COCO);
+        }
+        if (captureCounts.getOrDefault(CardId.NAUTILUS, 0) < 3) {
+            removeCard(deck, CardId.CANGREJO_HERRADURA);
+        }
+        if (captureCounts.getOrDefault(CardId.ALMEJAS, 0) < 3) {
+            removeCard(deck, CardId.OSTRAS);
+        }
+        if (captureCounts.getOrDefault(CardId.CANGREJO_ARANA, 0) < 3) {
+            removeCard(deck, CardId.CANGREJO_VIOLINISTA);
+        }
     }
 
     private static void removeLockedCards(List<Card> deck) {
         removeCard(deck, CardId.CANGREJO_BOXEADOR);
         removeCard(deck, CardId.LANGOSTINO_MANTIS);
         removeCard(deck, CardId.CAMARON_PISTOLA);
+        removeCard(deck, CardId.BOGAVANTE);
+        removeCard(deck, CardId.COPEPODO_BRILLANTE);
+        removeCard(deck, CardId.CANGREJO_DECORADOR);
+        removeCard(deck, CardId.LOCO);
+        removeCard(deck, CardId.JAIBA_GIGANTE_DE_COCO);
+        removeCard(deck, CardId.CANGREJO_HERRADURA);
+        removeCard(deck, CardId.OSTRAS);
+        removeCard(deck, CardId.CANGREJO_VIOLINISTA);
     }
 
     private static void removeCard(List<Card> deck, CardId id) {
