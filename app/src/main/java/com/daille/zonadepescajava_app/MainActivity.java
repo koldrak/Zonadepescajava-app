@@ -180,7 +180,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
             entries.add(new CollectionCardAdapter.CollectionEntry(card, count));
         }
-        collectionCardAdapter.submitList(entries);
+        collectionCardAdapter.submitList(entries, counts);
     }
 
     private void refreshScoreRecords() {
