@@ -265,8 +265,9 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
 
 // ✅ Halo negro para dados afectados
 // (si ya tenías applyBottleHalo(ImageView, boolean), úsalo así)
-            applyBottleHalo(binding.dieSlotOne, botaViejaPenalty && dice.size() > 0);
-            applyBottleHalo(binding.dieSlotTwo, botaViejaPenalty && dice.size() > 1);
+            boolean bottleHalo = botaViejaPenalty || bottleBuffed || glassPenalty;
+            applyBottleHalo(binding.dieSlotOne, bottleHalo && dice.size() > 0);
+            applyBottleHalo(binding.dieSlotTwo, bottleHalo && dice.size() > 1);
 
         }
     }
