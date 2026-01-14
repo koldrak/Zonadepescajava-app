@@ -1747,7 +1747,7 @@ public class GameState {
         int sum = 0;
         int crustaceos = 0, peces = 0, pecesGrandes = 0, objetos = 0;
         int krillCount = 0, sardinaCount = 0, tiburonMartilloCount = 0, limpiadorCount = 0, tiburonBallenaCount = 0;
-        int copepodoCount = 0;
+        int copepodoCount = 0, congrioCount = 0, fosaAbisalCount = 0;
         for (Card c : captures) {
             sum += c.getPoints();
             switch (c.getType()) {
@@ -1759,23 +1759,33 @@ public class GameState {
             if (c.getId() == CardId.KRILL) krillCount++;
             if (c.getId() == CardId.COPEPODO_BRILLANTE) copepodoCount++;
             if (c.getId() == CardId.SARDINA) sardinaCount++;
+            if (c.getId() == CardId.CONGRIO) congrioCount++;
             if (c.getId() == CardId.TIBURON_MARTILLO) tiburonMartilloCount++;
             if (c.getId() == CardId.LIMPIADOR_MARINO) limpiadorCount++;
             if (c.getId() == CardId.TIBURON_BALLENA) tiburonBallenaCount++;
+            if (c.getId() == CardId.FOSA_ABISAL) fosaAbisalCount++;
         }
 
         int crustaceosFallados = 0;
+        int pecesFallados = 0;
+        int objetosFallados = 0;
         for (Card c : failedDiscards) {
             if (c.getType() == CardType.CRUSTACEO) {
                 crustaceosFallados++;
+            } else if (c.getType() == CardType.PEZ) {
+                pecesFallados++;
+            } else if (c.getType() == CardType.OBJETO) {
+                objetosFallados++;
             }
         }
 
         sum += krillCount * crustaceos;
         sum += copepodoCount * crustaceosFallados;
         sum += sardinaCount * peces;
+        sum += congrioCount * pecesFallados;
         sum += tiburonMartilloCount * pecesGrandes * 2;
         sum += limpiadorCount * objetos * 2;
+        sum += fosaAbisalCount * objetosFallados;
         if (crustaceos >= 3) {
             sum += tiburonBallenaCount * 6;
         }
