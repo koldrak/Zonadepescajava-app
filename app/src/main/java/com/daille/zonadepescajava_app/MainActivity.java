@@ -1543,6 +1543,106 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .show();
     }
 
+    private void promptSepiaChoice() {
+        if (!gameState.isAwaitingSepiaChoice()) return;
+        List<String> names = gameState.getPendingSepiaNames();
+        if (names.isEmpty()) return;
+        CharSequence[] items = names.toArray(new CharSequence[0]);
+        new AlertDialog.Builder(this)
+                .setTitle("Sepia")
+                .setItems(items, (dialog, which) -> {
+                    String msg = gameState.chooseSepiaCapture(which);
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptDragnetReleaseChoice() {
+        if (!gameState.isAwaitingDragnetReleaseChoice()) return;
+        List<String> names = gameState.getPendingDragnetNames();
+        if (names.isEmpty()) return;
+        CharSequence[] items = names.toArray(new CharSequence[0]);
+        new AlertDialog.Builder(this)
+                .setTitle("Red de arrastre")
+                .setItems(items, (dialog, which) -> {
+                    String msg = gameState.chooseDragnetRelease(which);
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptHachaReleaseChoice() {
+        if (!gameState.isAwaitingHachaReleaseChoice()) return;
+        List<String> names = gameState.getPendingHachaReleaseNames();
+        if (names.isEmpty()) return;
+        CharSequence[] items = names.toArray(new CharSequence[0]);
+        new AlertDialog.Builder(this)
+                .setTitle("Pez Hacha Abisal")
+                .setItems(items, (dialog, which) -> {
+                    String msg = gameState.chooseHachaRelease(which);
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptDamiselasChoice() {
+        if (!gameState.isAwaitingDamiselasChoice()) return;
+        List<String> names = gameState.getPendingDamiselasNames();
+        if (names.isEmpty()) return;
+        CharSequence[] items = names.toArray(new CharSequence[0]);
+        new AlertDialog.Builder(this)
+                .setTitle("Damiselas: ordena el mazo")
+                .setItems(items, (dialog, which) -> {
+                    String msg = gameState.chooseDamiselasOrder(which);
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptPeregrinoChoice() {
+        if (!gameState.isAwaitingPeregrinoChoice()) return;
+        List<String> names = gameState.getPendingPeregrinoNames();
+        if (names.isEmpty()) return;
+        CharSequence[] items = names.toArray(new CharSequence[0]);
+        String title = gameState.isAwaitingPeregrinoBottomChoice()
+                ? "Tiburón Peregrino: carta al fondo"
+                : "Tiburón Peregrino: carta arriba";
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setItems(items, (dialog, which) -> {
+                    String msg = gameState.isAwaitingPeregrinoBottomChoice()
+                            ? gameState.choosePeregrinoBottom(which)
+                            : gameState.choosePeregrinoTop(which);
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
+    private void promptHumpbackDirection() {
+        if (!gameState.isAwaitingHumpbackDirection()) return;
+        CharSequence[] items = new CharSequence[] {"Arriba", "Abajo", "Izquierda", "Derecha"};
+        new AlertDialog.Builder(this)
+                .setTitle("Ballena jorobada")
+                .setItems(items, (dialog, which) -> {
+                    String direction;
+                    switch (which) {
+                        case 0: direction = "UP"; break;
+                        case 1: direction = "DOWN"; break;
+                        case 2: direction = "LEFT"; break;
+                        default: direction = "RIGHT"; break;
+                    }
+                    String msg = gameState.chooseHumpbackDirection(direction);
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
     private void startRollingAnimation(DieType type) {
         if (animationHandler == null) return;
 
@@ -1792,6 +1892,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (gameState.isAwaitingDecoradorChoice()) { promptDecoradorChoice(); return; }
         if (gameState.isAwaitingViolinistChoice()) { promptViolinistChoice(); return; }
         if (gameState.isAwaitingHorseshoeValue()) { promptHorseshoeValue(); return; }
+        if (gameState.isAwaitingSepiaChoice()) { promptSepiaChoice(); return; }
+        if (gameState.isAwaitingDragnetReleaseChoice()) { promptDragnetReleaseChoice(); return; }
+        if (gameState.isAwaitingHachaReleaseChoice()) { promptHachaReleaseChoice(); return; }
+        if (gameState.isAwaitingDamiselasChoice()) { promptDamiselasChoice(); return; }
+        if (gameState.isAwaitingPeregrinoChoice()) { promptPeregrinoChoice(); return; }
+        if (gameState.isAwaitingHumpbackDirection()) { promptHumpbackDirection(); return; }
         if (gameState.isAwaitingAtunDecision()) { promptAtunDecision(); return; }
         if (gameState.isAwaitingDieLoss()) { promptDieLossChoice(); return; }
         if (gameState.isAwaitingSpiderCrabCardChoice()) {promptSpiderCrabCardChoice();return;}
