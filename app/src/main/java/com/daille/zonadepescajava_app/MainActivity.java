@@ -560,12 +560,16 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void updateSelectedDiePreview() {
-        if (gameState.getSelectedDie() == null) {
+        Die preview = gameState.getSelectedDie();
+        if (preview == null) {
+            preview = gameState.getMantisRerolledDie();
+        }
+        if (preview == null) {
             binding.gamePanel.selectedDieImage.setVisibility(View.GONE);
             return;
         }
 
-        Bitmap face = diceImageResolver.getFace(gameState.getSelectedDie());
+        Bitmap face = diceImageResolver.getFace(preview);
         if (face != null) {
             binding.gamePanel.selectedDieImage.setVisibility(View.VISIBLE);
             binding.gamePanel.selectedDieImage.setImageBitmap(face);
@@ -1414,6 +1418,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         new AlertDialog.Builder(this)
                 .setTitle("Langostino mantis")
                 .setAdapter(adapter, (dialog, which) -> {
+                    Die chosen = options.get(which);
+                    startRollingAnimation(chosen.getType());
                     String msg = gameState.chooseMantisLostDie(which);
                     handleGameResult(msg);
                 })
@@ -1424,9 +1430,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptValueAdjustmentChoice() {
         if (!gameState.isAwaitingValueAdjustment()) return;
         int amount = gameState.getPendingAdjustmentAmount();
-        String creature = gameState.getPendingAdjustmentSource() == CardId.NAUTILUS
-                ? "Nautilus"
-                : "Jaiba azul";
+        String creature;
+        if (gameState.getPendingAdjustmentSource() == CardId.NAUTILUS) {
+            creature = "Nautilus";
+        } else if (gameState.getPendingAdjustmentSource() == CardId.LOCO) {
+            creature = "Loco";
+        } else {
+            creature = "Jaiba azul";
+        }
         new AlertDialog.Builder(this)
                 .setTitle("Ajuste de " + creature)
                 .setMessage("¿Quieres sumar o restar " + amount + " al dado seleccionado?")
