@@ -49,10 +49,11 @@ public final class GameUtils {
                 (slotIndex, g) -> {
                     int s = sumWithModifiers(slotIndex, g);
                     int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
+                    int[] values = adjustedDiceValues(slotIndex, g);
                     return s >= (5 + shift) && s <= (9 + shift) &&
-                            g.getBoard()[slotIndex].getDice().size() == 2 &&
-                            g.getBoard()[slotIndex].getDice().get(0).getValue() % 2 != 0 &&
-                            g.getBoard()[slotIndex].getDice().get(1).getValue() % 2 != 0;
+                            values.length == 2 &&
+                            values[0] % 2 != 0 &&
+                            values[1] % 2 != 0;
                 }, "", "", ""));
 
         cards.add(new Card(CardId.CANGREJO_DECORADOR, "Cangrejo Decorador", CardType.CRUSTACEO, 5,
@@ -71,10 +72,9 @@ public final class GameUtils {
 
         cards.add(new Card(CardId.JAIBA_GIGANTE_DE_COCO, "Jaiba Gigante de Coco", CardType.CRUSTACEO, 2,
                 (slotIndex, g) -> {
-                    BoardSlot slot = g.getBoard()[slotIndex];
-                    if (slot.getDice().size() != 2) return false;
-                    return slot.getDice().get(0).getValue() >= 8
-                            && slot.getDice().get(1).getValue() >= 8;
+                    int[] values = adjustedDiceValues(slotIndex, g);
+                    if (values.length != 2) return false;
+                    return values[0] >= 8 && values[1] >= 8;
                 }, "Si el dado es < 7 se pierde automáticamente.", "", ""));
 
         cards.add(new Card(CardId.NAUTILUS, "Nautilus", CardType.CRUSTACEO, 8,
@@ -106,9 +106,10 @@ public final class GameUtils {
 
         cards.add(new Card(CardId.SALMON, "Salmón", CardType.PEZ, 7,
                 (slotIndex, g) -> {
-                    if (g.getBoard()[slotIndex].getDice().size() != 2) return false;
-                    int a = g.getBoard()[slotIndex].getDice().get(0).getValue();
-                    int b = g.getBoard()[slotIndex].getDice().get(1).getValue();
+                    int[] values = adjustedDiceValues(slotIndex, g);
+                    if (values.length != 2) return false;
+                    int a = values[0];
+                    int b = values[1];
                     return (a == 4 && b >= 5) || (b == 4 && a >= 5);
                 }, "", "", ""));
 
@@ -117,16 +118,19 @@ public final class GameUtils {
 
         cards.add(new Card(CardId.PEZ_GLOBO, "Pez Globo", CardType.PEZ, 8,
                 (slotIndex, g) -> {
-                    if (g.getBoard()[slotIndex].getDice().size() != 2) return false;
-                    return g.getBoard()[slotIndex].getDice().get(0).getValue() == g.getBoard()[slotIndex].getDice().get(0).getType().getSides() &&
-                            g.getBoard()[slotIndex].getDice().get(1).getValue() == g.getBoard()[slotIndex].getDice().get(1).getType().getSides();
+                    int[] values = adjustedDiceValues(slotIndex, g);
+                    if (values.length != 2) return false;
+                    BoardSlot slot = g.getBoard()[slotIndex];
+                    return values[0] == slot.getDice().get(0).getType().getSides() &&
+                            values[1] == slot.getDice().get(1).getType().getSides();
                 }, "", "", ""));
 
         cards.add(new Card(CardId.MORENA, "Morena", CardType.PEZ, 7,
                 (slotIndex, g) -> {
-                    if (g.getBoard()[slotIndex].getDice().size() != 2) return false;
-                    int a = g.getBoard()[slotIndex].getDice().get(0).getValue();
-                    int b = g.getBoard()[slotIndex].getDice().get(1).getValue();
+                    int[] values = adjustedDiceValues(slotIndex, g);
+                    if (values.length != 2) return false;
+                    int a = values[0];
+                    int b = values[1];
                     return Math.abs(a - b) >= 4;
                 }, "", "", ""));
 
@@ -168,9 +172,10 @@ public final class GameUtils {
 
         cards.add(new Card(CardId.TRUCHA_ARCOIRIS, "Trucha Arcoíris", CardType.PEZ, 7,
                 (slotIndex, g) -> {
-                    if (g.getBoard()[slotIndex].getDice().size() != 2) return false;
-                    int a = g.getBoard()[slotIndex].getDice().get(0).getValue();
-                    int b = g.getBoard()[slotIndex].getDice().get(1).getValue();
+                    int[] values = adjustedDiceValues(slotIndex, g);
+                    if (values.length != 2) return false;
+                    int a = values[0];
+                    int b = values[1];
                     return (a == 5 && b >= 6) || (b == 5 && a >= 6);
                 }, "Voltea una carta adyacente; si es pez pequeño, coloca 1 dado perdido.", "", ""));
 
@@ -182,18 +187,20 @@ public final class GameUtils {
                 (slotIndex, g) -> {
                     if (!condSumAtLeast(16).isSatisfied(slotIndex, g)) return false;
                     BoardSlot slot = g.getBoard()[slotIndex];
-                    if (slot.getDice().size() != 2) return false;
-                    for (Die d : slot.getDice()) {
-                        if (d.getValue() == d.getType().getSides()) return true;
+                    int[] values = adjustedDiceValues(slotIndex, g);
+                    if (values.length != 2) return false;
+                    for (int i = 0; i < values.length; i++) {
+                        if (values[i] == slot.getDice().get(i).getType().getSides()) return true;
                     }
                     return false;
                 }, "Multiplica por 2 el resultado de un dado.", "", ""));
 
         cards.add(new Card(CardId.PEZ_DRAGON_AZUL, "Pez Dragón azul", CardType.PEZ, 5,
                 (slotIndex, g) -> {
-                    if (g.getBoard()[slotIndex].getDice().size() != 2) return false;
-                    int a = g.getBoard()[slotIndex].getDice().get(0).getValue();
-                    int b = g.getBoard()[slotIndex].getDice().get(1).getValue();
+                    int[] values = adjustedDiceValues(slotIndex, g);
+                    if (values.length != 2) return false;
+                    int a = values[0];
+                    int b = values[1];
                     return Math.abs(a - b) >= 5;
                 }, "Regresa los dados con valor ≥ 6 al voltearse.", "", ""));
 
@@ -232,8 +239,9 @@ public final class GameUtils {
 
         cards.add(new Card(CardId.TIBURON_MARTILLO, "Tiburón Martillo", CardType.PEZ_GRANDE, 2,
                 (slotIndex, g) -> {
-                    if (g.getBoard()[slotIndex].getDice().size() != 2) return false;
-                    return g.getBoard()[slotIndex].getDice().get(0).getValue() >= 5 && g.getBoard()[slotIndex].getDice().get(1).getValue() >= 5;
+                    int[] values = adjustedDiceValues(slotIndex, g);
+                    if (values.length != 2) return false;
+                    return values[0] >= 5 && values[1] >= 5;
                 }, "", "", "Otorga +2 por cada pez grande capturado."));
 
         cards.add(new Card(CardId.TIBURON_BALLENA, "Tiburón Ballena", CardType.PEZ_GRANDE, 4,
@@ -250,8 +258,9 @@ public final class GameUtils {
                     int s = sumWithModifiers(slotIndex, g);
                     int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
                     if (s < (9 + shift) || s > (11 + shift)) return false;
-                    if (g.getBoard()[slotIndex].getDice().size() != 2) return false;
-                    return g.getBoard()[slotIndex].getDice().get(0).getValue() != 4 && g.getBoard()[slotIndex].getDice().get(1).getValue() != 4;
+                    int[] values = adjustedDiceValues(slotIndex, g);
+                    if (values.length != 2) return false;
+                    return values[0] != 4 && values[1] != 4;
                 }, "", "", ""));
 
         cards.add(new Card(CardId.BALLENA_AZUL, "Ballena azul", CardType.PEZ_GRANDE, 9,
@@ -269,9 +278,9 @@ public final class GameUtils {
 
         cards.add(new Card(CardId.DELFIN, "Delfín", CardType.PEZ_GRANDE, 5,
                 (slotIndex, g) -> {
-                    if (g.getBoard()[slotIndex].getDice().size() != 2) return false;
-                    return g.getBoard()[slotIndex].getDice().get(0).getValue() >= 6
-                            && g.getBoard()[slotIndex].getDice().get(1).getValue() >= 6;
+                    int[] values = adjustedDiceValues(slotIndex, g);
+                    if (values.length != 2) return false;
+                    return values[0] >= 6 && values[1] >= 6;
                 }, "El próximo fallo adyacente no descarta la carta.", "", ""));
 
         cards.add(new Card(CardId.TIBURON_PEREGRINO, "Tiburón Peregrino", CardType.PEZ_GRANDE, 4,
@@ -290,9 +299,9 @@ public final class GameUtils {
                     int s = sumWithModifiers(slotIndex, g);
                     int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
                     if (s < (10 + shift) || s > (12 + shift)) return false;
-                    if (g.getBoard()[slotIndex].getDice().size() != 2) return false;
-                    return g.getBoard()[slotIndex].getDice().get(0).getValue() != 5
-                            && g.getBoard()[slotIndex].getDice().get(1).getValue() != 5;
+                    int[] values = adjustedDiceValues(slotIndex, g);
+                    if (values.length != 2) return false;
+                    return values[0] != 5 && values[1] != 5;
                 }, "Relanza dados adyacentes; si alguno es máximo recupera un dado.", "", ""));
 
         cards.add(new Card(CardId.CACHALOTE, "Cachalote", CardType.PEZ_GRANDE, 7,
@@ -314,8 +323,9 @@ public final class GameUtils {
 
         cards.add(new Card(CardId.RED_ENREDADA, "Red Enredada", CardType.OBJETO, 9,
                 (slotIndex, g) -> {
-                    if (g.getBoard()[slotIndex].getDice().size() != 2) return false;
-                    return g.getBoard()[slotIndex].getDice().get(0).getValue() == 1 && g.getBoard()[slotIndex].getDice().get(1).getValue() == 1;
+                    int[] values = adjustedDiceValues(slotIndex, g);
+                    if (values.length != 2) return false;
+                    return values[0] == 1 && values[1] == 1;
                 }, "Captura además una carta adyacente boca abajo.", "", ""));
 
         cards.add(new Card(CardId.LATA_OXIDADA, "Lata Oxidada", CardType.OBJETO, 8,
@@ -339,9 +349,9 @@ public final class GameUtils {
 
         cards.add(new Card(CardId.RED_DE_ARRASTRE, "Red de arrastre", CardType.OBJETO, 6,
                 (slotIndex, g) -> {
-                    if (g.getBoard()[slotIndex].getDice().size() != 2) return false;
-                    return g.getBoard()[slotIndex].getDice().get(0).getValue() == 7
-                            && g.getBoard()[slotIndex].getDice().get(1).getValue() == 7;
+                    int[] values = adjustedDiceValues(slotIndex, g);
+                    if (values.length != 2) return false;
+                    return values[0] == 7 && values[1] == 7;
                 }, "Captura 2 cartas boca abajo y libera 1 carta.", "", ""));
 
         cards.add(new Card(CardId.MICRO_PLASTICOS, "Micro plásticos", CardType.OBJETO, 4,
@@ -559,8 +569,49 @@ public final class GameUtils {
         int sum = 0;
         for (Die d : s.getDice()) sum += d.getValue();
 
-        int penalty = 0;
-        int bonus = 0;
+        int penalty = countAdjacentCards(slotIndex, g, CardId.BOTA_VIEJA);
+        int bonus = countAdjacentCards(slotIndex, g, CardId.AUTO_HUNDIDO);
+        sum -= penalty;
+        sum += bonus;
+
+        return sum;
+    }
+
+    private static int[] adjustedDiceValues(int slotIndex, GameState g) {
+        BoardSlot slot = g.getBoard()[slotIndex];
+        int size = slot.getDice().size();
+        int[] values = new int[size];
+        for (int i = 0; i < size; i++) {
+            values[i] = slot.getDice().get(i).getValue();
+        }
+        if (size == 0) {
+            return values;
+        }
+        int penalty = countAdjacentCards(slotIndex, g, CardId.BOTA_VIEJA);
+        int bonus = countAdjacentCards(slotIndex, g, CardId.AUTO_HUNDIDO);
+        applyAdjustedShift(values, slot.getDice(), -penalty);
+        applyAdjustedShift(values, slot.getDice(), bonus);
+        return values;
+    }
+
+    private static void applyAdjustedShift(int[] values, List<Die> dice, int shift) {
+        if (shift == 0 || values.length == 0) {
+            return;
+        }
+        int index = 0;
+        if (values.length > 1 && values[1] > values[0]) {
+            index = 1;
+        }
+        if (shift > 0) {
+            int sides = dice.get(index).getType().getSides();
+            values[index] = Math.min(sides, values[index] + shift);
+        } else {
+            values[index] = Math.max(1, values[index] + shift);
+        }
+    }
+
+    private static int countAdjacentCards(int slotIndex, GameState g, CardId cardId) {
+        int count = 0;
         int r = slotIndex / 3, c = slotIndex % 3;
         int[][] dirs = ADYACENCIA_INCLUYE_DIAGONALES
                 ? new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, -1}, {-1, 1}, {1, -1}, {1, 1}}
@@ -568,52 +619,44 @@ public final class GameUtils {
         for (int[] d : dirs) {
             int rr = r + d[0], cc = c + d[1];
             if (rr < 0 || rr > 2 || cc < 0 || cc > 2) continue;
-            int idx = rr * 3 + cc;
-            BoardSlot adj = g.getBoard()[idx];
-            if (adj.getCard() != null && adj.isFaceUp()) {
-                if (adj.getCard().getId() == CardId.BOTA_VIEJA) {
-                    penalty += 1;
-                } else if (adj.getCard().getId() == CardId.AUTO_HUNDIDO) {
-                    bonus += 1;
-                }
+            BoardSlot adj = g.getBoard()[rr * 3 + cc];
+            if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getId() == cardId) {
+                count++;
             }
         }
-        sum -= penalty;
-        sum += bonus;
-
-        return sum;
+        return count;
     }
 
     public static boolean bothDiceSameValue(int slotIndex, GameState g) {
-        BoardSlot s = g.getBoard()[slotIndex];
-        if (s.getDice().size() != 2) return false;
-        return s.getDice().get(0).getValue() == s.getDice().get(1).getValue();
+        int[] values = adjustedDiceValues(slotIndex, g);
+        if (values.length != 2) return false;
+        return values[0] == values[1];
     }
 
     public static boolean bothDiceEven(int slotIndex, GameState g) {
-        BoardSlot s = g.getBoard()[slotIndex];
-        if (s.getDice().size() != 2) return false;
-        return s.getDice().get(0).getValue() % 2 == 0 && s.getDice().get(1).getValue() % 2 == 0;
+        int[] values = adjustedDiceValues(slotIndex, g);
+        if (values.length != 2) return false;
+        return values[0] % 2 == 0 && values[1] % 2 == 0;
     }
 
     public static boolean oneEvenOneOdd(int slotIndex, GameState g) {
-        BoardSlot s = g.getBoard()[slotIndex];
-        if (s.getDice().size() != 2) return false;
-        return (s.getDice().get(0).getValue() % 2) != (s.getDice().get(1).getValue() % 2);
+        int[] values = adjustedDiceValues(slotIndex, g);
+        if (values.length != 2) return false;
+        return (values[0] % 2) != (values[1] % 2);
     }
 
     public static boolean oneDieIsDouble(int slotIndex, GameState g) {
-        BoardSlot s = g.getBoard()[slotIndex];
-        if (s.getDice().size() != 2) return false;
-        int a = s.getDice().get(0).getValue();
-        int b = s.getDice().get(1).getValue();
+        int[] values = adjustedDiceValues(slotIndex, g);
+        if (values.length != 2) return false;
+        int a = values[0];
+        int b = values[1];
         return a == b * 2 || b == a * 2;
     }
 
     public static boolean atLeastOneIs(int slotIndex, GameState g, int... vals) {
-        BoardSlot s = g.getBoard()[slotIndex];
-        for (Die d : s.getDice()) {
-            for (int v : vals) if (d.getValue() == v) return true;
+        int[] values = adjustedDiceValues(slotIndex, g);
+        for (int value : values) {
+            for (int v : vals) if (value == v) return true;
         }
         return false;
     }
@@ -624,9 +667,9 @@ public final class GameUtils {
     }
 
     public static boolean diceDistinct(int slotIndex, GameState g) {
-        BoardSlot s = g.getBoard()[slotIndex];
-        if (s.getDice().size() != 2) return false;
-        return s.getDice().get(0).getValue() != s.getDice().get(1).getValue();
+        int[] values = adjustedDiceValues(slotIndex, g);
+        if (values.length != 2) return false;
+        return values[0] != values[1];
     }
 
     public static boolean hasAdjacentFaceUp(int slotIndex, GameState g) {
@@ -693,15 +736,15 @@ public final class GameUtils {
 
     public static Condition differenceAtLeast(int diff) {
         return (slotIndex, state) -> {
-            BoardSlot s = state.getBoard()[slotIndex];
-            if (s.getDice().size() != 2) return false;
-            return Math.abs(s.getDice().get(0).getValue() - s.getDice().get(1).getValue()) >= diff;
+            int[] values = adjustedDiceValues(slotIndex, state);
+            if (values.length != 2) return false;
+            return Math.abs(values[0] - values[1]) >= diff;
         };
     }
 
     public static boolean diceConsecutive(int slotIndex, GameState g) {
-        BoardSlot s = g.getBoard()[slotIndex];
-        if (s.getDice().size() != 2) return false;
-        return Math.abs(s.getDice().get(0).getValue() - s.getDice().get(1).getValue()) == 1;
+        int[] values = adjustedDiceValues(slotIndex, g);
+        if (values.length != 2) return false;
+        return Math.abs(values[0] - values[1]) == 1;
     }
 }
