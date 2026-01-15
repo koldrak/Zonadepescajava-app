@@ -398,6 +398,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         return base + " " + extra;
     }
 
+    @Deprecated
+    private void triggerTideAnimationIfNeeded() {
+        // This method is kept for backward compatibility; tide sequencing now runs
+        // after reveal dialogs via runPendingCurrentsSequence in handleGameResult.
+    }
+
     private void setupDiceSelectionUi() {
         binding.diceSelectionPanel.diceSelectionZone.setOnDragListener(createDragListener());
         binding.diceSelectionPanel.diceWarehouseZone.setOnDragListener(createDragListener());
