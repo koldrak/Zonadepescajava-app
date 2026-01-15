@@ -6,43 +6,28 @@ import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.os.SystemClock;
+import android.graphics.Path;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 public class TideParticlesView extends View {
     public enum Direction { UP, DOWN, LEFT, RIGHT }
 
     private static final int BASE_COLOR = 0xB3E5FC;
-    private static final float MAX_DT = 0.05f;
-
-    private static class Particle {
-        float x;
-        float y;
-        float vx;
-        float vy;
-        float size;
-        float age;
-        float life;
-        float driftPhase;
-        float driftAmplitude;
-    }
+    private static final int BASE_ALPHA = 170;
+    private static final int WAVE_BAND_COUNT = 4;
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Random random = new Random();
-    private final List<Particle> particles = new ArrayList<>();
     private final List<Direction> pendingDirections = new ArrayList<>();
 
     private ValueAnimator animator;
     private Direction activeDirection;
-    private long lastFrameTime;
-    private float emissionRemainder;
     private Runnable completionCallback;
+    private float currentProgress;
 
     public TideParticlesView(Context context) {
         super(context);
@@ -60,7 +45,9 @@ public class TideParticlesView extends View {
     }
 
     private void init() {
-        paint.setStyle(Paint.Style.FILL);
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeCap(Paint.Cap.ROUND);
+        paint.setStrokeJoin(Paint.Join.ROUND);
         paint.setColor(BASE_COLOR);
         setClickable(false);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -107,26 +94,19 @@ public class TideParticlesView extends View {
         if (animator != null) {
             animator.cancel();
         }
-        particles.clear();
-        emissionRemainder = 0f;
-        lastFrameTime = SystemClock.uptimeMillis();
+        currentProgress = 0f;
 
         animator = ValueAnimator.ofFloat(0f, 1f);
-        animator.setDuration(900L);
+        animator.setDuration(1000L);
         animator.setInterpolator(new DecelerateInterpolator(1.2f));
         animator.addUpdateListener(animation -> {
-            long now = SystemClock.uptimeMillis();
-            float dt = Math.min(MAX_DT, (now - lastFrameTime) / 1000f);
-            lastFrameTime = now;
-            float progress = (float) animation.getAnimatedFraction();
-            emitParticles(dt, progress);
-            updateParticles(dt);
+            currentProgress = (float) animation.getAnimatedFraction();
             invalidate();
         });
         animator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                particles.clear();
+                currentProgress = 0f;
                 invalidate();
                 startNextAnimation();
             }
@@ -134,91 +114,13 @@ public class TideParticlesView extends View {
         animator.start();
     }
 
-    private void emitParticles(float dt, float progress) {
-        if (getWidth() == 0 || getHeight() == 0) {
-            return;
-        }
-        float emissionRate = lerp(260f, 140f, progress);
-        float toEmit = emissionRate * dt + emissionRemainder;
-        int count = (int) Math.floor(toEmit);
-        emissionRemainder = toEmit - count;
-
-        float pad = dpToPx(12f);
-        for (int i = 0; i < count; i++) {
-            Particle particle = new Particle();
-            float speed = dpToPx(140f + random.nextFloat() * 90f);
-            float spread = dpToPx(26f);
-            float amplitude = dpToPx(6f + random.nextFloat() * 8f);
-            particle.size = dpToPx(2.8f + random.nextFloat() * 3.5f);
-            particle.life = 0.6f + random.nextFloat() * 0.4f;
-            particle.age = random.nextFloat() * 0.1f;
-            particle.driftPhase = (float) (random.nextFloat() * Math.PI * 2f);
-            particle.driftAmplitude = amplitude;
-
-            switch (activeDirection) {
-                case RIGHT:
-                    particle.x = -pad;
-                    particle.y = random.nextFloat() * getHeight();
-                    particle.vx = speed;
-                    particle.vy = (random.nextFloat() - 0.5f) * spread;
-                    break;
-                case LEFT:
-                    particle.x = getWidth() + pad;
-                    particle.y = random.nextFloat() * getHeight();
-                    particle.vx = -speed;
-                    particle.vy = (random.nextFloat() - 0.5f) * spread;
-                    break;
-                case DOWN:
-                    particle.x = random.nextFloat() * getWidth();
-                    particle.y = -pad;
-                    particle.vx = (random.nextFloat() - 0.5f) * spread;
-                    particle.vy = speed;
-                    break;
-                case UP:
-                default:
-                    particle.x = random.nextFloat() * getWidth();
-                    particle.y = getHeight() + pad;
-                    particle.vx = (random.nextFloat() - 0.5f) * spread;
-                    particle.vy = -speed;
-                    break;
-            }
-            particles.add(particle);
-        }
-    }
-
-    private void updateParticles(float dt) {
-        for (int i = particles.size() - 1; i >= 0; i--) {
-            Particle particle = particles.get(i);
-            particle.age += dt;
-            particle.x += particle.vx * dt;
-            particle.y += particle.vy * dt;
-            if (particle.age > particle.life) {
-                particles.remove(i);
-            }
-        }
-    }
-
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        if (particles.isEmpty()) {
+        if (activeDirection == null || currentProgress <= 0f) {
             return;
         }
-        for (Particle particle : particles) {
-            float alpha = 1f - (particle.age / particle.life);
-            int alphaInt = (int) (alpha * 180f);
-            int color = (alphaInt << 24) | BASE_COLOR;
-            paint.setColor(color);
-            float driftOffset = (float) Math.sin(particle.age * 8f + particle.driftPhase) * particle.driftAmplitude;
-            float drawX = particle.x;
-            float drawY = particle.y;
-            if (activeDirection == Direction.LEFT || activeDirection == Direction.RIGHT) {
-                drawY += driftOffset;
-            } else {
-                drawX += driftOffset;
-            }
-            canvas.drawCircle(drawX, drawY, particle.size, paint);
-        }
+        drawWaveBands(canvas);
     }
 
     @Override
@@ -229,8 +131,79 @@ public class TideParticlesView extends View {
             animator = null;
         }
         pendingDirections.clear();
-        particles.clear();
         completionCallback = null;
+    }
+
+    private void drawWaveBands(Canvas canvas) {
+        float width = getWidth();
+        float height = getHeight();
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+        float amplitude = dpToPx(10f);
+        float wavelength = dpToPx(110f);
+        float stroke = dpToPx(3.2f);
+        float spacing = dpToPx(26f);
+        float travelPadding = dpToPx(40f);
+
+        paint.setStrokeWidth(stroke);
+
+        for (int i = 0; i < WAVE_BAND_COUNT; i++) {
+            float bandOffset = i * spacing;
+            float bandProgress = currentProgress - (bandOffset / (Math.max(width, height) + travelPadding));
+            if (bandProgress < 0f) {
+                continue;
+            }
+            float alphaScale = 1f - (i / (float) WAVE_BAND_COUNT);
+            int alpha = (int) (BASE_ALPHA * alphaScale);
+            paint.setColor((alpha << 24) | BASE_COLOR);
+            float phase = currentProgress * (float) (Math.PI * 2f) + (i * 0.6f);
+            if (activeDirection == Direction.LEFT || activeDirection == Direction.RIGHT) {
+                float startX = activeDirection == Direction.RIGHT ? -travelPadding : width + travelPadding;
+                float endX = activeDirection == Direction.RIGHT ? width + travelPadding : -travelPadding;
+                float waveX = lerp(startX, endX, bandProgress);
+                drawVerticalWave(canvas, waveX, height, amplitude, wavelength, phase);
+            } else {
+                float startY = activeDirection == Direction.DOWN ? -travelPadding : height + travelPadding;
+                float endY = activeDirection == Direction.DOWN ? height + travelPadding : -travelPadding;
+                float waveY = lerp(startY, endY, bandProgress);
+                drawHorizontalWave(canvas, waveY, width, amplitude, wavelength, phase);
+            }
+        }
+    }
+
+    private void drawVerticalWave(Canvas canvas, float baseX, float height, float amplitude, float wavelength, float phase) {
+        Path path = new Path();
+        float step = dpToPx(12f);
+        float startY = -dpToPx(30f);
+        float endY = height + dpToPx(30f);
+        for (float y = startY; y <= endY; y += step) {
+            float offset = (float) Math.sin((y / wavelength) * Math.PI * 2f + phase) * amplitude;
+            float x = baseX + offset;
+            if (y == startY) {
+                path.moveTo(x, y);
+            } else {
+                path.lineTo(x, y);
+            }
+        }
+        canvas.drawPath(path, paint);
+    }
+
+    private void drawHorizontalWave(Canvas canvas, float baseY, float width, float amplitude, float wavelength, float phase) {
+        Path path = new Path();
+        float step = dpToPx(12f);
+        float startX = -dpToPx(30f);
+        float endX = width + dpToPx(30f);
+        for (float x = startX; x <= endX; x += step) {
+            float offset = (float) Math.sin((x / wavelength) * Math.PI * 2f + phase) * amplitude;
+            float y = baseY + offset;
+            if (x == startX) {
+                path.moveTo(x, y);
+            } else {
+                path.lineTo(x, y);
+            }
+        }
+        canvas.drawPath(path, paint);
     }
 
     private float dpToPx(float dp) {
