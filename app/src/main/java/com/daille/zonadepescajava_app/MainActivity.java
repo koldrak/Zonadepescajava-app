@@ -292,8 +292,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 Arrays.asList(gameState.getBoard()),
                 gameState.getHighlightSlots(),
                 gameState.computeRemoraBorderSlots(),
-                gameState.computeBotaViejaPenaltySlots()
+                gameState.computeBotaViejaPenaltySlots(),
+                gameState.computeAutoHundidoBonusSlots()
         );
+        animateRerolledDiceSlots(gameState.consumeRecentlyRerolledSlots());
 
 
 // ✅ Pasa links al decoration (necesitas un getter en GameState)
@@ -1985,6 +1987,46 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (gameState.isAwaitingCancelConfirmation()) { promptCancelAbility(); return;
         }
 
+    }
+
+    private void animateRerolledDiceSlots(List<Integer> slots) {
+        if (slots == null || slots.isEmpty() || animationHandler == null) return;
+        binding.gamePanel.boardRecycler.post(() -> {
+            RecyclerView.LayoutManager lm = binding.gamePanel.boardRecycler.getLayoutManager();
+            if (lm == null) return;
+            for (Integer idx : slots) {
+                if (idx == null || idx < 0 || idx >= gameState.getBoard().length) continue;
+                View slotView = lm.findViewByPosition(idx);
+                BoardSlot slot = gameState.getBoard()[idx];
+                if (slotView == null || slot.getDice().isEmpty()) continue;
+
+                ImageView dieOne = slotView.findViewById(R.id.dieSlotOne);
+                ImageView dieTwo = slotView.findViewById(R.id.dieSlotTwo);
+                if (slot.getDice().size() > 0) {
+                    animateDieReroll(dieOne, slot.getDice().get(0));
+                }
+                if (slot.getDice().size() > 1) {
+                    animateDieReroll(dieTwo, slot.getDice().get(1));
+                }
+            }
+        });
+    }
+
+    private void animateDieReroll(ImageView target, Die die) {
+        if (target == null || die == null || animationHandler == null) return;
+        final int[] frames = {10};
+        final Runnable[] runner = new Runnable[1];
+        runner[0] = () -> {
+            if (frames[0]-- <= 0) {
+                Bitmap finalFace = diceImageResolver.getFace(die.getType(), die.getValue());
+                if (finalFace != null) target.setImageBitmap(finalFace);
+                return;
+            }
+            Bitmap random = diceImageResolver.randomFace(die.getType());
+            if (random != null) target.setImageBitmap(random);
+            animationHandler.postDelayed(runner[0], 45L);
+        };
+        animationHandler.post(runner[0]);
     }
 
 private void promptSpiderCrabCardChoice() {

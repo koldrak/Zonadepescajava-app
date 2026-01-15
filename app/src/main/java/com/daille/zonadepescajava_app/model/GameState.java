@@ -51,6 +51,7 @@ public class GameState {
     private int ghostShrimpFirstChoice = -1;
     private int ghostShrimpSecondChoice = -1;
     private final List<Card> recentlyRevealedCards = new ArrayList<>();
+    private final List<Integer> recentlyRerolledSlots = new ArrayList<>();
     private final List<Die> pendingPercebesDice = new ArrayList<>();
     private final List<Integer> pendingPercebesTargets = new ArrayList<>();
     private final List<Die> pendingBallenaDice = new ArrayList<>();
@@ -217,6 +218,7 @@ public class GameState {
         adjustmentAmount = 0;
         adjustmentSource = null;
         clearPezVelaState();
+        recentlyRerolledSlots.clear();
         pendingPercebesDice.clear();
         pendingPercebesTargets.clear();
         pendingSelectionQueue.clear();
@@ -609,6 +611,12 @@ public class GameState {
         return copy;
     }
 
+    public List<Integer> consumeRecentlyRerolledSlots() {
+        List<Integer> copy = new ArrayList<>(recentlyRerolledSlots);
+        recentlyRerolledSlots.clear();
+        return copy;
+    }
+
     public List<Integer> getHighlightSlots() {
         List<Integer> highlight = new ArrayList<>();
         if (pendingSelection == PendingSelection.NONE) {
@@ -948,6 +956,32 @@ public class GameState {
             }
 
             if (hasPenalty) {
+                affected.add(i);
+            }
+        }
+        return affected;
+    }
+
+    // === Auto Hundido (UI) ===
+    // Devuelve slots que reciben bonus (+1 a la suma) por al menos 1 Auto Hundido adyacente boca arriba.
+    public java.util.List<Integer> computeAutoHundidoBonusSlots() {
+        java.util.List<Integer> affected = new java.util.ArrayList<>();
+        for (int i = 0; i < board.length; i++) {
+            BoardSlot s = board[i];
+            if (s.getDice() == null || s.getDice().isEmpty()) continue;
+
+            boolean hasBonus = false;
+            for (Integer adj : adjacentIndices(i, true)) {
+                BoardSlot a = board[adj];
+                if (a.getCard() != null
+                        && a.isFaceUp()
+                        && a.getCard().getId() == CardId.AUTO_HUNDIDO) {
+                    hasBonus = true;
+                    break;
+                }
+            }
+
+            if (hasBonus) {
                 affected.add(i);
             }
         }
@@ -5749,9 +5783,13 @@ public class GameState {
     private String rerollAdjacentDiceWithRecovery(int slotIndex) {
         boolean recovered = false;
         int rerolled = 0;
+        recentlyRerolledSlots.clear();
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
             if (adj.getDice().isEmpty()) continue;
+            if (!recentlyRerolledSlots.contains(idx)) {
+                recentlyRerolledSlots.add(idx);
+            }
             for (int i = 0; i < adj.getDice().size(); i++) {
                 Die d = adj.getDice().get(i);
                 Die rolled = Die.roll(d.getType(), rng);
