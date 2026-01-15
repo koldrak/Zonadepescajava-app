@@ -392,8 +392,8 @@ public class GameState {
                 || awaitingPeregrinoChoice
                 || awaitingHumpbackDirection
                 || awaitingCancelConfirmation
-
-                || (pendingSelection == PendingSelection.BLUE_WHALE_PLACE && !pendingBallenaDice.isEmpty());
+                || pendingSelection != PendingSelection.NONE
+                || !pendingSelectionQueue.isEmpty();
         // OJO: recentlyRevealedCards NO debe bloquear el game over (es UI, no resolución).
     }
 
@@ -3040,8 +3040,8 @@ public class GameState {
                 || awaitingValueAdjustment
                 || awaitingGhostShrimpDecision
                 || awaitingCancelConfirmation
-
-                || (pendingSelection == PendingSelection.BLUE_WHALE_PLACE && !pendingBallenaDice.isEmpty());
+                || pendingSelection != PendingSelection.NONE
+                || !pendingSelectionQueue.isEmpty();
     }
 
     private String continueRevealChain(String currentLog) {
