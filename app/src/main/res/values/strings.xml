@@ -7,4 +7,23 @@
     <string name="collection_capture_count">%1$d capturas</string>
     <string name="collection_capture_progress">%1$d de %2$d capturas</string>
     <string name="collection_locked">Bloqueado</string>
+    <string name="deck_selection_title">Selección de mazo</string>
+    <string name="deck_selection_score_placeholder">Puntaje seleccionado: 0 (150–200)</string>
+    <string name="deck_selection_confirm">Confirmar mazo</string>
+    <string name="deck_selection_badge">x%1$d</string>
+    <string name="deck_selection_score_format">Puntaje seleccionado: %1$d (150–200)</string>
+    <string name="dice_shop_title">Tienda de dados</string>
+    <string name="dice_shop_points_placeholder">Puntos disponibles: 0</string>
+    <string name="dice_shop_owned_placeholder">0 comprados</string>
+    <string name="dice_shop_points_format">Puntos disponibles: %1$d</string>
+    <string name="dice_shop_owned_format">Comprados: %1$d</string>
+    <string name="dice_shop_d4">D4 • 200 puntos</string>
+    <string name="dice_shop_d6">D6 • 400 puntos</string>
+    <string name="dice_shop_d8">D8 • 600 puntos</string>
+    <string name="dice_shop_d12">D12 • 1000 puntos</string>
+    <string name="buy">Comprar</string>
+    <string name="back">Volver</string>
+    <string name="dice_selection_instruction">Arrastra los dados que usarás (máx. 7) a la zona de selección</string>
+    <string name="dice_selection_counter_placeholder">Dados seleccionados: 0 (máx. 7)</string>
+    <string name="dice_selection_counter_format">Dados seleccionados: %1$d (máx. 7)</string>
 </resources>

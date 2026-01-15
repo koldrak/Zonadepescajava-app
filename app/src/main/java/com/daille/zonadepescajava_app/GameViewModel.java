@@ -2,6 +2,7 @@ package com.daille.zonadepescajava_app;
 
 import androidx.lifecycle.ViewModel;
 
+import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardId;
 import com.daille.zonadepescajava_app.model.DieType;
 import com.daille.zonadepescajava_app.model.GameState;
@@ -39,7 +40,11 @@ public class GameViewModel extends ViewModel {
 
     public void startNewGame(List<com.daille.zonadepescajava_app.model.DieType> reserve,
                              Map<CardId, Integer> captureCounts) {
-        gameState.newGame(reserve, captureCounts);
+        startNewGame(reserve, captureCounts, null);
+    }
+
+    public void startNewGame(List<DieType> reserve, Map<CardId, Integer> captureCounts, List<Card> selectedDeck) {
+        gameState.newGame(reserve, captureCounts, selectedDeck);
         initialized = true;
         finalScoreRecorded = false;
     }
