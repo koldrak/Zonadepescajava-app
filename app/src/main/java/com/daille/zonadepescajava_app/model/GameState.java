@@ -33,6 +33,7 @@ public class GameState {
     private int blowfishSlotIndex = -1;
     private boolean awaitingMantisDecision = false;
     private boolean awaitingMantisLostDieChoice = false;
+    private boolean awaitingLangostaRecovery = false;
     private int mantisSlotIndex = -1;
     private Die mantisRerolledDie = null;
     private boolean awaitingValueAdjustment = false;
@@ -203,6 +204,7 @@ public class GameState {
         blowfishSlotIndex = -1;
         awaitingMantisDecision = false;
         awaitingMantisLostDieChoice = false;
+        awaitingLangostaRecovery = false;
         mantisSlotIndex = -1;
         mantisRerolledDie = null;
         awaitingValueAdjustment = false;
@@ -355,6 +357,10 @@ public class GameState {
         return awaitingMantisLostDieChoice;
     }
 
+    public boolean isAwaitingLangostaRecovery() {
+        return awaitingLangostaRecovery;
+    }
+
     public boolean isAwaitingDecoradorChoice() {
         return awaitingDecoradorChoice;
     }
@@ -374,6 +380,7 @@ public class GameState {
                 || awaitingBlowfishDecision
                 || awaitingMantisDecision
                 || awaitingMantisLostDieChoice
+                || awaitingLangostaRecovery
                 || awaitingPezVelaDecision
                 || awaitingPezVelaResultChoice
                 || awaitingLanternChoice
@@ -1691,6 +1698,9 @@ public class GameState {
         if (awaitingMantisDecision || awaitingMantisLostDieChoice) {
             return "Resuelve la habilidad del Langostino mantis antes de continuar.";
         }
+        if (awaitingLangostaRecovery) {
+            return "Resuelve la recuperación de la Langosta espinosa antes de continuar.";
+        }
         if (awaitingPezVelaDecision || awaitingPezVelaResultChoice) {
             return "Resuelve la decisión del Pez Vela antes de lanzar otro dado.";
         }
@@ -1775,6 +1785,9 @@ public class GameState {
         }
         if (awaitingMantisDecision || awaitingMantisLostDieChoice) {
             return "Resuelve primero la habilidad del Langostino Mantis.";
+        }
+        if (awaitingLangostaRecovery) {
+            return "Resuelve primero la recuperación de la Langosta espinosa.";
         }
         if (awaitingPezVelaDecision || awaitingPezVelaResultChoice) {
             return "Resuelve primero la habilidad del Pez Vela.";
@@ -2864,12 +2877,12 @@ public class GameState {
             return "";
         }
         int idx = slot.getDice().size() - 1;
-        Die die = slot.getDice().get(idx);
-        int value = die.getValue();
-        int sides = die.getType().getSides();
-        int newValue = value + 1 <= sides ? value + 1 : Math.max(1, value - 1);
-        slot.setDie(idx, new Die(die.getType(), newValue));
-        return "Lamprea ajustó el dado a " + newValue + ".";
+        return startValueAdjustment(
+                slotIndex,
+                idx,
+                1,
+                CardId.LAMPREA,
+                "Lamprea: elige si sumar o restar 1 al dado colocado.");
     }
 
     private boolean isHookActive() {
@@ -3038,6 +3051,7 @@ public class GameState {
                 || awaitingHorseshoeValue
                 || awaitingPulpoChoice
                 || awaitingValueAdjustment
+                || awaitingLangostaRecovery
                 || awaitingGhostShrimpDecision
                 || awaitingCancelConfirmation
 
@@ -4617,6 +4631,30 @@ public class GameState {
                 + ". Elige una carta con dado para reemplazarlo.";
     }
 
+    public String chooseLangostaRecoveredDie(int index) {
+        if (!awaitingLangostaRecovery) {
+            return "No hay recuperación pendiente de la Langosta espinosa.";
+        }
+        if (index < 0 || index >= lostDice.size()) {
+            return "Debes elegir un dado perdido válido.";
+        }
+        Die recovered = lostDice.remove(index);
+        reserve.add(recovered.getType());
+        awaitingLangostaRecovery = false;
+        String msg = "Langosta espinosa recuperó " + recovered.getLabel() + ".";
+
+        String revealLog = continueRevealChain("");
+        if (!revealLog.isEmpty()) {
+            msg = msg.isEmpty() ? revealLog : msg + " " + revealLog;
+        }
+
+        String endTurn = resolveAllReadySlots();
+        if (!endTurn.isEmpty()) {
+            msg = msg.isEmpty() ? endTurn : msg + " " + endTurn;
+        }
+        return msg;
+    }
+
     private String replaceWithMantisDie(int slotIndex) {
         if (mantisRerolledDie == null) {
             clearPendingSelection();
@@ -4778,7 +4816,14 @@ public class GameState {
             return "No puedes ajustar el dado más allá de sus caras. Elige la otra opción.";
         }
         slot.setDie(adjustmentDieIndex, new Die(die.getType(), newVal));
-        String actor = adjustmentSource == CardId.NAUTILUS ? "Nautilus" : "Jaiba azul";
+        String actor;
+        if (adjustmentSource == CardId.NAUTILUS) {
+            actor = "Nautilus";
+        } else if (adjustmentSource == CardId.LAMPREA) {
+            actor = "Lamprea";
+        } else {
+            actor = "Jaiba azul";
+        }
         boolean fromNautilus = adjustmentSource == CardId.NAUTILUS;
         String result = actor + " ajustó el dado a " + newVal + ".";
 
@@ -5749,7 +5794,7 @@ public class GameState {
         String result;
         switch (captured.getId()) {
             case LANGOSTA_ESPINOSA:
-                result = recoverIfD4Used(slotIndex) + remoraLog;
+                result = recoverIfD8Used(slotIndex) + remoraLog;
                 break;
             case BOGAVANTE:
                 result = recoverAnyLostDie() + remoraLog;
@@ -5805,24 +5850,22 @@ public class GameState {
         return result;
     }
 
-    private String recoverIfD4Used(int slotIndex) {
+    private String recoverIfD8Used(int slotIndex) {
         if (board[slotIndex].getStatus().langostaRecovered) {
             return "";
         }
-        boolean usedD4 = false;
+        boolean usedD8 = false;
         for (Die d : board[slotIndex].getDice()) {
-            if (d.getType() == DieType.D4) {
-                usedD4 = true;
+            if (d.getType() == DieType.D8) {
+                usedD8 = true;
                 break;
             }
         }
-        if (usedD4 && !lostDice.isEmpty()) {
-            Die recovered = lostDice.remove(lostDice.size() - 1);
-            reserve.add(recovered.getType());
-            board[slotIndex].getStatus().langostaRecovered = true;
-            return "Langosta espinosa te devuelve un dado perdido.";
+        if (!usedD8 || lostDice.isEmpty()) {
+            return "";
         }
-        return "";
+        awaitingLangostaRecovery = true;
+        return "Langosta espinosa: elige un dado perdido para recuperar.";
     }
 
     private String startPercebesMove(int slotIndex) {
