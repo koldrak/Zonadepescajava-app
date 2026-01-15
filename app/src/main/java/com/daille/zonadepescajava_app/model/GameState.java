@@ -2014,6 +2014,24 @@ public class GameState {
             }
         }
 
+        String morenaAutoCancel = autoCancelInvalidMorenaSelection();
+        if (!morenaAutoCancel.isEmpty()) {
+            if (log.length() > 0) log.append(" ");
+            log.append(morenaAutoCancel);
+        }
+
+        String boxerAutoCancel = autoCancelInvalidBoxerSelection();
+        if (!boxerAutoCancel.isEmpty()) {
+            if (log.length() > 0) log.append(" ");
+            log.append(boxerAutoCancel);
+        }
+
+        String percebesAutoCancel = autoCancelInvalidPercebesSelection();
+        if (!percebesAutoCancel.isEmpty()) {
+            if (log.length() > 0) log.append(" ");
+            log.append(percebesAutoCancel);
+        }
+
         // 3) Unir mensajes
         String result = coreResult;
         if (log.length() > 0) result += " " + log;
@@ -4331,6 +4349,154 @@ public class GameState {
         clearPendingSelection();
         return reveal.isEmpty() ? "Morena movió un dado entre cartas adyacentes." :
                 "Morena movió un dado entre cartas adyacentes. " + reveal;
+    }
+
+    private String autoCancelInvalidMorenaSelection() {
+        if (pendingSelection != PendingSelection.MORENA_FROM && pendingSelection != PendingSelection.MORENA_TO) {
+            return "";
+        }
+        if (pendingSelectionActor < 0 || pendingSelectionActor >= board.length) {
+            clearPendingSelection();
+            return "Morena: acción cancelada (carta no disponible).";
+        }
+        BoardSlot morenaSlot = board[pendingSelectionActor];
+        if (morenaSlot.getCard() == null || morenaSlot.getCard().getId() != CardId.MORENA) {
+            clearPendingSelection();
+            return "Morena: acción cancelada (carta no disponible).";
+        }
+
+        boolean hasOrigin = false;
+        boolean hasTarget = false;
+        for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+            BoardSlot adj = board[idx];
+            if (!adj.getDice().isEmpty()) hasOrigin = true;
+            if (adj.getCard() != null && adj.getDice().size() < 2) hasTarget = true;
+        }
+
+        if (pendingSelection == PendingSelection.MORENA_FROM) {
+            if (!hasOrigin || !hasTarget) {
+                clearPendingSelection();
+                return "Morena: no hay dados válidos para mover.";
+            }
+            return "";
+        }
+
+        BoardSlot origin = pendingSelectionAux >= 0 && pendingSelectionAux < board.length
+                ? board[pendingSelectionAux]
+                : null;
+        if (origin == null || origin.getDice().isEmpty()) {
+            clearPendingSelection();
+            return "Morena: no hay dados para mover.";
+        }
+
+        boolean hasDestination = false;
+        for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+            if (idx == pendingSelectionAux) continue;
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.getDice().size() < 2) {
+                hasDestination = true;
+                break;
+            }
+        }
+        if (!hasDestination) {
+            clearPendingSelection();
+            return "Morena: no hay destino válido para el dado.";
+        }
+        return "";
+    }
+
+    private String autoCancelInvalidBoxerSelection() {
+        if (pendingSelection != PendingSelection.BOXER_FROM && pendingSelection != PendingSelection.BOXER_TO) {
+            return "";
+        }
+        if (pendingSelectionActor < 0 || pendingSelectionActor >= board.length) {
+            clearPendingSelection();
+            return "Cangrejo boxeador: acción cancelada (carta no disponible).";
+        }
+        BoardSlot boxerSlot = board[pendingSelectionActor];
+        if (boxerSlot.getCard() == null || boxerSlot.getCard().getId() != CardId.CANGREJO_BOXEADOR) {
+            clearPendingSelection();
+            return "Cangrejo boxeador: acción cancelada (carta no disponible).";
+        }
+
+        boolean hasOrigin = false;
+        boolean hasTarget = false;
+        for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getDice().size() >= 2) hasOrigin = true;
+            if (adj.getCard() != null && adj.getDice().isEmpty()) hasTarget = true;
+        }
+
+        if (pendingSelection == PendingSelection.BOXER_FROM) {
+            if (!hasOrigin || !hasTarget) {
+                clearPendingSelection();
+                return "Cangrejo boxeador: no hay movimientos válidos.";
+            }
+            return "";
+        }
+
+        BoardSlot origin = pendingSelectionAux >= 0 && pendingSelectionAux < board.length
+                ? board[pendingSelectionAux]
+                : null;
+        if (origin == null || origin.getDice().size() < 2) {
+            clearPendingSelection();
+            return "Cangrejo boxeador: no hay suficientes dados para mover.";
+        }
+
+        boolean hasDestination = false;
+        for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+            if (idx == pendingSelectionAux) continue;
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.getDice().isEmpty()) {
+                hasDestination = true;
+                break;
+            }
+        }
+        if (!hasDestination) {
+            clearPendingSelection();
+            return "Cangrejo boxeador: no hay destino válido para los dados.";
+        }
+        return "";
+    }
+
+    private String autoCancelInvalidPercebesSelection() {
+        if (pendingSelection != PendingSelection.PERCEBES_MOVE) {
+            return "";
+        }
+        if (pendingSelectionActor < 0 || pendingSelectionActor >= board.length) {
+            return cancelPercebesMove("Percebes: acción cancelada (carta no disponible).");
+        }
+        BoardSlot percebesSlot = board[pendingSelectionActor];
+        if (percebesSlot.getCard() == null || percebesSlot.getCard().getId() != CardId.PERCEBES) {
+            return cancelPercebesMove("Percebes: acción cancelada (carta no disponible).");
+        }
+        if (pendingPercebesDice.isEmpty()) {
+            clearPendingSelection();
+            return "Percebes: no hay dados por mover.";
+        }
+
+        boolean hasDestination = false;
+        for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+            if (pendingPercebesTargets.contains(idx)) continue;
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.getDice().size() < 2) {
+                hasDestination = true;
+                break;
+            }
+        }
+        if (!hasDestination) {
+            return cancelPercebesMove("Percebes: no hay destino válido para mover los dados.");
+        }
+        return "";
+    }
+
+    private String cancelPercebesMove(String message) {
+        for (Die die : pendingPercebesDice) {
+            reserve.add(die.getType());
+        }
+        clearPercebesState();
+        clearPendingSelection();
+        return message;
     }
 
     private String startBoxerCrabMove(int slotIndex) {
