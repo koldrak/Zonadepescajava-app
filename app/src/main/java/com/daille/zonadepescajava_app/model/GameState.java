@@ -166,7 +166,8 @@ public class GameState {
         }
     }
 
-    private enum CurrentDirection { UP, DOWN, LEFT, RIGHT }
+    public enum CurrentDirection { UP, DOWN, LEFT, RIGHT }
+    private final Deque<CurrentDirection> pendingCurrentAnimations = new ArrayDeque<>();
 
     public GameState() {
         for (int i = 0; i < board.length; i++) {
@@ -231,6 +232,7 @@ public class GameState {
         recentlyRevealedCards.clear();
         pendingBallenaDice.clear();
         pendingBallenaTotal = 0;
+        pendingCurrentAnimations.clear();
         pendingPulpoOptions.clear();
         pendingArenquePool.clear();
         pendingArenqueChosen.clear();
@@ -2259,22 +2261,20 @@ public class GameState {
     }
 
     private String buildCurrentsLog(int placedValue) {
-        StringBuilder msg = new StringBuilder();
-        boolean triggered = placedValue == 1 || isDeepCurrentTriggered(placedValue);
+        CurrentDirection deepDirection = getDeepCurrentDirection(placedValue);
+        boolean triggered = placedValue == 1 || deepDirection != null;
         if (triggered && isHumpbackActive()) {
             awaitingHumpbackDirection = true;
             pendingHumpbackSlot = findHumpbackSlot();
             return "Ballena jorobada: elige la dirección de la marea.";
         }
         if (placedValue == 1) {
-            msg.append(applyCurrent(CurrentDirection.UP));
+            enqueueCurrentAnimation(CurrentDirection.UP);
         }
-        String deep = applyDeepCurrentIfTriggered(placedValue);
-        if (!deep.isEmpty()) {
-            if (msg.length() > 0) msg.append(" ");
-            msg.append(deep);
+        if (deepDirection != null) {
+            enqueueCurrentAnimation(deepDirection);
         }
-        return msg.toString();
+        return "";
     }
 
     private String applyCurrent(CurrentDirection direction) {
@@ -2591,19 +2591,18 @@ public class GameState {
         return String.join(", ", labels);
     }
 
-    private String applyDeepCurrentIfTriggered(int placedValue) {
+    private CurrentDirection getDeepCurrentDirection(int placedValue) {
         for (BoardSlot slot : board) {
             if (!slot.isFaceUp() || slot.getCard() == null || slot.getCard().getId() != CardId.CORRIENTES_PROFUNDAS) {
                 continue;
             }
             for (Die d : slot.getDice()) {
                 if (d.getValue() == placedValue) {
-                    CurrentDirection dir = placedValue % 2 == 0 ? CurrentDirection.RIGHT : CurrentDirection.LEFT;
-                    return applyCurrent(dir);
+                    return placedValue % 2 == 0 ? CurrentDirection.RIGHT : CurrentDirection.LEFT;
                 }
             }
         }
-        return "";
+        return null;
     }
 
     private boolean isDeepCurrentTriggered(int placedValue) {
@@ -2657,7 +2656,8 @@ public class GameState {
         }
         awaitingHumpbackDirection = false;
         pendingHumpbackSlot = -1;
-        return applyCurrent(dir);
+        enqueueCurrentAnimation(dir);
+        return "Ballena jorobada: la marea se está formando.";
     }
 
     private String triggerFishingBoatOnRoll(int rolledValue) {
@@ -2856,6 +2856,36 @@ public class GameState {
         }
 
         return modified ? log.toString() : "";
+    }
+
+    private void enqueueCurrentAnimation(CurrentDirection direction) {
+        if (direction == null) {
+            return;
+        }
+        pendingCurrentAnimations.add(direction);
+    }
+
+    public List<CurrentDirection> getPendingCurrentDirections() {
+        if (pendingCurrentAnimations.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return new ArrayList<>(pendingCurrentAnimations);
+    }
+
+    public String applyPendingCurrentAnimations() {
+        if (pendingCurrentAnimations.isEmpty()) {
+            return "";
+        }
+        StringBuilder log = new StringBuilder();
+        while (!pendingCurrentAnimations.isEmpty()) {
+            CurrentDirection direction = pendingCurrentAnimations.poll();
+            String result = applyCurrent(direction);
+            if (!result.isEmpty()) {
+                if (log.length() > 0) log.append(" ");
+                log.append(result);
+            }
+        }
+        return log.toString();
     }
 
     private boolean isBottleTargetActive(int slotIndex) {
