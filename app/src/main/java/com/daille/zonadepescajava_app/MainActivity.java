@@ -350,12 +350,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     }
 
-    private void triggerTideAnimationIfNeeded() {
+    private void runPendingCurrentsSequence(String baseMessage, Runnable onComplete) {
         if (tideParticlesView == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
             return;
         }
-        List<GameState.CurrentDirection> currents = gameState.consumePendingCurrentAnimations();
+        List<GameState.CurrentDirection> currents = gameState.getPendingCurrentDirections();
         if (currents.isEmpty()) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
             return;
         }
         List<TideParticlesView.Direction> directions = new ArrayList<>();
@@ -375,7 +381,21 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                     break;
             }
         }
-        binding.animationOverlay.post(() -> tideParticlesView.playSequence(directions));
+        binding.animationOverlay.post(() -> tideParticlesView.playSequence(directions, () -> {
+            String currentsLog = gameState.applyPendingCurrentAnimations();
+            String combinedLog = combineLogs(baseMessage, currentsLog);
+            refreshUi(combinedLog, onComplete);
+        }));
+    }
+
+    private String combineLogs(String base, String extra) {
+        if (extra == null || extra.isEmpty()) {
+            return base == null ? "" : base;
+        }
+        if (base == null || base.isEmpty()) {
+            return extra;
+        }
+        return base + " " + extra;
     }
 
     private void setupDiceSelectionUi() {
@@ -1915,10 +1935,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
 
     private void handleGameResult(String message) {
-        refreshUi(message, () -> {
+        refreshUi(message, () -> runPendingCurrentsSequence(message, () -> {
             triggerPendingPrompts();
             checkForFinalScoring(); // ✅ ahora sí: después de decidir si hay prompts
-        });
+        }));
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
     private static class ReleaseAnimationRequest {

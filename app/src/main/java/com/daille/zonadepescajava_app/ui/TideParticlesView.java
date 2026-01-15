@@ -42,6 +42,7 @@ public class TideParticlesView extends View {
     private Direction activeDirection;
     private long lastFrameTime;
     private float emissionRemainder;
+    private Runnable completionCallback;
 
     public TideParticlesView(Context context) {
         super(context);
@@ -65,9 +66,23 @@ public class TideParticlesView extends View {
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
     }
 
-    public void playSequence(List<Direction> directions) {
+    public void playSequence(List<Direction> directions, Runnable onComplete) {
         if (directions == null || directions.isEmpty()) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
             return;
+        }
+        if (onComplete != null) {
+            if (completionCallback == null) {
+                completionCallback = onComplete;
+            } else {
+                Runnable previous = completionCallback;
+                completionCallback = () -> {
+                    previous.run();
+                    onComplete.run();
+                };
+            }
         }
         pendingDirections.addAll(directions);
         if (!isRunning()) {
@@ -77,6 +92,11 @@ public class TideParticlesView extends View {
 
     private void startNextAnimation() {
         if (pendingDirections.isEmpty()) {
+            if (completionCallback != null) {
+                Runnable callback = completionCallback;
+                completionCallback = null;
+                callback.run();
+            }
             return;
         }
         activeDirection = pendingDirections.remove(0);
