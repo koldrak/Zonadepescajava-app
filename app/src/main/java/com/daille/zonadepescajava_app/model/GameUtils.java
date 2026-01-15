@@ -382,6 +382,25 @@ public final class GameUtils {
         return deck;
     }
 
+    public static List<Card> buildDeckFromSelection(Random rng, List<Card> selection) {
+        List<Card> deck = new ArrayList<>();
+        if (selection != null) {
+            deck.addAll(selection);
+        }
+        Collections.shuffle(deck, rng);
+        return deck;
+    }
+
+    public static List<Card> getSelectableCards(Map<CardId, Integer> captureCounts) {
+        List<Card> cards = new ArrayList<>(createAllCards());
+        if (captureCounts != null) {
+            applyUnlocks(cards, captureCounts);
+        } else {
+            removeLockedCards(cards);
+        }
+        return cards;
+    }
+
     public static List<Card> buildDeck(Random rng) {
         return buildDeck(rng, null);
     }

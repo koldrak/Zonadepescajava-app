@@ -186,6 +186,10 @@ public class GameState {
     }
 
     public void newGame(List<DieType> startingReserve, Map<CardId, Integer> captureCounts) {
+        newGame(startingReserve, captureCounts, null);
+    }
+
+    public void newGame(List<DieType> startingReserve, Map<CardId, Integer> captureCounts, List<Card> selectedDeck) {
         captures.clear();
         lostDice.clear();
         failedDiscards.clear();
@@ -281,18 +285,16 @@ public class GameState {
         glassBottleTargets.clear();
 
         if (startingReserve == null || startingReserve.isEmpty()) {
-            reserve.add(DieType.D6);
-            reserve.add(DieType.D6);
-            reserve.add(DieType.D6);
-            reserve.add(DieType.D8);
-            reserve.add(DieType.D8);
-            reserve.add(DieType.D4);
-            reserve.add(DieType.D12);
+            for (int i = 0; i < 6; i++) {
+                reserve.add(DieType.D6);
+            }
         } else {
             reserve.addAll(startingReserve);
         }
 
-        List<Card> allCards = GameUtils.buildDeck(rng, captureCounts);
+        List<Card> allCards = selectedDeck != null
+                ? GameUtils.buildDeckFromSelection(rng, selectedDeck)
+                : GameUtils.buildDeck(rng, captureCounts);
         for (Card c : allCards) {
             deck.push(c);
         }

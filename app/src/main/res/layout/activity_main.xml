@@ -17,8 +17,18 @@
             layout="@layout/layout_start_menu" />
 
         <include
+            android:id="@+id/deckSelectionPanel"
+            layout="@layout/layout_deck_selection"
+            android:visibility="gone" />
+
+        <include
             android:id="@+id/diceSelectionPanel"
             layout="@layout/layout_dice_selection"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/diceShopPanel"
+            layout="@layout/layout_dice_shop"
             android:visibility="gone" />
 
         <include
