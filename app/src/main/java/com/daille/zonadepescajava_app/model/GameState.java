@@ -2278,6 +2278,7 @@ public class GameState {
     }
 
     private String applyCurrent(CurrentDirection direction) {
+        enqueueCurrentAnimation(direction);
         if (isCarpaDoradaActive()) {
             return applyDiceOnlyCurrent(direction);
         }
@@ -2759,6 +2760,7 @@ public class GameState {
     }
 
     private String applyDiceOnlyCurrent(CurrentDirection direction) {
+        enqueueCurrentAnimation(direction);
         List<Die> lost = new ArrayList<>();
         List<List<Die>> incoming = new ArrayList<>();
         for (int i = 0; i < board.length; i++) {

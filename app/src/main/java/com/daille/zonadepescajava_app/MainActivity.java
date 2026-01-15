@@ -321,6 +321,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             log = pendingGameOver;
         }
         binding.gamePanel.log.setText(log);
+        triggerTideAnimationIfNeeded();
         renderCapturedCards();
         binding.getRoot().post(() -> {
             hideRefillSlots(refillSlots);
