@@ -221,6 +221,18 @@ public class TideParticlesView extends View {
         }
     }
 
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        if (animator != null) {
+            animator.cancel();
+            animator = null;
+        }
+        pendingDirections.clear();
+        particles.clear();
+        completionCallback = null;
+    }
+
     private float dpToPx(float dp) {
         return dp * getResources().getDisplayMetrics().density;
     }

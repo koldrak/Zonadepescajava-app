@@ -142,7 +142,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         );
-        binding.animationOverlay.addView(tideParticlesView, params);
+        binding.gamePanel.fishingAnimationOverlay.addView(tideParticlesView, params);
     }
 
 
@@ -381,7 +381,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                     break;
             }
         }
-        binding.animationOverlay.post(() -> tideParticlesView.playSequence(directions, () -> {
+        binding.gamePanel.fishingAnimationOverlay.post(() -> tideParticlesView.playSequence(directions, () -> {
             String currentsLog = gameState.applyPendingCurrentAnimations();
             String combinedLog = combineLogs(baseMessage, currentsLog);
             refreshUi(combinedLog, onComplete);

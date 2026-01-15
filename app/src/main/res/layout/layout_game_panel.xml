@@ -84,15 +84,30 @@
             android:textColor="@android:color/black"
             tools:text="Lanzaste D4=3" />
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/boardRecycler"
+        <FrameLayout
+            android:id="@+id/fishingZoneContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:layout_marginBottom="16dp"
-            android:clipToPadding="false"
-            android:paddingBottom="8dp"
-            tools:listitem="@layout/item_board_slot" />
+            android:layout_marginBottom="16dp">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/boardRecycler"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipToPadding="false"
+                android:paddingBottom="8dp"
+                tools:listitem="@layout/item_board_slot" />
+
+            <FrameLayout
+                android:id="@+id/fishingAnimationOverlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clickable="false"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:importantForAccessibility="no" />
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
