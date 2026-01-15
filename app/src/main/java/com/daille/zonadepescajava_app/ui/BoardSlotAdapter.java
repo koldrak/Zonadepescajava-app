@@ -42,6 +42,7 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
     private final List<Integer> remoraBorderSlots = new ArrayList<>();
     private final List<Integer> botaViejaPenaltySlots = new ArrayList<>();
     private final List<Integer> autoHundidoBonusSlots = new ArrayList<>();
+    private final List<Integer> bettaRowSlots = new ArrayList<>();
 
 
     public BoardSlotAdapter(Context context, List<BoardSlot> data, OnSlotInteractionListener listener) {
@@ -69,7 +70,8 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
                 highlighted.contains(position),
                 remoraBorderSlots.contains(position),
                 botaViejaPenaltySlots.contains(position),
-                autoHundidoBonusSlots.contains(position)
+                autoHundidoBonusSlots.contains(position),
+                bettaRowSlots.contains(position)
         );
 
     }
@@ -81,18 +83,19 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
     }
 
     public void update(List<BoardSlot> updated, List<Integer> highlights) {
-        update(updated, highlights, null, null, null);
+        update(updated, highlights, null, null, null, null);
     }
 
     public void update(List<BoardSlot> updated, List<Integer> highlights, List<Integer> remoraSlots) {
-        update(updated, highlights, remoraSlots, null, null);
+        update(updated, highlights, remoraSlots, null, null, null);
     }
 
     public void update(List<BoardSlot> updated,
                        List<Integer> highlights,
                        List<Integer> remoraSlots,
                        List<Integer> botaViejaSlots,
-                       List<Integer> autoHundidoSlots) {
+                       List<Integer> autoHundidoSlots,
+                       List<Integer> bettaSlots) {
 
         slots.clear();
         slots.addAll(updated);
@@ -115,6 +118,11 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
         autoHundidoBonusSlots.clear();
         if (autoHundidoSlots != null) {
             autoHundidoBonusSlots.addAll(autoHundidoSlots);
+        }
+
+        bettaRowSlots.clear();
+        if (bettaSlots != null) {
+            bettaRowSlots.addAll(bettaSlots);
         }
 
         notifyDataSetChanged();
@@ -201,7 +209,7 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
         }
 
         void bind(BoardSlot slot, boolean highlighted, boolean remoraBorder, boolean botaViejaPenalty,
-                  boolean autoHundidoBonus) {
+                  boolean autoHundidoBonus, boolean bettaRow) {
             Card card = slot.getCard();
             Bitmap image = null;
             if (card != null) {
@@ -225,6 +233,9 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
             } else if (highlighted) {
                 strokePx = (int) (context.getResources().getDisplayMetrics().density * 6);
                 strokeColor = ContextCompat.getColor(context, R.color.selection_highlight);
+            } else if (bettaRow) {
+                strokePx = (int) (context.getResources().getDisplayMetrics().density * 4);
+                strokeColor = ContextCompat.getColor(context, R.color.betta_row_highlight);
             } else if (bottleBuffed || glassPenalty) {
                 strokePx = (int) (context.getResources().getDisplayMetrics().density * 4);
                 strokeColor = ContextCompat.getColor(context, R.color.bottle_highlight);

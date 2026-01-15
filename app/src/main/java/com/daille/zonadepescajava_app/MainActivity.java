@@ -293,7 +293,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 gameState.getHighlightSlots(),
                 gameState.computeRemoraBorderSlots(),
                 gameState.computeBotaViejaPenaltySlots(),
-                gameState.computeAutoHundidoBonusSlots()
+                gameState.computeAutoHundidoBonusSlots(),
+                gameState.computeBettaRowSlots()
         );
         animateRerolledDiceSlots(gameState.consumeRecentlyRerolledSlots());
 

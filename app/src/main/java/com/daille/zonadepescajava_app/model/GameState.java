@@ -990,6 +990,29 @@ public class GameState {
         return affected;
     }
 
+    // === Pez Betta (UI) ===
+    // Marca visualmente las filas permitidas mientras haya un Pez betta boca arriba.
+    public java.util.List<Integer> computeBettaRowSlots() {
+        java.util.Set<Integer> rows = new java.util.HashSet<>();
+        for (int i = 0; i < board.length; i++) {
+            BoardSlot s = board[i];
+            if (s.getCard() != null && s.isFaceUp() && s.getCard().getId() == CardId.PEZ_BETTA) {
+                rows.add(i / 3);
+            }
+        }
+        if (rows.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        java.util.List<Integer> affected = new java.util.ArrayList<>();
+        for (int i = 0; i < board.length; i++) {
+            BoardSlot s = board[i];
+            if (s.getCard() != null && rows.contains(i / 3)) {
+                affected.add(i);
+            }
+        }
+        return affected;
+    }
+
     public List<Die> getPendingDiceChoices() {
         if (pendingDieLossSlot == null) {
             return java.util.Collections.emptyList();
@@ -2441,7 +2464,9 @@ public class GameState {
             return "";
         }
         boolean hasTarget = false;
-        for (BoardSlot s : board) {
+        for (int i = 0; i < board.length; i++) {
+            if (i == fletanSlot) continue;
+            BoardSlot s = board[i];
             if (s.getCard() != null && s.isFaceUp()
                     && (s.getCard().getType() == CardType.PEZ || s.getCard().getType() == CardType.PEZ_GRANDE)) {
                 hasTarget = true;
@@ -2465,6 +2490,9 @@ public class GameState {
             return "Fletan: no hay acción pendiente.";
         }
         BoardSlot target = board[slotIndex];
+        if (slotIndex == pendingFletanSlot) {
+            return "Fletan: no puedes elegir al propio Fletan.";
+        }
         if (target.getCard() == null || !target.isFaceUp()
                 || (target.getCard().getType() != CardType.PEZ && target.getCard().getType() != CardType.PEZ_GRANDE)) {
             return "Fletan: selecciona un pez boca arriba.";
@@ -3174,7 +3202,7 @@ public class GameState {
         processingRevealChain = true;
         while (!pendingRevealChain.isEmpty() && !hasBlockingRevealState()) {
             int idx = pendingRevealChain.poll();
-            String reveal = revealAndTrigger(idx);
+            String reveal = revealFromChain(idx);
             if (!reveal.isEmpty()) {
                 if (log.length() > 0) log.append(" ");
                 log.append(reveal);
@@ -3182,6 +3210,20 @@ public class GameState {
         }
         processingRevealChain = false;
         return log.toString();
+    }
+
+    private String revealFromChain(int slotIndex) {
+        if (slotIndex < 0 || slotIndex >= board.length) return "";
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null) return "";
+        if (!target.isFaceUp()) {
+            if (!canRevealSlot(slotIndex)) {
+                return "Derrame de petróleo impide revelar la carta.";
+            }
+            target.setFaceUp(true);
+            markRevealed(slotIndex);
+        }
+        return handleOnReveal(slotIndex, 0);
     }
 
     private String queueableSelection(PendingSelection selection, int actor, int aux, String message) {
@@ -3249,7 +3291,6 @@ public class GameState {
     private String invertAllCardsFromMicroPlastics() {
         int flippedUp = 0;
         int flippedDown = 0;
-        StringBuilder extra = new StringBuilder();
         boolean oilActive = isOilSpillActive();
         for (int i = 0; i < board.length; i++) {
             BoardSlot s = board[i];
@@ -3259,18 +3300,20 @@ public class GameState {
                 s.setFaceUp(false);
                 flippedDown++;
             } else if (!oilActive) {
-                String reveal = revealAndTrigger(i);
-                if (!reveal.isEmpty()) {
-                    if (extra.length() > 0) extra.append(" ");
-                    extra.append(reveal);
-                }
+                s.setFaceUp(true);
+                markRevealed(i);
+                pendingRevealChain.add(i);
                 flippedUp++;
             }
         }
         recomputeBottleAdjustments();
         String base = "Micro plásticos volteó " + flippedUp + " carta(s) boca arriba y " + flippedDown + " boca abajo.";
-        if (extra.length() > 0) {
-            base += " " + extra;
+        String chain = continueRevealChain("");
+        if (!chain.isEmpty()) {
+            base += " " + chain;
+        }
+        if (!pendingRevealChain.isEmpty()) {
+            base += " Revelaciones adicionales en espera.";
         }
         return base;
     }
@@ -4038,10 +4081,10 @@ public class GameState {
         for (Card c : pendingSepiaOptions) {
             deck.addLast(c);
         }
-        shuffleDeck();
         pendingSepiaOptions.clear();
         awaitingSepiaChoice = false;
 
+        boolean reshuffle = false;
         if (pendingSepiaSlot >= 0 && pendingSepiaSlot < board.length) {
             BoardSlot sepiaSlot = board[pendingSepiaSlot];
             if (sepiaSlot.getCard() != null && sepiaSlot.getCard().getId() == CardId.SEPIA) {
@@ -4050,9 +4093,16 @@ public class GameState {
                 }
                 sepiaSlot.clearDice();
                 deck.addLast(sepiaSlot.getCard());
-                sepiaSlot.setCard(deck.isEmpty() ? null : deck.pop());
+                reshuffle = true;
                 sepiaSlot.setFaceUp(false);
                 sepiaSlot.setStatus(new SlotStatus());
+            }
+        }
+        if (reshuffle) {
+            shuffleDeck();
+            if (pendingSepiaSlot >= 0 && pendingSepiaSlot < board.length) {
+                BoardSlot sepiaSlot = board[pendingSepiaSlot];
+                sepiaSlot.setCard(deck.isEmpty() ? null : deck.pop());
             }
         }
         pendingSepiaSlot = -1;
