@@ -166,7 +166,8 @@ public class GameState {
         }
     }
 
-    private enum CurrentDirection { UP, DOWN, LEFT, RIGHT }
+    public enum CurrentDirection { UP, DOWN, LEFT, RIGHT }
+    private final Deque<CurrentDirection> pendingCurrentAnimations = new ArrayDeque<>();
 
     public GameState() {
         for (int i = 0; i < board.length; i++) {
@@ -231,6 +232,7 @@ public class GameState {
         recentlyRevealedCards.clear();
         pendingBallenaDice.clear();
         pendingBallenaTotal = 0;
+        pendingCurrentAnimations.clear();
         pendingPulpoOptions.clear();
         pendingArenquePool.clear();
         pendingArenqueChosen.clear();
@@ -2278,6 +2280,7 @@ public class GameState {
     }
 
     private String applyCurrent(CurrentDirection direction) {
+        enqueueCurrentAnimation(direction);
         if (isCarpaDoradaActive()) {
             return applyDiceOnlyCurrent(direction);
         }
@@ -2759,6 +2762,7 @@ public class GameState {
     }
 
     private String applyDiceOnlyCurrent(CurrentDirection direction) {
+        enqueueCurrentAnimation(direction);
         List<Die> lost = new ArrayList<>();
         List<List<Die>> incoming = new ArrayList<>();
         for (int i = 0; i < board.length; i++) {
@@ -2856,6 +2860,22 @@ public class GameState {
         }
 
         return modified ? log.toString() : "";
+    }
+
+    private void enqueueCurrentAnimation(CurrentDirection direction) {
+        if (direction == null) {
+            return;
+        }
+        pendingCurrentAnimations.add(direction);
+    }
+
+    public List<CurrentDirection> consumePendingCurrentAnimations() {
+        if (pendingCurrentAnimations.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        List<CurrentDirection> result = new ArrayList<>(pendingCurrentAnimations);
+        pendingCurrentAnimations.clear();
+        return result;
     }
 
     private boolean isBottleTargetActive(int slotIndex) {

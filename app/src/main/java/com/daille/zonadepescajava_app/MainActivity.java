@@ -42,6 +42,7 @@ import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 import com.daille.zonadepescajava_app.ui.CardImageResolver;
 import com.daille.zonadepescajava_app.ui.CollectionCardAdapter;
 import com.daille.zonadepescajava_app.ui.DiceImageResolver;
+import com.daille.zonadepescajava_app.ui.TideParticlesView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -74,6 +75,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private float lastReserveTapCenterX = Float.NaN;
     private float lastReserveTapCenterY = Float.NaN;
     private long lastReserveTapAtMs = 0L;
+    private TideParticlesView tideParticlesView;
 
 
     private static class CaptureAnimationRequest {
@@ -102,6 +104,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setupScoreRecordsList();
         setupMenuButtons();
         setupDiceSelectionUi();
+        setupTideAnimationOverlay();
         setupCollectionsPanel();
 
         if (viewModel.isInitialized()) {
@@ -128,6 +131,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             boardLinksDecoration = new BoardLinksDecoration(this);
             binding.gamePanel.boardRecycler.addItemDecoration(boardLinksDecoration);
         }
+    }
+
+    private void setupTideAnimationOverlay() {
+        if (tideParticlesView != null) {
+            return;
+        }
+        tideParticlesView = new TideParticlesView(this);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        );
+        binding.animationOverlay.addView(tideParticlesView, params);
     }
 
 
@@ -306,6 +321,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             log = pendingGameOver;
         }
         binding.gamePanel.log.setText(log);
+        triggerTideAnimationIfNeeded();
         renderCapturedCards();
         binding.getRoot().post(() -> {
             hideRefillSlots(refillSlots);
@@ -332,6 +348,34 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         showRevealedCardsSequential(new ArrayList<>(revealed), afterReveals);
 
+    }
+
+    private void triggerTideAnimationIfNeeded() {
+        if (tideParticlesView == null) {
+            return;
+        }
+        List<GameState.CurrentDirection> currents = gameState.consumePendingCurrentAnimations();
+        if (currents.isEmpty()) {
+            return;
+        }
+        List<TideParticlesView.Direction> directions = new ArrayList<>();
+        for (GameState.CurrentDirection current : currents) {
+            switch (current) {
+                case UP:
+                    directions.add(TideParticlesView.Direction.UP);
+                    break;
+                case DOWN:
+                    directions.add(TideParticlesView.Direction.DOWN);
+                    break;
+                case LEFT:
+                    directions.add(TideParticlesView.Direction.LEFT);
+                    break;
+                case RIGHT:
+                    directions.add(TideParticlesView.Direction.RIGHT);
+                    break;
+            }
+        }
+        binding.animationOverlay.post(() -> tideParticlesView.playSequence(directions));
     }
 
     private void setupDiceSelectionUi() {
