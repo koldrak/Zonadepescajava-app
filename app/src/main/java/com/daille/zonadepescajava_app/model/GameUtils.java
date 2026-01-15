@@ -300,7 +300,7 @@ public final class GameUtils {
 
         cards.add(new Card(CardId.ESTURION, "Esturión", CardType.PEZ_GRANDE, 6,
                 (slotIndex, g) -> condSumAtLeast(8).isSatisfied(slotIndex, g) && bothDiceSameValue(slotIndex, g),
-                "Lanza todos los dados de tu reserva y colócalos en la zona de pesca.", "", ""));
+                "Lanza todos los dados de tu reserva menos 1 y colócalos en la zona de pesca.", "", ""));
 
         cards.add(new Card(CardId.BALLENA_JOROBADA, "Ballena jorobada", CardType.PEZ_GRANDE, 8,
                 condSumRange(1, 2), "Puedes elegir la dirección de la marea.", "", ""));

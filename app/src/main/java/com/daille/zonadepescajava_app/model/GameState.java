@@ -133,6 +133,7 @@ public class GameState {
         BOTTLE_TARGET,
         ARENQUE_DESTINATION,
         BLUE_WHALE_PLACE,
+        ESTURION_PLACE,
         SPIDER_CRAB_CHOOSE_CARD,
         SPIDER_CRAB_CHOOSE_SLOT,
         KOI_TARGET,
@@ -877,6 +878,7 @@ public class GameState {
                 }
                 break;
             case BLUE_WHALE_PLACE:
+            case ESTURION_PLACE:
                 for (int i = 0; i < board.length; i++) {
                     if (board[i].getCard() != null && board[i].getDice().size() < 2) {
                         highlight.add(i);
@@ -1124,6 +1126,7 @@ public class GameState {
                 result = placeArenqueFish(slotIndex);
                 break;
             case BLUE_WHALE_PLACE:
+            case ESTURION_PLACE:
                 result = placeBlueWhaleDie(slotIndex);
                 break;
             case SPIDER_CRAB_CHOOSE_SLOT:
@@ -1782,8 +1785,12 @@ public class GameState {
         if (awaitingGhostShrimpDecision) {
             return "Decide primero si intercambiar las cartas vistas por el Camarón fantasma.";
         }
-        if (pendingSelection == PendingSelection.BLUE_WHALE_PLACE && !pendingBallenaDice.isEmpty()) {
-            return "Coloca los dados pendientes de la Ballena azul antes de continuar.";
+        if ((pendingSelection == PendingSelection.BLUE_WHALE_PLACE
+                || pendingSelection == PendingSelection.ESTURION_PLACE)
+                && !pendingBallenaDice.isEmpty()) {
+            return pendingSelection == PendingSelection.ESTURION_PLACE
+                    ? "Coloca los dados pendientes del Esturión antes de continuar."
+                    : "Coloca los dados pendientes de la Ballena azul antes de continuar.";
         }
         if (selectedDie != null) {
             return "Coloca el dado ya lanzado antes de lanzar otro.";
@@ -1873,8 +1880,12 @@ public class GameState {
         if (awaitingGhostShrimpDecision) {
             return "Decide si intercambiar las cartas vistas por el Camarón fantasma antes de continuar.";
         }
-        if (pendingSelection == PendingSelection.BLUE_WHALE_PLACE && !pendingBallenaDice.isEmpty()) {
-            return "Primero coloca los dados pendientes de la Ballena azul.";
+        if ((pendingSelection == PendingSelection.BLUE_WHALE_PLACE
+                || pendingSelection == PendingSelection.ESTURION_PLACE)
+                && !pendingBallenaDice.isEmpty()) {
+            return pendingSelection == PendingSelection.ESTURION_PLACE
+                    ? "Primero coloca los dados pendientes del Esturión."
+                    : "Primero coloca los dados pendientes de la Ballena azul.";
         }
         if (!isBettaRowAllowed(slotIndex)) {
             return "Pez betta: solo puedes colocar dados en su fila.";
@@ -3039,6 +3050,7 @@ public class GameState {
                 clearPercebesState();
                 break;
             case BLUE_WHALE_PLACE:
+            case ESTURION_PLACE:
                 clearBallenaState();
                 break;
             case ARENQUE_DESTINATION:
@@ -5851,30 +5863,28 @@ public class GameState {
         if (reserve.isEmpty()) {
             return "Esturión: no hay dados en reserva.";
         }
+        if (reserve.size() == 1) {
+            return "Esturión: no hay suficientes dados en reserva para lanzar.";
+        }
+        List<DieType> toRoll = new ArrayList<>(reserve);
+        DieType saved = toRoll.remove(toRoll.size() - 1);
+        reserve.clear();
+        reserve.add(saved);
         List<Die> rolled = new ArrayList<>();
-        for (DieType type : new ArrayList<>(reserve)) {
+        for (DieType type : toRoll) {
             rolled.add(Die.roll(type, rng));
         }
-        reserve.clear();
-        int placed = 0;
-        for (Die die : rolled) {
-            boolean placedDie = false;
-            for (int i = 0; i < board.length; i++) {
-                BoardSlot target = board[i];
-                if (target.getCard() != null && target.getDice().size() < 2) {
-                    target.addDie(die);
-                    placed++;
-                    placedDie = true;
-                    break;
-                }
-            }
-            if (!placedDie) {
-                reserve.add(die.getType());
-            }
+        if (rolled.isEmpty()) {
+            return "Esturión: no hay dados para lanzar.";
         }
-        String base = "Esturión lanzó los dados y colocó " + placed + " dado(s) en la zona de pesca.";
-        String resolved = resolveAllReadySlots();
-        return resolved.isEmpty() ? base : base + " " + resolved;
+        pendingBallenaDice.clear();
+        pendingBallenaDice.addAll(rolled);
+        pendingBallenaTotal = pendingBallenaDice.size();
+        return queueableSelection(
+                PendingSelection.ESTURION_PLACE,
+                slotIndex,
+                "Esturión: coloca cada dado en la zona de pesca. Comienza con "
+                        + pendingBallenaDice.get(0).getLabel() + ".");
     }
 
     private String devourChosenFaceUp(int sharkSlot, int targetIndex) {
@@ -6270,11 +6280,15 @@ public class GameState {
         }
         Die moved = pendingBallenaDice.remove(0);
         String reveal = addDieToSlot(slotIndex, moved);
+        String actorName = pendingSelection == PendingSelection.ESTURION_PLACE ? "Esturión" : "Ballena azul";
+        String completion = pendingSelection == PendingSelection.ESTURION_PLACE
+                ? "colocó todos los dados en la zona de pesca."
+                : "reposicionó todos los dados en el tablero.";
         if (pendingBallenaDice.isEmpty()) {
             clearPendingSelection();
             return reveal.isEmpty()
-                    ? "Ballena azul reposicionó todos los dados en el tablero."
-                    : "Ballena azul reposicionó todos los dados en el tablero. " + reveal;
+                    ? actorName + " " + completion
+                    : actorName + " " + completion + " " + reveal;
         }
         int placedCount = pendingBallenaTotal - pendingBallenaDice.size();
         String nextLabel = pendingBallenaDice.get(0).getLabel();
