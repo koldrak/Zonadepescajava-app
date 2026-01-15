@@ -104,6 +104,8 @@ public class GameState {
     private Card pendingPeregrinoTopChoice = null;
     private int pendingHumpbackSlot = -1;
     private boolean awaitingHumpbackDirection = false;
+    private final java.util.List<Die> pendingLocoDice = new java.util.ArrayList<>();
+    private Die pendingLocoDie = null;
 
     private enum PendingSelection {
         NONE,
@@ -145,6 +147,7 @@ public class GameState {
         BARCO_PESQUERO_TARGET,
         TIGER_SHARK_TARGET,
         DRAGNET_RELEASE,
+        LOCO_TARGET,
         SEPIA_CAPTURE
     }
     private PendingSelection pendingSelection = PendingSelection.NONE;
@@ -355,6 +358,10 @@ public class GameState {
 
     public boolean isAwaitingMantisLostDieChoice() {
         return awaitingMantisLostDieChoice;
+    }
+
+    public Die getMantisRerolledDie() {
+        return mantisRerolledDie;
     }
 
     public boolean isAwaitingLangostaRecovery() {
@@ -836,6 +843,14 @@ public class GameState {
                     }
                 }
                 break;
+            case LOCO_TARGET:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    BoardSlot target = board[idx];
+                    if (target.getCard() != null && target.getDice().size() < 2) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
             case ATUN_DESTINATION:
                 for (int i = 0; i < board.length; i++) {
                     if (board[i].getCard() != null && board[i].getDice().size() < 2) {
@@ -1110,6 +1125,9 @@ public class GameState {
                 break;
             case TIGER_SHARK_TARGET:
                 result = resolveTigerSharkDevour(slotIndex);
+                break;
+            case LOCO_TARGET:
+                result = chooseLocoTarget(slotIndex);
                 break;
 
             default:
@@ -2992,6 +3010,9 @@ public class GameState {
                 break;
             case BARCO_PESQUERO_TARGET:
                 break;
+            case LOCO_TARGET:
+                clearLocoState(true);
+                break;
             default:
                 break;
         }
@@ -3020,6 +3041,19 @@ public class GameState {
         awaitingMantisLostDieChoice = false;
         mantisSlotIndex = -1;
         mantisRerolledDie = null;
+    }
+
+    private void clearLocoState(boolean returnToReserve) {
+        if (returnToReserve) {
+            if (pendingLocoDie != null) {
+                reserve.add(pendingLocoDie.getType());
+            }
+            for (Die die : pendingLocoDice) {
+                reserve.add(die.getType());
+            }
+        }
+        pendingLocoDice.clear();
+        pendingLocoDie = null;
     }
 
     private void clearPulpoState() {
@@ -3144,6 +3178,7 @@ public class GameState {
         for (int i = 0; i < board.length; i++) {
             BoardSlot s = board[i];
             if (s.getCard() == null) continue;
+            if (s.getCard().getId() == CardId.MICRO_PLASTICOS) continue;
             if (s.isFaceUp()) {
                 s.setFaceUp(false);
                 flippedDown++;
@@ -4800,6 +4835,64 @@ public class GameState {
         if (!awaitingValueAdjustment) {
             return "No hay ajustes pendientes.";
         }
+        if (adjustmentSource == CardId.LOCO) {
+            if (pendingLocoDie == null) {
+                clearValueAdjustmentState();
+                return "No hay dado del Loco para ajustar.";
+            }
+            if (adjustmentSlotIndex < 0 || adjustmentSlotIndex >= board.length) {
+                clearValueAdjustmentState();
+                return "La carta destino del Loco ya no está disponible.";
+            }
+            BoardSlot slot = board[adjustmentSlotIndex];
+            if (slot.getCard() == null || slot.getDice().size() >= 2) {
+                clearValueAdjustmentState();
+                return "La carta destino del Loco ya no está disponible.";
+            }
+            int delta = increase ? adjustmentAmount : -adjustmentAmount;
+            int newVal = pendingLocoDie.getValue() + delta;
+            if (newVal < 1 || newVal > pendingLocoDie.getType().getSides()) {
+                return "No puedes ajustar el dado más allá de sus caras. Elige la otra opción.";
+            }
+            Die adjusted = new Die(pendingLocoDie.getType(), newVal);
+            String reveal = addDieToSlotInternal(adjustmentSlotIndex, adjusted, false);
+            String base = "Loco movió un dado a " + slot.getCard().getName() + " (" + newVal + ").";
+
+            pendingLocoDie = null;
+            awaitingValueAdjustment = false;
+            clearValueAdjustmentState();
+
+            String msg = reveal.isEmpty() ? base : base + " " + reveal;
+
+            if (!pendingLocoDice.isEmpty()) {
+                if (!hasLocoTargets(pendingSelectionActor)) {
+                    for (Die die : pendingLocoDice) {
+                        reserve.add(die.getType());
+                    }
+                    pendingLocoDice.clear();
+                    clearPendingSelection();
+                    msg += " Loco no encontró más cartas adyacentes con espacio; los dados restantes regresan a la reserva.";
+                } else {
+                    return msg + " Elige otra carta adyacente.";
+                }
+            }
+
+            if (pendingSelection == PendingSelection.LOCO_TARGET) {
+                clearPendingSelection();
+            }
+
+            String revealLog = continueRevealChain("");
+            if (!revealLog.isEmpty()) {
+                msg = msg.isEmpty() ? revealLog : msg + " " + revealLog;
+            }
+
+            String endTurn = resolveAllReadySlots();
+            if (!endTurn.isEmpty()) {
+                msg = msg.isEmpty() ? endTurn : msg + " " + endTurn;
+            }
+
+            return msg;
+        }
         if (adjustmentSlotIndex < 0 || adjustmentSlotIndex >= board.length) {
             clearValueAdjustmentState();
             return "El dado a ajustar ya no está disponible.";
@@ -5932,47 +6025,54 @@ public class GameState {
             return "";
         }
         board[slotIndex].clearDice();
-        List<Integer> available = new ArrayList<>();
+        clearLocoState(false);
+        pendingLocoDice.addAll(diceOnCard);
+        if (!hasLocoTargets(slotIndex)) {
+            for (Die d : pendingLocoDice) {
+                reserve.add(d.getType());
+            }
+            clearLocoState(false);
+            return "Loco no encontró cartas adyacentes con espacio; los dados regresan a la reserva.";
+        }
+        return queueableSelection(
+                PendingSelection.LOCO_TARGET,
+                slotIndex,
+                "Loco: elige una carta adyacente para mover un dado.");
+    }
+
+    private String chooseLocoTarget(int slotIndex) {
+        if (!adjacentIndices(pendingSelectionActor, true).contains(slotIndex)) {
+            return "Elige una carta adyacente a Loco.";
+        }
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null) {
+            return "Esa casilla no tiene carta.";
+        }
+        if (target.getDice().size() >= 2) {
+            return "La carta seleccionada ya tiene 2 dados.";
+        }
+        if (pendingLocoDice.isEmpty()) {
+            clearPendingSelection();
+            clearLocoState(false);
+            return "No hay dados por mover.";
+        }
+        pendingLocoDie = pendingLocoDice.remove(0);
+        return startValueAdjustment(
+                slotIndex,
+                -1,
+                1,
+                CardId.LOCO,
+                "Loco: elige si sumar o restar 1 al dado.");
+    }
+
+    private boolean hasLocoTargets(int slotIndex) {
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot target = board[idx];
             if (target.getCard() != null && target.getDice().size() < 2) {
-                available.add(idx);
+                return true;
             }
         }
-        if (available.isEmpty()) {
-            for (Die d : diceOnCard) {
-                reserve.add(d.getType());
-            }
-            return "Loco no encontró cartas adyacentes con espacio; los dados regresan a la reserva.";
-        }
-        StringBuilder log = new StringBuilder();
-        for (Die die : diceOnCard) {
-            if (available.isEmpty()) {
-                reserve.add(die.getType());
-                continue;
-            }
-            int targetIndex = available.get(rng.nextInt(available.size()));
-            BoardSlot target = board[targetIndex];
-            int sides = die.getType().getSides();
-            int value = die.getValue();
-            int adjusted;
-            if (value <= 1) {
-                adjusted = value + 1;
-            } else if (value >= sides) {
-                adjusted = value - 1;
-            } else {
-                adjusted = rng.nextBoolean() ? value + 1 : value - 1;
-            }
-            Die adjustedDie = new Die(die.getType(), adjusted);
-            String reveal = addDieToSlotInternal(targetIndex, adjustedDie, false);
-            if (target.getDice().size() >= 2) {
-                available.remove((Integer) targetIndex);
-            }
-            if (log.length() > 0) log.append(" ");
-            String base = "Loco movió un dado a " + target.getCard().getName() + " (" + adjusted + ").";
-            log.append(reveal.isEmpty() ? base : base + " " + reveal);
-        }
-        return log.toString();
+        return false;
     }
 
     private void captureAdjacentFaceDown(int slotIndex) {
