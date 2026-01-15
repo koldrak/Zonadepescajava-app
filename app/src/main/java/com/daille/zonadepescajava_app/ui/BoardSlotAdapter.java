@@ -3,6 +3,7 @@ package com.daille.zonadepescajava_app.ui;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.view.LayoutInflater;
+import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
@@ -40,6 +41,7 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
     private final List<Integer> highlighted = new ArrayList<>();
     private final List<Integer> remoraBorderSlots = new ArrayList<>();
     private final List<Integer> botaViejaPenaltySlots = new ArrayList<>();
+    private final List<Integer> autoHundidoBonusSlots = new ArrayList<>();
 
 
     public BoardSlotAdapter(Context context, List<BoardSlot> data, OnSlotInteractionListener listener) {
@@ -66,7 +68,8 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
                 slots.get(position),
                 highlighted.contains(position),
                 remoraBorderSlots.contains(position),
-                botaViejaPenaltySlots.contains(position)
+                botaViejaPenaltySlots.contains(position),
+                autoHundidoBonusSlots.contains(position)
         );
 
     }
@@ -78,17 +81,18 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
     }
 
     public void update(List<BoardSlot> updated, List<Integer> highlights) {
-        update(updated, highlights, null, null);
+        update(updated, highlights, null, null, null);
     }
 
     public void update(List<BoardSlot> updated, List<Integer> highlights, List<Integer> remoraSlots) {
-        update(updated, highlights, remoraSlots, null);
+        update(updated, highlights, remoraSlots, null, null);
     }
 
     public void update(List<BoardSlot> updated,
                        List<Integer> highlights,
                        List<Integer> remoraSlots,
-                       List<Integer> botaViejaSlots) {
+                       List<Integer> botaViejaSlots,
+                       List<Integer> autoHundidoSlots) {
 
         slots.clear();
         slots.addAll(updated);
@@ -106,6 +110,11 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
         botaViejaPenaltySlots.clear();
         if (botaViejaSlots != null) {
             botaViejaPenaltySlots.addAll(botaViejaSlots);
+        }
+
+        autoHundidoBonusSlots.clear();
+        if (autoHundidoSlots != null) {
+            autoHundidoBonusSlots.addAll(autoHundidoSlots);
         }
 
         notifyDataSetChanged();
@@ -191,14 +200,19 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
             view.setBackground(halo);
         }
 
-        void bind(BoardSlot slot, boolean highlighted, boolean remoraBorder, boolean botaViejaPenalty) {
+        void bind(BoardSlot slot, boolean highlighted, boolean remoraBorder, boolean botaViejaPenalty,
+                  boolean autoHundidoBonus) {
             Card card = slot.getCard();
-            Bitmap image = imageResolver.getImageFor(card, slot.isFaceUp());
-            if (image == null) {
-                image = imageResolver.getCardBack();
+            Bitmap image = null;
+            if (card != null) {
+                image = imageResolver.getImageFor(card, slot.isFaceUp());
+                if (image == null) {
+                    image = imageResolver.getCardBack();
+                }
             }
 
             binding.cardImage.setImageBitmap(image);
+            binding.cardImage.setVisibility(card == null ? View.INVISIBLE : View.VISIBLE);
 
             int strokePx;
             int strokeColor;
@@ -247,6 +261,20 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
                 }
             }
 
+// ✅ Auto Hundido: “+1 a la suma”
+// Para mantener consistencia visual, subimos SOLO 1 dado (el de mayor valor) en 1.
+            if (autoHundidoBonus && dice.size() > 0) {
+                if (dice.size() == 1) {
+                    int sides = dice.get(0).getType().getSides();
+                    v1 = Math.min(sides, v1 + 1);
+                } else {
+                    int sides1 = dice.get(0).getType().getSides();
+                    int sides2 = dice.get(1).getType().getSides();
+                    if (v1 >= v2) v1 = Math.min(sides1, v1 + 1);
+                    else          v2 = Math.min(sides2, v2 + 1);
+                }
+            }
+
             if (dice.size() > 0) {
                 Bitmap dieOne = diceImageResolver.getFace(dice.get(0).getType(), v1);
                 binding.dieSlotOne.setVisibility(ViewGroup.VISIBLE);
@@ -265,7 +293,7 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
 
 // ✅ Halo negro para dados afectados
 // (si ya tenías applyBottleHalo(ImageView, boolean), úsalo así)
-            boolean bottleHalo = botaViejaPenalty || bottleBuffed || glassPenalty;
+            boolean bottleHalo = botaViejaPenalty || autoHundidoBonus || bottleBuffed || glassPenalty;
             applyBottleHalo(binding.dieSlotOne, bottleHalo && dice.size() > 0);
             applyBottleHalo(binding.dieSlotTwo, bottleHalo && dice.size() > 1);
 
