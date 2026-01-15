@@ -1299,9 +1299,10 @@ public class GameState {
         }
         pendingDecoradorOptions.clear();
         awaitingDecoradorChoice = false;
-        pendingSelection = PendingSelection.DECORADOR_CHOOSE_SLOT;
-        pendingSelectionActor = decoradorSlotIndex;
-        return "Cangrejo decorador: elige una carta boca abajo sin dados para reemplazar.";
+        return queueableSelection(
+                PendingSelection.DECORADOR_CHOOSE_SLOT,
+                decoradorSlotIndex,
+                "Cangrejo decorador: elige una carta boca abajo sin dados para reemplazar.");
     }
 
     public String cancelDecoradorAbility() {
@@ -1452,10 +1453,9 @@ public class GameState {
         }
         slot.setDie(atunDieIndex, finalDie);
         awaitingAtunDecision = false;
-        pendingSelection = PendingSelection.ATUN_DESTINATION;
-        pendingSelectionActor = atunSlotIndex;
-        return (reroll ? "Atún relanzó el dado " : "Atún conserva el dado ")
+        String message = (reroll ? "Atún relanzó el dado " : "Atún conserva el dado ")
                 + "(" + finalDie.getLabel() + "). Elige una carta para reposicionarlo.";
+        return queueableSelection(PendingSelection.ATUN_DESTINATION, atunSlotIndex, message);
     }
 
     public String chooseBlueCrabUse(boolean useAbility) {
@@ -4328,9 +4328,10 @@ public class GameState {
         if (!hasOrigin || !hasTarget) {
             return "No hay movimientos válidos para la morena.";
         }
-        pendingSelection = PendingSelection.MORENA_FROM;
-        pendingSelectionActor = slotIndex;
-        return "Morena: elige una carta adyacente con dado para mover.";
+        return queueableSelection(
+                PendingSelection.MORENA_FROM,
+                slotIndex,
+                "Morena: elige una carta adyacente con dado para mover.");
     }
 
     private String chooseMorenaOrigin(int slotIndex) {
@@ -4625,10 +4626,9 @@ public class GameState {
         Die chosen = lostDice.remove(index);
         mantisRerolledDie = Die.roll(chosen.getType(), rng);
         awaitingMantisLostDieChoice = false;
-        pendingSelection = PendingSelection.MANTIS_TARGET;
-        pendingSelectionActor = mantisSlotIndex;
-        return "Langostino mantis lanzó un " + mantisRerolledDie.getLabel()
+        String message = "Langostino mantis lanzó un " + mantisRerolledDie.getLabel()
                 + ". Elige una carta con dado para reemplazarlo.";
+        return queueableSelection(PendingSelection.MANTIS_TARGET, mantisSlotIndex, message);
     }
 
     public String chooseLangostaRecoveredDie(int index) {
@@ -5195,12 +5195,11 @@ public class GameState {
             clearArenqueState();
             return "No se eligieron peces pequeños.";
         }
-        pendingSelection = PendingSelection.ARENQUE_DESTINATION;
-        pendingSelectionActor = arenqueSlotIndex;
         int remainingSlots = Math.min(arenquePlacementSlots, pendingArenqueChosen.size());
-        return remainingSlots == 1
+        String message = remainingSlots == 1
                 ? "Coloca el pez pequeño elegido adyacente al Arenque."
                 : "Coloca los 2 peces pequeños adyacentes al Arenque.";
+        return queueableSelection(PendingSelection.ARENQUE_DESTINATION, arenqueSlotIndex, message);
     }
 
     private String placeArenqueFish(int slotIndex) {
@@ -5887,9 +5886,10 @@ public class GameState {
         }
 
         pendingPercebesDice.addAll(dice);
-        pendingSelection = PendingSelection.PERCEBES_MOVE;
-        pendingSelectionActor = slotIndex;
-        return "Percebes: elige una carta adyacente para mover un dado.";
+        return queueableSelection(
+                PendingSelection.PERCEBES_MOVE,
+                slotIndex,
+                "Percebes: elige una carta adyacente para mover un dado.");
     }
 
     private String movePercebesDie(int slotIndex) {
@@ -6017,9 +6017,10 @@ public class GameState {
         if (!hasFaceDown) {
             return "No hay cartas boca abajo para revelar.";
         }
-        pendingSelection = PendingSelection.SALMON_FLIP;
-        pendingSelectionActor = -1;
-        return "Salmón: selecciona una carta boca abajo para revelarla.";
+        return queueableSelection(
+                PendingSelection.SALMON_FLIP,
+                -1,
+                "Salmón: selecciona una carta boca abajo para revelarla.");
     }
 
     private String flipChosenFaceDown(int slotIndex) {
