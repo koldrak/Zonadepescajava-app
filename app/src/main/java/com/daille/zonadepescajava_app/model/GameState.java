@@ -395,7 +395,7 @@ public class GameState {
         return awaitingHorseshoeValue;
     }
 
-    private boolean hasPendingTurnResolutions() {
+    public boolean hasPendingTurnResolutions() {
         return isAwaitingDieLoss()
                 || awaitingAtunDecision
                 || awaitingBlueCrabDecision
@@ -489,12 +489,20 @@ public class GameState {
         return names;
     }
 
+    public List<Card> getPendingArenqueCards() {
+        return new ArrayList<>(pendingArenquePool);
+    }
+
     public List<String> getPendingDecoradorNames() {
         List<String> names = new ArrayList<>();
         for (Card c : pendingDecoradorOptions) {
             names.add(c.getName());
         }
         return names;
+    }
+
+    public List<Card> getPendingDecoradorCards() {
+        return new ArrayList<>(pendingDecoradorOptions);
     }
 
     public boolean isAwaitingSepiaChoice() {
@@ -509,6 +517,10 @@ public class GameState {
         return names;
     }
 
+    public List<Card> getPendingSepiaCards() {
+        return new ArrayList<>(pendingSepiaOptions);
+    }
+
     public boolean isAwaitingDragnetReleaseChoice() {
         return awaitingDragnetReleaseChoice;
     }
@@ -519,6 +531,10 @@ public class GameState {
             names.add(c.getName());
         }
         return names;
+    }
+
+    public List<Card> getPendingDragnetCards() {
+        return new ArrayList<>(pendingDragnetTargets);
     }
 
     public boolean isAwaitingHachaReleaseChoice() {
@@ -533,6 +549,10 @@ public class GameState {
         return names;
     }
 
+    public List<Card> getPendingHachaReleaseCards() {
+        return new ArrayList<>(pendingHachaReleaseChoices);
+    }
+
     public boolean isAwaitingDamiselasChoice() {
         return awaitingDamiselasChoice;
     }
@@ -543,6 +563,10 @@ public class GameState {
             names.add(c.getName());
         }
         return names;
+    }
+
+    public List<Card> getPendingDamiselasCards() {
+        return new ArrayList<>(pendingDamiselasTop);
     }
 
     public boolean isAwaitingPeregrinoChoice() {
@@ -559,6 +583,10 @@ public class GameState {
             names.add(c.getName());
         }
         return names;
+    }
+
+    public List<Card> getPendingPeregrinoCards() {
+        return new ArrayList<>(pendingPeregrinoTop);
     }
 
     public boolean isAwaitingHumpbackDirection() {
@@ -579,6 +607,10 @@ public class GameState {
             names.add(c.getName());
         }
         return names;
+    }
+
+    public List<Card> getPendingPulpoCards() {
+        return new ArrayList<>(pendingPulpoOptions);
     }
 
     public int getHorseshoeDieSides() {
@@ -3662,6 +3694,10 @@ public class GameState {
             names.add(c.getName());
         }
         return names;
+    }
+
+    public List<Card> getFailedDiscardCards() {
+        return new ArrayList<>(failedDiscards);
     }
 
     public String chooseSpiderCrabCard(int index) {
