@@ -4,6 +4,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -43,6 +44,7 @@ import com.daille.zonadepescajava_app.ui.BoardLinksDecoration;
 import com.daille.zonadepescajava_app.ui.BoardSlotAdapter;
 import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 import com.daille.zonadepescajava_app.ui.CardImageResolver;
+import com.daille.zonadepescajava_app.ui.CardPackOpenDialog;
 import com.daille.zonadepescajava_app.ui.CollectionCardAdapter;
 import com.daille.zonadepescajava_app.ui.DeckSelectionAdapter;
 import com.daille.zonadepescajava_app.ui.DiceImageResolver;
@@ -60,6 +62,8 @@ import java.util.Locale;
 import java.util.Set;
 import java.text.DateFormat;
 import java.util.Date;
+import java.io.InputStream;
+import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.OnSlotInteractionListener {
 
@@ -88,6 +92,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private final Map<CardId, Integer> deckSelectionCounts = new EnumMap<>(CardId.class);
     private List<Card> selectedDeck = new ArrayList<>();
     private int deckSelectionPoints = 0;
+    private final Map<String, Bitmap> packImageCache = new java.util.HashMap<>();
+
+    private static final String PACK_RANDOM_ASSET = "sobresorpresa.png";
+    private static final String PACK_CRUSTACEO_ASSET = "sobrecrustaceos.png";
+    private static final String PACK_SMALL_FISH_ASSET = "sobrepecespequeños.png";
+    private static final String PACK_BIG_FISH_ASSET = "sobrepecesgrandes.png";
+    private static final String PACK_OBJECT_ASSET = "sobreobjetos.png";
 
 
     private static class CaptureAnimationRequest {
@@ -243,16 +254,17 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.diceShopPanel.diceShopBuyD8.setOnClickListener(v -> attemptDicePurchase(DieType.D8, 600));
         binding.diceShopPanel.diceShopBuyD12.setOnClickListener(v -> attemptDicePurchase(DieType.D12, 1000));
         updateDiceShopDicePreviews();
+        updateCardPackPreviews();
         binding.diceShopPanel.cardPackRandomBuy.setOnClickListener(v ->
-                attemptCardPackPurchase(2000, null));
+                attemptCardPackPurchase(2000, null, PACK_RANDOM_ASSET));
         binding.diceShopPanel.cardPackCrustaceoBuy.setOnClickListener(v ->
-                attemptCardPackPurchase(2500, CardType.CRUSTACEO));
+                attemptCardPackPurchase(2500, CardType.CRUSTACEO, PACK_CRUSTACEO_ASSET));
         binding.diceShopPanel.cardPackSmallFishBuy.setOnClickListener(v ->
-                attemptCardPackPurchase(2500, CardType.PEZ));
+                attemptCardPackPurchase(2500, CardType.PEZ, PACK_SMALL_FISH_ASSET));
         binding.diceShopPanel.cardPackBigFishBuy.setOnClickListener(v ->
-                attemptCardPackPurchase(2500, CardType.PEZ_GRANDE));
+                attemptCardPackPurchase(2500, CardType.PEZ_GRANDE, PACK_BIG_FISH_ASSET));
         binding.diceShopPanel.cardPackObjectBuy.setOnClickListener(v ->
-                attemptCardPackPurchase(2500, CardType.OBJETO));
+                attemptCardPackPurchase(2500, CardType.OBJETO, PACK_OBJECT_ASSET));
     }
 
     private void updateDiceShopDicePreviews() {
@@ -464,7 +476,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         refreshDiceShopUi();
     }
 
-    private void attemptCardPackPurchase(int cost, CardType filterType) {
+    private void attemptCardPackPurchase(int cost, CardType filterType, String packAsset) {
         int available = scoreDatabaseHelper.getAvailablePoints();
         if (available < cost) {
             Toast.makeText(this, "No tienes suficientes puntos para comprar este paquete.", Toast.LENGTH_SHORT).show();
@@ -486,28 +498,39 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         scoreDatabaseHelper.addSpentPoints(cost);
         refreshDiceShopUi();
-        showCardPackRewards(awarded);
+        showCardPackRewards(awarded, packAsset);
     }
 
-    private void showCardPackRewards(List<Card> cards) {
+    private void showCardPackRewards(List<Card> cards, String packAsset) {
         if (cards == null || cards.isEmpty()) {
             return;
         }
-        List<Card> remaining = new ArrayList<>(cards);
-        showCardPackRewardStep(remaining);
+        Bitmap packImage = loadPackAsset(packAsset);
+        CardPackOpenDialog.show(this, packImage, cards, cardImageResolver);
     }
 
-    private void showCardPackRewardStep(List<Card> remaining) {
-        if (remaining.isEmpty()) {
-            return;
+    private Bitmap loadPackAsset(String assetName) {
+        if (assetName == null) {
+            return null;
         }
-        Card card = remaining.remove(0);
-        Bitmap image = cardImageResolver.getImageFor(card, true);
-        if (image == null) {
-            image = cardImageResolver.getCardBack();
+        if (packImageCache.containsKey(assetName)) {
+            return packImageCache.get(assetName);
         }
-        String overlay = getString(R.string.card_pack_reward_detail, card.getName());
-        CardFullscreenDialog.show(this, image, overlay, () -> showCardPackRewardStep(remaining));
+        Bitmap bitmap = null;
+        try (InputStream stream = getAssets().open("img/" + assetName)) {
+            bitmap = BitmapFactory.decodeStream(stream);
+        } catch (IOException ignored) {
+        }
+        packImageCache.put(assetName, bitmap);
+        return bitmap;
+    }
+
+    private void updateCardPackPreviews() {
+        binding.diceShopPanel.cardPackRandomImage.setImageBitmap(loadPackAsset(PACK_RANDOM_ASSET));
+        binding.diceShopPanel.cardPackCrustaceoImage.setImageBitmap(loadPackAsset(PACK_CRUSTACEO_ASSET));
+        binding.diceShopPanel.cardPackSmallFishImage.setImageBitmap(loadPackAsset(PACK_SMALL_FISH_ASSET));
+        binding.diceShopPanel.cardPackBigFishImage.setImageBitmap(loadPackAsset(PACK_BIG_FISH_ASSET));
+        binding.diceShopPanel.cardPackObjectImage.setImageBitmap(loadPackAsset(PACK_OBJECT_ASSET));
     }
 
     private void setupSettingsPanel() {

@@ -34,6 +34,11 @@
     <string name="card_pack_small_fish">Paquete celeste (Peces pequeños) • 2500 puntos</string>
     <string name="card_pack_big_fish">Paquete verde (Peces grandes) • 2500 puntos</string>
     <string name="card_pack_object">Paquete negro (Objetos) • 2500 puntos</string>
+    <string name="card_pack_random_description">Imagen de paquete sorpresa</string>
+    <string name="card_pack_crustaceo_description">Imagen de paquete crustáceos</string>
+    <string name="card_pack_small_fish_description">Imagen de paquete peces pequeños</string>
+    <string name="card_pack_big_fish_description">Imagen de paquete peces grandes</string>
+    <string name="card_pack_object_description">Imagen de paquete objetos</string>
     <string name="card_pack_reward_detail">Carta obtenida: %1$s</string>
     <string name="buy">Comprar</string>
     <string name="back">Volver</string>
