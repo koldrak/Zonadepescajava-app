@@ -157,7 +157,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void setupMenuButtons() {
         binding.startMenu.startNewGame.setOnClickListener(v -> {
-            showDiceSelectionPanel();
+            showDeckSelectionPanel();
         });
         binding.startMenu.openDiceShop.setOnClickListener(v -> showDiceShopPanel());
         binding.diceSelectionPanel.openDeckSelection.setOnClickListener(v -> showDeckSelectionPanel());
