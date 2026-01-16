@@ -28,6 +28,14 @@
             android:text="Nuevo juego" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/openDiceShop"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/dice_shop_title" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/openSettings"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"

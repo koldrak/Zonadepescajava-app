@@ -13,7 +13,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"
-        android:text="Arrastra los dados que usaras a la zona de selección"
+        android:text="@string/dice_selection_instruction"
         android:textAppearance="@style/TextAppearance.Material3.TitleSmall" />
 
     <FrameLayout
@@ -37,7 +37,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
-        android:text="Dados seleccionados: 0/7"
+        android:text="@string/dice_selection_counter_placeholder"
         android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
 
     <FrameLayout
@@ -55,6 +55,14 @@
             android:text="almacén de dados"
             android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
     </FrameLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/openDeckSelection"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:text="@string/deck_selection_title" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/confirmDiceSelection"

@@ -1,0 +1,143 @@
+package com.daille.zonadepescajava_app.ui;
+
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.daille.zonadepescajava_app.R;
+import com.daille.zonadepescajava_app.model.Card;
+import com.daille.zonadepescajava_app.model.CardId;
+import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
+
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+
+public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdapter.DeckSelectionViewHolder> {
+
+    public interface OnSelectionChangedListener {
+        void onSelectionChanged();
+    }
+
+    private final LayoutInflater inflater;
+    private final CardImageResolver imageResolver;
+    private final List<Card> cards = new ArrayList<>();
+    private final Map<CardId, Integer> selectionCounts = new EnumMap<>(CardId.class);
+    private final OnSelectionChangedListener selectionListener;
+
+    public DeckSelectionAdapter(Context context, OnSelectionChangedListener selectionListener) {
+        this.inflater = LayoutInflater.from(context);
+        this.imageResolver = new CardImageResolver(context);
+        this.selectionListener = selectionListener;
+    }
+
+    public void submitList(List<Card> items) {
+        cards.clear();
+        if (items != null) {
+            cards.addAll(items);
+        }
+        selectionCounts.clear();
+        notifyDataSetChanged();
+        if (selectionListener != null) {
+            selectionListener.onSelectionChanged();
+        }
+    }
+
+    public Map<CardId, Integer> getSelectionCounts() {
+        return selectionCounts;
+    }
+
+    public void clearSelections() {
+        selectionCounts.clear();
+        notifyDataSetChanged();
+        if (selectionListener != null) {
+            selectionListener.onSelectionChanged();
+        }
+    }
+
+    @NonNull
+    @Override
+    public DeckSelectionViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = inflater.inflate(R.layout.item_deck_selection_card, parent, false);
+        return new DeckSelectionViewHolder(view);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull DeckSelectionViewHolder holder, int position) {
+        Card card = cards.get(position);
+        Bitmap image = imageResolver.getImageFor(card, true);
+        if (image == null) {
+            image = imageResolver.getCardBack();
+        }
+        holder.cardImage.setImageBitmap(image);
+        holder.cardImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        holder.cardImage.setContentDescription(card != null ? card.getName()
+                : holder.cardImage.getContext().getString(R.string.card_image_content_description));
+
+        int count = selectionCounts.getOrDefault(card.getId(), 0);
+        if (count > 0) {
+            holder.selectionBadge.setVisibility(View.VISIBLE);
+            holder.selectionBadge.setText(holder.selectionBadge.getContext()
+                    .getString(R.string.deck_selection_badge, count));
+        } else {
+            holder.selectionBadge.setVisibility(View.GONE);
+        }
+
+        holder.itemView.setOnClickListener(v -> {
+            int current = selectionCounts.getOrDefault(card.getId(), 0);
+            int next = (current + 1) % 3;
+            if (next == 0) {
+                selectionCounts.remove(card.getId());
+            } else {
+                selectionCounts.put(card.getId(), next);
+            }
+            notifyItemChanged(holder.getBindingAdapterPosition());
+            if (selectionListener != null) {
+                selectionListener.onSelectionChanged();
+            }
+        });
+        holder.itemView.setOnLongClickListener(v -> {
+            Bitmap fullImage = imageResolver.getImageFor(card, true);
+            if (fullImage == null) {
+                fullImage = imageResolver.getCardBack();
+            }
+            CardFullscreenDialog.show(holder.itemView.getContext(), fullImage);
+            return true;
+        });
+    }
+
+    @Override
+    public int getItemCount() {
+        return cards.size();
+    }
+
+    public List<Card> getSelectedDeck() {
+        List<Card> selected = new ArrayList<>();
+        for (Card card : cards) {
+            int count = selectionCounts.getOrDefault(card.getId(), 0);
+            for (int i = 0; i < count; i++) {
+                selected.add(card);
+            }
+        }
+        return selected;
+    }
+
+    static class DeckSelectionViewHolder extends RecyclerView.ViewHolder {
+        private final ImageView cardImage;
+        private final TextView selectionBadge;
+
+        DeckSelectionViewHolder(@NonNull View itemView) {
+            super(itemView);
+            cardImage = itemView.findViewById(R.id.deckSelectionCardImage);
+            selectionBadge = itemView.findViewById(R.id.deckSelectionBadge);
+        }
+    }
+}
