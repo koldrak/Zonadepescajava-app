@@ -31,6 +31,8 @@ public class GameState {
     private int blueCrabSlotIndex = -1;
     private boolean awaitingBlowfishDecision = false;
     private int blowfishSlotIndex = -1;
+    private boolean awaitingPezLoboDecision = false;
+    private int pezLoboSlotIndex = -1;
     private boolean awaitingMantisDecision = false;
     private boolean awaitingMantisLostDieChoice = false;
     private boolean awaitingLangostaRecovery = false;
@@ -212,6 +214,8 @@ public class GameState {
         blueCrabSlotIndex = -1;
         awaitingBlowfishDecision = false;
         blowfishSlotIndex = -1;
+        awaitingPezLoboDecision = false;
+        pezLoboSlotIndex = -1;
         awaitingMantisDecision = false;
         awaitingMantisLostDieChoice = false;
         awaitingLangostaRecovery = false;
@@ -359,6 +363,10 @@ public class GameState {
         return awaitingBlowfishDecision;
     }
 
+    public boolean isAwaitingPezLoboDecision() {
+        return awaitingPezLoboDecision;
+    }
+
     public boolean isAwaitingMantisDecision() {
         return awaitingMantisDecision;
     }
@@ -392,6 +400,7 @@ public class GameState {
                 || awaitingAtunDecision
                 || awaitingBlueCrabDecision
                 || awaitingBlowfishDecision
+                || awaitingPezLoboDecision
                 || awaitingMantisDecision
                 || awaitingMantisLostDieChoice
                 || awaitingLangostaRecovery
@@ -579,6 +588,15 @@ public class GameState {
             return 0;
         }
         return slot.getDice().get(horseshoeDieIndex).getType().getSides();
+    }
+
+    public DieType getHorseshoeDieType() {
+        if (horseshoeSlotIndex < 0 || horseshoeSlotIndex >= board.length) return null;
+        BoardSlot slot = board[horseshoeSlotIndex];
+        if (slot.getDice().isEmpty() || horseshoeDieIndex < 0 || horseshoeDieIndex >= slot.getDice().size()) {
+            return null;
+        }
+        return slot.getDice().get(horseshoeDieIndex).getType();
     }
 
     public int getPendingAdjustmentAmount() {
@@ -1615,6 +1633,50 @@ public class GameState {
         return msg;
     }
 
+    public String choosePezLoboUse(boolean useAbility) {
+        if (!awaitingPezLoboDecision) {
+            return "No hay decisión pendiente del Pez Lobo.";
+        }
+        if (pezLoboSlotIndex < 0 || pezLoboSlotIndex >= board.length) {
+            awaitingPezLoboDecision = false;
+            pezLoboSlotIndex = -1;
+            return "El Pez Lobo ya no está disponible.";
+        }
+        awaitingPezLoboDecision = false;
+        if (!useAbility) {
+            pezLoboSlotIndex = -1;
+
+            String msg = "Omitiste la habilidad del Pez Lobo.";
+
+            String revealLog = continueRevealChain("");
+            if (!revealLog.isEmpty()) {
+                msg = msg.isEmpty() ? revealLog : msg + " " + revealLog;
+            }
+
+            String endTurn = resolveAllReadySlots();
+            if (!endTurn.isEmpty()) {
+                msg = msg.isEmpty() ? endTurn : msg + " " + endTurn;
+            }
+
+            return msg;
+        }
+
+        String msg = startPezLoboDiscard(pezLoboSlotIndex);
+        pezLoboSlotIndex = -1;
+        if (pendingSelection == PendingSelection.NONE && pendingSelectionQueue.isEmpty()) {
+            String revealLog = continueRevealChain("");
+            if (!revealLog.isEmpty()) {
+                msg = msg.isEmpty() ? revealLog : msg + " " + revealLog;
+            }
+
+            String endTurn = resolveAllReadySlots();
+            if (!endTurn.isEmpty()) {
+                msg = msg.isEmpty() ? endTurn : msg + " " + endTurn;
+            }
+        }
+        return msg;
+    }
+
     public String choosePezVelaReroll(boolean reroll) {
         if (!awaitingPezVelaDecision) {
             return "No hay decisión pendiente del Pez Vela.";
@@ -1780,6 +1842,9 @@ public class GameState {
         if (awaitingMantisDecision || awaitingMantisLostDieChoice) {
             return "Resuelve la habilidad del Langostino mantis antes de continuar.";
         }
+        if (awaitingPezLoboDecision) {
+            return "Decide primero si activarás la habilidad del Pez Lobo.";
+        }
         if (awaitingLangostaRecovery) {
             return "Resuelve la recuperación de la Langosta espinosa antes de continuar.";
         }
@@ -1868,6 +1933,9 @@ public class GameState {
         }
         if (awaitingBlowfishDecision) {
             return "Decide primero si usarás la habilidad del Pez globo.";
+        }
+        if (awaitingPezLoboDecision) {
+            return "Decide primero si usarás la habilidad del Pez Lobo.";
         }
         if (awaitingMantisDecision || awaitingMantisLostDieChoice) {
             return "Resuelve primero la habilidad del Langostino Mantis.";
@@ -2547,6 +2615,11 @@ public class GameState {
         blowfishSlotIndex = remapIndex(blowfishSlotIndex, indexMap);
         if (awaitingBlowfishDecision && blowfishSlotIndex < 0) {
             awaitingBlowfishDecision = false;
+        }
+
+        pezLoboSlotIndex = remapIndex(pezLoboSlotIndex, indexMap);
+        if (awaitingPezLoboDecision && pezLoboSlotIndex < 0) {
+            awaitingPezLoboDecision = false;
         }
 
         adjustmentSlotIndex = remapIndex(adjustmentSlotIndex, indexMap);
@@ -3438,7 +3511,7 @@ public class GameState {
                 result = "Fletan espera la próxima marea.";
                 break;
             case PEZ_LOBO:
-                result = startPezLoboDiscard(slotIndex);
+                result = startPezLoboDecision(slotIndex);
                 break;
             case PEZ_BORRON:
                 result = startPezBorronMove(slotIndex);
@@ -3957,6 +4030,23 @@ public class GameState {
         return returned == 0 ? "Pez Dragón azul: no había dados ≥ 6." : "Pez Dragón azul devolvió " + returned + " dado(s) a la reserva.";
     }
 
+    private String startPezLoboDecision(int slotIndex) {
+        boolean hasTarget = false;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp()) {
+                hasTarget = true;
+                break;
+            }
+        }
+        if (!hasTarget) {
+            return "Pez Lobo: no hay cartas boca arriba adyacentes para descartar.";
+        }
+        awaitingPezLoboDecision = true;
+        pezLoboSlotIndex = slotIndex;
+        return "Pez Lobo: ¿quieres descartar una carta adyacente boca arriba?";
+    }
+
     private String startPezLoboDiscard(int slotIndex) {
         boolean hasTarget = false;
         for (Integer idx : adjacentIndices(slotIndex, true)) {
@@ -3977,11 +4067,11 @@ public class GameState {
 
     private String resolvePezLoboDiscard(int slotIndex) {
         if (!adjacentIndices(pendingSelectionActor, true).contains(slotIndex)) {
-            return "Pez Lobo: elige una carta adyacente.";
+            return offerCancelAbility("Pez Lobo");
         }
         BoardSlot target = board[slotIndex];
         if (target.getCard() == null || !target.isFaceUp()) {
-            return "Pez Lobo: selecciona una carta boca arriba.";
+            return offerCancelAbility("Pez Lobo");
         }
         Card removed = target.getCard();
         for (Die d : new ArrayList<>(target.getDice())) {
