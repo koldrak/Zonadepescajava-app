@@ -5,8 +5,16 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="24dp"
-    android:background="@drawable/fondopreparacion"
+    android:background="@drawable/menu_background_dice_selection"
     tools:context=".MainActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/menu_glass_panel"
+        android:elevation="6dp"
+        android:orientation="vertical"
+        android:padding="20dp">
 
     <TextView
         android:id="@+id/diceSelectionInstruction"
@@ -92,5 +100,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Iniciar partida" />
+
+    </LinearLayout>
 
 </LinearLayout>
