@@ -32,6 +32,7 @@ import com.daille.zonadepescajava_app.data.ScoreRecord;
 import com.daille.zonadepescajava_app.model.BoardSlot;
 import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardId;
+import com.daille.zonadepescajava_app.model.CardType;
 import com.daille.zonadepescajava_app.model.Die;
 import com.daille.zonadepescajava_app.model.DieType;
 import com.daille.zonadepescajava_app.model.GameState;
@@ -114,6 +115,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setupDiceShopPanel();
         setupTideAnimationOverlay();
         setupCollectionsPanel();
+        setupSettingsPanel();
 
         if (viewModel.isInitialized()) {
             setupBoard();
@@ -167,18 +169,19 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 Toast.makeText(this, "Selecciona al menos 1 dado para iniciar.", Toast.LENGTH_SHORT).show();
                 return;
             }
-            Map<CardId, Integer> captureCounts = scoreDatabaseHelper.getCaptureCounts();
+            Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
             if (selectedDeck == null || selectedDeck.size() < 9 || deckSelectionPoints < 150 || deckSelectionPoints > 200) {
                 List<Card> autoDeck = GameUtils.buildRandomDeckSelection(
                         new java.util.Random(),
-                        GameUtils.getSelectableCards(captureCounts),
+                        GameUtils.getSelectableCards(ownedCounts),
+                        ownedCounts,
                         150,
                         200,
                         9
                 );
                 selectedDeck = autoDeck;
             }
-            viewModel.startNewGame(startingReserve, captureCounts, selectedDeck);
+            viewModel.startNewGame(startingReserve, ownedCounts, selectedDeck);
             gameState = viewModel.getGameState();
             endScoringShown = false;
             setupBoard();
@@ -186,8 +189,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             showGameLayout();
             refreshUi("Juego iniciado. Lanza un dado y toca una carta.");
         });
-        binding.startMenu.openSettings.setOnClickListener(v ->
-                Toast.makeText(this, "Configuraciones próximamente.", Toast.LENGTH_SHORT).show());
+        binding.startMenu.openSettings.setOnClickListener(v -> showSettingsPanel());
         binding.startMenu.openCollections.setOnClickListener(v -> showCollectionsPanel());
     }
 
@@ -235,10 +237,21 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.diceShopPanel.diceShopBuyD6.setOnClickListener(v -> attemptDicePurchase(DieType.D6, 400));
         binding.diceShopPanel.diceShopBuyD8.setOnClickListener(v -> attemptDicePurchase(DieType.D8, 600));
         binding.diceShopPanel.diceShopBuyD12.setOnClickListener(v -> attemptDicePurchase(DieType.D12, 1000));
+        binding.diceShopPanel.cardPackRandomBuy.setOnClickListener(v ->
+                attemptCardPackPurchase(2000, null));
+        binding.diceShopPanel.cardPackCrustaceoBuy.setOnClickListener(v ->
+                attemptCardPackPurchase(2500, CardType.CRUSTACEO));
+        binding.diceShopPanel.cardPackSmallFishBuy.setOnClickListener(v ->
+                attemptCardPackPurchase(2500, CardType.PEZ));
+        binding.diceShopPanel.cardPackBigFishBuy.setOnClickListener(v ->
+                attemptCardPackPurchase(2500, CardType.PEZ_GRANDE));
+        binding.diceShopPanel.cardPackObjectBuy.setOnClickListener(v ->
+                attemptCardPackPurchase(2500, CardType.OBJETO));
     }
 
     private void refreshCollections() {
         Map<CardId, Integer> counts = scoreDatabaseHelper.getCaptureCounts();
+        Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
         List<CollectionCardAdapter.CollectionEntry> entries = new ArrayList<>();
         for (Card card : GameUtils.createAllCards()) {
             int count = 0;
@@ -247,7 +260,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
             entries.add(new CollectionCardAdapter.CollectionEntry(card, count));
         }
-        collectionCardAdapter.submitList(entries, counts);
+        collectionCardAdapter.submitList(entries, ownedCounts);
     }
 
     private void refreshScoreRecords() {
@@ -309,6 +322,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.diceShopPanel.getRoot().setVisibility(View.GONE);
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
+        binding.settingsPanel.getRoot().setVisibility(View.GONE);
         refreshScoreRecords(); // ✅ asegura recarga al mostrar menú
     }
 
@@ -320,6 +334,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.diceShopPanel.getRoot().setVisibility(View.GONE);
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
+        binding.settingsPanel.getRoot().setVisibility(View.GONE);
     }
 
     private void showDiceSelectionPanel() {
@@ -330,6 +345,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.diceShopPanel.getRoot().setVisibility(View.GONE);
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
+        binding.settingsPanel.getRoot().setVisibility(View.GONE);
     }
 
     private void showDiceShopPanel() {
@@ -340,6 +356,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.diceShopPanel.getRoot().setVisibility(View.VISIBLE);
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
+        binding.settingsPanel.getRoot().setVisibility(View.GONE);
     }
 
     private void showGameLayout() {
@@ -349,6 +366,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.diceShopPanel.getRoot().setVisibility(View.GONE);
         binding.gamePanel.getRoot().setVisibility(View.VISIBLE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
+        binding.settingsPanel.getRoot().setVisibility(View.GONE);
     }
 
     private void showCollectionsPanel() {
@@ -358,17 +376,29 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.diceShopPanel.getRoot().setVisibility(View.GONE);
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.VISIBLE);
+        binding.settingsPanel.getRoot().setVisibility(View.GONE);
         refreshCollections();
     }
 
+    private void showSettingsPanel() {
+        binding.startMenu.getRoot().setVisibility(View.GONE);
+        binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.diceShopPanel.getRoot().setVisibility(View.GONE);
+        binding.gamePanel.getRoot().setVisibility(View.GONE);
+        binding.collectionsPanel.getRoot().setVisibility(View.GONE);
+        binding.settingsPanel.getRoot().setVisibility(View.VISIBLE);
+    }
+
     private void refreshDeckSelectionList() {
-        Map<CardId, Integer> counts = scoreDatabaseHelper.getCaptureCounts();
-        List<Card> selectable = GameUtils.getSelectableCards(counts);
+        Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
+        List<Card> selectable = GameUtils.getSelectableCards(ownedCounts);
         deckSelectionCounts.clear();
         selectedDeck = new ArrayList<>();
         deckSelectionPoints = 0;
         if (deckSelectionAdapter != null) {
             deckSelectionAdapter.submitList(selectable);
+            deckSelectionAdapter.setInventoryCounts(ownedCounts);
         }
         updateDeckSelectionScore();
     }
@@ -415,6 +445,69 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         scoreDatabaseHelper.addPurchasedDice(type.name(), 1);
         scoreDatabaseHelper.addSpentPoints(cost);
         refreshDiceShopUi();
+    }
+
+    private void attemptCardPackPurchase(int cost, CardType filterType) {
+        int available = scoreDatabaseHelper.getAvailablePoints();
+        if (available < cost) {
+            Toast.makeText(this, "No tienes suficientes puntos para comprar este paquete.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<Card> pool = filterType == null
+                ? GameUtils.createAllCards()
+                : GameUtils.getCardsByType(filterType);
+        if (pool.isEmpty()) {
+            Toast.makeText(this, "No hay cartas disponibles en este paquete.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<Card> awarded = new ArrayList<>();
+        java.util.Random rng = new java.util.Random();
+        for (int i = 0; i < 3; i++) {
+            Card card = pool.get(rng.nextInt(pool.size()));
+            awarded.add(card);
+            scoreDatabaseHelper.addCardCopies(card.getId(), 1);
+        }
+        scoreDatabaseHelper.addSpentPoints(cost);
+        refreshDiceShopUi();
+        showCardPackRewards(awarded);
+    }
+
+    private void showCardPackRewards(List<Card> cards) {
+        if (cards == null || cards.isEmpty()) {
+            return;
+        }
+        List<Card> remaining = new ArrayList<>(cards);
+        showCardPackRewardStep(remaining);
+    }
+
+    private void showCardPackRewardStep(List<Card> remaining) {
+        if (remaining.isEmpty()) {
+            return;
+        }
+        Card card = remaining.remove(0);
+        Bitmap image = cardImageResolver.getImageFor(card, true);
+        if (image == null) {
+            image = cardImageResolver.getCardBack();
+        }
+        String overlay = getString(R.string.card_pack_reward_detail, card.getName());
+        CardFullscreenDialog.show(this, image, overlay, () -> showCardPackRewardStep(remaining));
+    }
+
+    private void setupSettingsPanel() {
+        binding.settingsPanel.settingsBack.setOnClickListener(v -> showStartMenu());
+        binding.settingsPanel.settingsResetData.setOnClickListener(v -> {
+            scoreDatabaseHelper.resetAllData();
+            viewModel.resetProgress();
+            selectedDeck = new ArrayList<>();
+            deckSelectionPoints = 0;
+            refreshScoreRecords();
+            showStartMenu();
+            Toast.makeText(this, "Datos borrados.", Toast.LENGTH_SHORT).show();
+        });
+        binding.settingsPanel.settingsAddPoints.setOnClickListener(v -> {
+            scoreDatabaseHelper.addBonusPoints(1000);
+            Toast.makeText(this, "Se agregaron 1000 puntos.", Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void refreshUi(String log) {
@@ -1169,7 +1262,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<Card> currentCaptures = gameState.getCaptures();
         for (Card card : currentCaptures) {
             if (!lastCaptures.contains(card)) {
-                scoreDatabaseHelper.incrementCaptureCount(card.getId());
+                int totalCaptures = scoreDatabaseHelper.incrementCaptureCount(card.getId());
+                if (totalCaptures > 0 && totalCaptures % 3 == 0) {
+                    scoreDatabaseHelper.addCardCopies(card.getId(), 1);
+                }
             }
         }
     }

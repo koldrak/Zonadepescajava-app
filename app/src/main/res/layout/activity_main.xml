@@ -41,6 +41,11 @@
             layout="@layout/layout_collections"
             android:visibility="gone" />
 
+        <include
+            android:id="@+id/settingsPanel"
+            layout="@layout/layout_settings"
+            android:visibility="gone" />
+
     </FrameLayout>
 
     <FrameLayout

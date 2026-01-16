@@ -6,7 +6,9 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardId;
+import com.daille.zonadepescajava_app.model.GameUtils;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -16,7 +18,7 @@ import java.util.Map;
 public class ScoreDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "scores.db";
-    private static final int DATABASE_VERSION = 3;
+    private static final int DATABASE_VERSION = 4;
     private static final String TABLE_SCORES = "scores";
     private static final String COLUMN_ID = "id";
     private static final String COLUMN_SCORE = "score";
@@ -27,6 +29,8 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
     private static final String TABLE_DICE_INVENTORY = "dice_inventory";
     private static final String COLUMN_DIE_TYPE = "die_type";
     private static final String COLUMN_DIE_COUNT = "die_count";
+    private static final String TABLE_CARD_INVENTORY = "card_inventory";
+    private static final String COLUMN_OWNED_COUNT = "owned_count";
     private static final String TABLE_WALLET = "wallet";
     private static final String COLUMN_SPENT_POINTS = "spent_points";
 
@@ -50,12 +54,17 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                 COLUMN_DIE_TYPE + " TEXT PRIMARY KEY, " +
                 COLUMN_DIE_COUNT + " INTEGER NOT NULL DEFAULT 0"
                 + ")");
+        db.execSQL("CREATE TABLE " + TABLE_CARD_INVENTORY + " (" +
+                COLUMN_CARD_ID + " TEXT PRIMARY KEY, " +
+                COLUMN_OWNED_COUNT + " INTEGER NOT NULL DEFAULT 0"
+                + ")");
         db.execSQL("CREATE TABLE " + TABLE_WALLET + " (" +
                 COLUMN_ID + " INTEGER PRIMARY KEY CHECK (" + COLUMN_ID + " = 1), " +
                 COLUMN_SPENT_POINTS + " INTEGER NOT NULL DEFAULT 0"
                 + ")");
         seedCaptureCounts(db);
         seedDiceInventory(db);
+        seedCardInventory(db);
         seedWallet(db);
     }
 
@@ -79,6 +88,13 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                     + ")");
             seedDiceInventory(db);
             seedWallet(db);
+        }
+        if (oldVersion < 4) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_CARD_INVENTORY + " (" +
+                    COLUMN_CARD_ID + " TEXT PRIMARY KEY, " +
+                    COLUMN_OWNED_COUNT + " INTEGER NOT NULL DEFAULT 0"
+                    + ")");
+            seedCardInventory(db);
         }
     }
 
@@ -114,8 +130,8 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         return records;
     }
 
-    public void incrementCaptureCount(CardId cardId) {
-        if (cardId == null) return;
+    public int incrementCaptureCount(CardId cardId) {
+        if (cardId == null) return 0;
         SQLiteDatabase db = getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(COLUMN_CARD_ID, cardId.name());
@@ -124,6 +140,22 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("UPDATE " + TABLE_CARD_CAPTURES + " SET " + COLUMN_CAPTURE_COUNT + " = "
                 + COLUMN_CAPTURE_COUNT + " + 1 WHERE " + COLUMN_CARD_ID + " = ?",
                 new Object[]{cardId.name()});
+        return getCaptureCount(cardId);
+    }
+
+    public int getCaptureCount(CardId cardId) {
+        if (cardId == null) return 0;
+        SQLiteDatabase db = getReadableDatabase();
+        int count = 0;
+        try (Cursor cursor = db.query(TABLE_CARD_CAPTURES,
+                new String[]{COLUMN_CAPTURE_COUNT},
+                COLUMN_CARD_ID + " = ?",
+                new String[]{cardId.name()}, null, null, null)) {
+            if (cursor.moveToFirst()) {
+                count = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_CAPTURE_COUNT));
+            }
+        }
+        return count;
     }
 
     public Map<CardId, Integer> getCaptureCounts() {
@@ -218,6 +250,67 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                 new Object[]{amount});
     }
 
+    public void addBonusPoints(int amount) {
+        if (amount == 0) {
+            return;
+        }
+        addSpentPoints(-amount);
+    }
+
+    public Map<CardId, Integer> getCardInventoryCounts() {
+        SQLiteDatabase db = getReadableDatabase();
+        Map<CardId, Integer> counts = new EnumMap<>(CardId.class);
+        for (CardId id : CardId.values()) {
+            counts.put(id, 0);
+        }
+
+        try (Cursor cursor = db.query(
+                TABLE_CARD_INVENTORY,
+                new String[]{COLUMN_CARD_ID, COLUMN_OWNED_COUNT},
+                null,
+                null,
+                null,
+                null,
+                COLUMN_CARD_ID + " ASC")) {
+
+            while (cursor.moveToNext()) {
+                String cardName = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_CARD_ID));
+                int count = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_OWNED_COUNT));
+                try {
+                    counts.put(CardId.valueOf(cardName), count);
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        }
+
+        return counts;
+    }
+
+    public void addCardCopies(CardId cardId, int amount) {
+        if (cardId == null || amount == 0) return;
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_CARD_ID, cardId.name());
+        values.put(COLUMN_OWNED_COUNT, 0);
+        db.insertWithOnConflict(TABLE_CARD_INVENTORY, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+        db.execSQL("UPDATE " + TABLE_CARD_INVENTORY + " SET " + COLUMN_OWNED_COUNT + " = "
+                + COLUMN_OWNED_COUNT + " + ? WHERE " + COLUMN_CARD_ID + " = ?",
+                new Object[]{amount, cardId.name()});
+    }
+
+    public void resetAllData() {
+        SQLiteDatabase db = getWritableDatabase();
+        db.delete(TABLE_SCORES, null, null);
+        db.delete(TABLE_CARD_CAPTURES, null, null);
+        db.delete(TABLE_DICE_INVENTORY, null, null);
+        db.delete(TABLE_CARD_INVENTORY, null, null);
+        db.delete(TABLE_WALLET, null, null);
+        seedCaptureCounts(db);
+        seedDiceInventory(db);
+        seedCardInventory(db);
+        seedWallet(db);
+    }
+
     private void ensureCaptureRows() {
         SQLiteDatabase db = getWritableDatabase();
         db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_CARD_CAPTURES + " (" +
@@ -227,6 +320,7 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         seedCaptureCounts(db);
         ensureDiceInventoryRows(db);
         ensureWalletRow(db);
+        ensureCardInventoryRows(db);
     }
 
     private void seedCaptureCounts(SQLiteDatabase db) {
@@ -274,6 +368,35 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                 COLUMN_SPENT_POINTS + " INTEGER NOT NULL DEFAULT 0"
                 + ")");
         seedWallet(db);
+    }
+
+    private void ensureCardInventoryRows(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_CARD_INVENTORY + " (" +
+                COLUMN_CARD_ID + " TEXT PRIMARY KEY, " +
+                COLUMN_OWNED_COUNT + " INTEGER NOT NULL DEFAULT 0"
+                + ")");
+        seedCardInventory(db);
+    }
+
+    private void seedCardInventory(SQLiteDatabase db) {
+        db.beginTransaction();
+        try {
+            for (CardId id : CardId.values()) {
+                ContentValues values = new ContentValues();
+                values.put(COLUMN_CARD_ID, id.name());
+                values.put(COLUMN_OWNED_COUNT, 0);
+                db.insertWithOnConflict(TABLE_CARD_INVENTORY, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+            }
+            for (Card card : GameUtils.getStarterCards()) {
+                ContentValues values = new ContentValues();
+                values.put(COLUMN_CARD_ID, card.getId().name());
+                values.put(COLUMN_OWNED_COUNT, 1);
+                db.insertWithOnConflict(TABLE_CARD_INVENTORY, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
     }
 
     private void seedWallet(SQLiteDatabase db) {
