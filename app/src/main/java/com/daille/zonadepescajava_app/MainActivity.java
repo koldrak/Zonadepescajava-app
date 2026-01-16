@@ -644,6 +644,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         refreshDiceTokens();
         updateDiceGridColumns();
         binding.diceSelectionPanel.getRoot().post(this::updateDiceGridColumns);
+        binding.diceSelectionPanel.diceSelectionZone.addOnLayoutChangeListener(
+                (view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                    if ((right - left) != (oldRight - oldLeft)) {
+                        updateDiceGridColumns();
+                    }
+                });
+        binding.diceSelectionPanel.diceWarehouseZone.addOnLayoutChangeListener(
+                (view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                    if ((right - left) != (oldRight - oldLeft)) {
+                        updateDiceGridColumns();
+                    }
+                });
     }
 
     private void refreshDiceTokens() {
@@ -677,22 +689,50 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void updateDiceGridColumns() {
         int columnCount = calculateDiceColumns();
+        resetDiceGridLayoutParams(binding.diceSelectionPanel.diceSelectionGrid);
+        resetDiceGridLayoutParams(binding.diceSelectionPanel.diceWarehouseGrid);
         binding.diceSelectionPanel.diceSelectionGrid.setColumnCount(columnCount);
         binding.diceSelectionPanel.diceWarehouseGrid.setColumnCount(columnCount);
     }
 
-    private int calculateDiceColumns() {
-        int gridWidth = binding.diceSelectionPanel.diceWarehouseGrid.getWidth();
-        if (gridWidth == 0) {
-            gridWidth = binding.diceSelectionPanel.diceSelectionGrid.getWidth();
+    private void resetDiceGridLayoutParams(GridLayout grid) {
+        int size = dpToPx(70);
+        int spacing = dpToPx(8);
+        for (int i = 0; i < grid.getChildCount(); i++) {
+            View child = grid.getChildAt(i);
+            if (!(child instanceof ImageView)) {
+                continue;
+            }
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+            params.width = size;
+            params.height = size;
+            params.setMargins(spacing, spacing, spacing, spacing);
+            child.setLayoutParams(params);
         }
-        if (gridWidth == 0) {
+    }
+
+    private int calculateDiceColumns() {
+        int availableWidth = binding.diceSelectionPanel.diceWarehouseZone.getWidth();
+        int selectionWidth = binding.diceSelectionPanel.diceSelectionZone.getWidth();
+        if (availableWidth == 0) {
+            availableWidth = selectionWidth;
+        }
+        if (availableWidth == 0) {
+            availableWidth = binding.diceSelectionPanel.diceWarehouseGrid.getWidth();
+        }
+        if (availableWidth == 0) {
+            availableWidth = binding.diceSelectionPanel.diceSelectionGrid.getWidth();
+        }
+        if (availableWidth == 0) {
             return 4;
         }
+        availableWidth = Math.max(0,
+                availableWidth - binding.diceSelectionPanel.diceWarehouseZone.getPaddingLeft()
+                        - binding.diceSelectionPanel.diceWarehouseZone.getPaddingRight());
         int dieSize = dpToPx(70);
         int spacing = dpToPx(8);
         int cellSize = dieSize + spacing * 2;
-        return Math.max(2, gridWidth / cellSize);
+        return Math.max(2, availableWidth / cellSize);
     }
 
     private void clearDiceTokensFromContainer(ViewGroup container) {
