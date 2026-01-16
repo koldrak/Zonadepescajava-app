@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="#F2F5FA"
+    android:background="@drawable/menu_background_collections"
     tools:context=".MainActivity">
 
     <LinearLayout
@@ -57,7 +57,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/deckSelectionConfirm"
-                style="@style/Widget.Material3.Button.TonalButton"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"

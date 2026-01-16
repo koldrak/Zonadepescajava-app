@@ -3,7 +3,7 @@
     <item android:drawable="@drawable/fondomenu" />
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#66000000" />
+            <solid android:color="#00000000" />
         </shape>
     </item>
 </layer-list>
