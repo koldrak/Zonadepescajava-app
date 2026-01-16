@@ -644,6 +644,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         refreshDiceTokens();
         updateDiceGridColumns();
         binding.diceSelectionPanel.getRoot().post(this::updateDiceGridColumns);
+        binding.diceSelectionPanel.diceSelectionZone.addOnLayoutChangeListener(
+                (view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                    if ((right - left) != (oldRight - oldLeft)) {
+                        updateDiceGridColumns();
+                    }
+                });
+        binding.diceSelectionPanel.diceWarehouseZone.addOnLayoutChangeListener(
+                (view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+                    if ((right - left) != (oldRight - oldLeft)) {
+                        updateDiceGridColumns();
+                    }
+                });
     }
 
     private void refreshDiceTokens() {
@@ -682,17 +694,27 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private int calculateDiceColumns() {
-        int gridWidth = binding.diceSelectionPanel.diceWarehouseGrid.getWidth();
-        if (gridWidth == 0) {
-            gridWidth = binding.diceSelectionPanel.diceSelectionGrid.getWidth();
+        int availableWidth = binding.diceSelectionPanel.diceWarehouseZone.getWidth();
+        int selectionWidth = binding.diceSelectionPanel.diceSelectionZone.getWidth();
+        if (availableWidth == 0) {
+            availableWidth = selectionWidth;
         }
-        if (gridWidth == 0) {
+        if (availableWidth == 0) {
+            availableWidth = binding.diceSelectionPanel.diceWarehouseGrid.getWidth();
+        }
+        if (availableWidth == 0) {
+            availableWidth = binding.diceSelectionPanel.diceSelectionGrid.getWidth();
+        }
+        if (availableWidth == 0) {
             return 4;
         }
+        availableWidth = Math.max(0,
+                availableWidth - binding.diceSelectionPanel.diceWarehouseZone.getPaddingLeft()
+                        - binding.diceSelectionPanel.diceWarehouseZone.getPaddingRight());
         int dieSize = dpToPx(70);
         int spacing = dpToPx(8);
         int cellSize = dieSize + spacing * 2;
-        return Math.max(2, gridWidth / cellSize);
+        return Math.max(2, availableWidth / cellSize);
     }
 
     private void clearDiceTokensFromContainer(ViewGroup container) {
