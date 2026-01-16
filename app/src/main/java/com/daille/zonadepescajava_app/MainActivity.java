@@ -9,12 +9,16 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.DragEvent;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.widget.AbsListView;
+import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.FrameLayout;
+import android.widget.GridView;
 import android.widget.LinearLayout;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
@@ -836,6 +840,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         if (gameState.isAwaitingBlowfishDecision()) {
             promptBlowfishDecision();
+            return;
+        }
+        if (gameState.isAwaitingPezLoboDecision()) {
+            promptPezLoboDecision();
             return;
         }
         if (gameState.isAwaitingGhostShrimpDecision()) {
@@ -1671,6 +1679,23 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .show();
     }
 
+    private void promptPezLoboDecision() {
+        if (!gameState.isAwaitingPezLoboDecision()) return;
+        new AlertDialog.Builder(this)
+                .setTitle("Pez Lobo")
+                .setMessage("¿Quieres descartar una carta adyacente boca arriba?")
+                .setPositiveButton("Usar", (dialog, which) -> {
+                    String msg = gameState.choosePezLoboUse(true);
+                    handleGameResult(msg);
+                })
+                .setNegativeButton("Omitir", (dialog, which) -> {
+                    String msg = gameState.choosePezLoboUse(false);
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
     private void promptMantisDecision() {
         if (!gameState.isAwaitingMantisDecision()) return;
         new AlertDialog.Builder(this)
@@ -2226,6 +2251,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (gameState.isAwaitingValueAdjustment()) { promptValueAdjustmentChoice(); return; }
         if (gameState.isAwaitingBlueCrabDecision()) { promptBlueCrabDecision(); return; }
         if (gameState.isAwaitingBlowfishDecision()) { promptBlowfishDecision(); return; }
+        if (gameState.isAwaitingPezLoboDecision()) { promptPezLoboDecision(); return; }
         if (gameState.isAwaitingMantisDecision()) { promptMantisDecision(); return; }
         if (gameState.isAwaitingMantisLostDieChoice()) { promptMantisLostDieChoice(); return; }
         if (gameState.isAwaitingPezVelaDecision()) { promptPezVelaDecision(); return; }
@@ -2361,22 +2387,95 @@ private void promptSpiderCrabCardChoice() {
 
     private void promptHorseshoeValue() {
         int sides = gameState.getHorseshoeDieSides();
-        if (sides <= 0) {
+        DieType dieType = gameState.getHorseshoeDieType();
+        if (sides <= 0 || dieType == null) {
             handleGameResult("Cangrejo herradura: no hay dado válido para ajustar.");
             return;
         }
-        CharSequence[] items = new CharSequence[sides];
-        for (int i = 0; i < sides; i++) {
-            items[i] = String.valueOf(i + 1);
+        List<Integer> values = new ArrayList<>();
+        for (int i = 1; i <= sides; i++) {
+            values.add(i);
         }
-        new AlertDialog.Builder(this)
+
+        GridView gridView = new GridView(this);
+        int padding = dpToPx(12);
+        gridView.setPadding(padding, padding, padding, padding);
+        gridView.setHorizontalSpacing(dpToPx(12));
+        gridView.setVerticalSpacing(dpToPx(12));
+        gridView.setNumColumns(Math.min(4, sides));
+        gridView.setAdapter(new BaseAdapter() {
+            @Override
+            public int getCount() {
+                return values.size();
+            }
+
+            @Override
+            public Object getItem(int position) {
+                return values.get(position);
+            }
+
+            @Override
+            public long getItemId(int position) {
+                return position;
+            }
+
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                LinearLayout cell;
+                ImageView img;
+                TextView fallback;
+
+                if (convertView instanceof LinearLayout) {
+                    cell = (LinearLayout) convertView;
+                    img = (ImageView) cell.getChildAt(0);
+                    fallback = (TextView) cell.getChildAt(1);
+                } else {
+                    cell = new LinearLayout(MainActivity.this);
+                    cell.setOrientation(LinearLayout.VERTICAL);
+                    cell.setGravity(Gravity.CENTER);
+                    cell.setLayoutParams(new AbsListView.LayoutParams(dpToPx(64), dpToPx(64)));
+
+                    img = new ImageView(MainActivity.this);
+                    LinearLayout.LayoutParams imgParams =
+                            new LinearLayout.LayoutParams(dpToPx(52), dpToPx(52));
+                    img.setLayoutParams(imgParams);
+                    img.setScaleType(ImageView.ScaleType.FIT_CENTER);
+
+                    fallback = new TextView(MainActivity.this);
+                    fallback.setGravity(Gravity.CENTER);
+
+                    cell.addView(img);
+                    cell.addView(fallback);
+                }
+
+                int value = values.get(position);
+                Bitmap face = diceImageResolver.getFace(dieType, value);
+                if (face != null) {
+                    img.setImageBitmap(face);
+                    fallback.setVisibility(View.GONE);
+                } else {
+                    img.setImageBitmap(null);
+                    fallback.setVisibility(View.VISIBLE);
+                    fallback.setText(String.valueOf(value));
+                }
+
+                return cell;
+            }
+        });
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Cangrejo herradura")
-                .setItems(items, (d, which) -> {
-                    String msg = gameState.chooseHorseshoeValue(which + 1);
-                    handleGameResult(msg);
-                })
+                .setView(gridView)
                 .setCancelable(false)
-                .show();
+                .create();
+
+        gridView.setOnItemClickListener((parent, view, position, id) -> {
+            String msg = gameState.chooseHorseshoeValue(values.get(position));
+            dialog.dismiss();
+            handleGameResult(msg);
+        });
+
+        dialog.show();
     }
 
     private void animatePlacement(int position) {
