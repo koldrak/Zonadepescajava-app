@@ -37,12 +37,27 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/diceShopD4Label"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/dice_shop_d4" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/diceShopD4Image"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="@string/dice_shop_d4_description"
+                    android:scaleType="fitCenter" />
+
+                <TextView
+                    android:id="@+id/diceShopD4Price"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/dice_shop_price_200" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/diceShopD4Owned"
@@ -67,12 +82,27 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/diceShopD6Label"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/dice_shop_d6" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/diceShopD6Image"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="@string/dice_shop_d6_description"
+                    android:scaleType="fitCenter" />
+
+                <TextView
+                    android:id="@+id/diceShopD6Price"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/dice_shop_price_400" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/diceShopD6Owned"
@@ -97,12 +127,27 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/diceShopD8Label"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/dice_shop_d8" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/diceShopD8Image"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="@string/dice_shop_d8_description"
+                    android:scaleType="fitCenter" />
+
+                <TextView
+                    android:id="@+id/diceShopD8Price"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/dice_shop_price_600" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/diceShopD8Owned"
@@ -126,12 +171,27 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/diceShopD12Label"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/dice_shop_d12" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/diceShopD12Image"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="@string/dice_shop_d12_description"
+                    android:scaleType="fitCenter" />
+
+                <TextView
+                    android:id="@+id/diceShopD12Price"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/dice_shop_price_1000" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/diceShopD12Owned"

@@ -242,6 +242,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.diceShopPanel.diceShopBuyD6.setOnClickListener(v -> attemptDicePurchase(DieType.D6, 400));
         binding.diceShopPanel.diceShopBuyD8.setOnClickListener(v -> attemptDicePurchase(DieType.D8, 600));
         binding.diceShopPanel.diceShopBuyD12.setOnClickListener(v -> attemptDicePurchase(DieType.D12, 1000));
+        updateDiceShopDicePreviews();
         binding.diceShopPanel.cardPackRandomBuy.setOnClickListener(v ->
                 attemptCardPackPurchase(2000, null));
         binding.diceShopPanel.cardPackCrustaceoBuy.setOnClickListener(v ->
@@ -252,6 +253,17 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 attemptCardPackPurchase(2500, CardType.PEZ_GRANDE));
         binding.diceShopPanel.cardPackObjectBuy.setOnClickListener(v ->
                 attemptCardPackPurchase(2500, CardType.OBJETO));
+    }
+
+    private void updateDiceShopDicePreviews() {
+        binding.diceShopPanel.diceShopD4Image.setImageBitmap(
+                diceImageResolver.getTypePreview(DieType.D4));
+        binding.diceShopPanel.diceShopD6Image.setImageBitmap(
+                diceImageResolver.getTypePreview(DieType.D6));
+        binding.diceShopPanel.diceShopD8Image.setImageBitmap(
+                diceImageResolver.getTypePreview(DieType.D8));
+        binding.diceShopPanel.diceShopD12Image.setImageBitmap(
+                diceImageResolver.getTypePreview(DieType.D12));
     }
 
     private void refreshCollections() {
