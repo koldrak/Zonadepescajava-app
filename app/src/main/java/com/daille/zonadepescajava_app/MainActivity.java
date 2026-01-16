@@ -157,7 +157,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void setupMenuButtons() {
         binding.startMenu.startNewGame.setOnClickListener(v -> {
-            showDeckSelectionPanel();
+            showDiceSelectionPanel();
         });
         binding.startMenu.openDiceShop.setOnClickListener(v -> showDiceShopPanel());
         binding.diceSelectionPanel.openDeckSelection.setOnClickListener(v -> showDeckSelectionPanel());
@@ -209,7 +209,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         deckSelectionAdapter = new DeckSelectionAdapter(this, this::updateDeckSelectionScore);
         binding.deckSelectionPanel.deckSelectionRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.deckSelectionPanel.deckSelectionRecycler.setAdapter(deckSelectionAdapter);
-        binding.deckSelectionPanel.deckSelectionBack.setOnClickListener(v -> showStartMenu());
+        binding.deckSelectionPanel.deckSelectionBack.setOnClickListener(v -> showDiceSelectionPanel());
         binding.deckSelectionPanel.deckSelectionConfirm.setOnClickListener(v -> {
             if (deckSelectionAdapter == null) {
                 return;
