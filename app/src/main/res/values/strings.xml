@@ -8,6 +8,7 @@
     <string name="collection_capture_progress">%1$d de %2$d capturas</string>
     <string name="collection_locked">Bloqueado</string>
     <string name="deck_selection_title">Selección de mazo</string>
+    <string name="deck_selection_button">Armado de mazo</string>
     <string name="deck_selection_score_placeholder">Puntaje seleccionado: 0 (150–200)</string>
     <string name="deck_selection_confirm">Confirmar mazo</string>
     <string name="deck_selection_badge">x%1$d</string>
