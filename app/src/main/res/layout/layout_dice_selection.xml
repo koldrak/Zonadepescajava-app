@@ -32,11 +32,19 @@
         android:background="@drawable/dice_zone_background"
         android:padding="12dp">
 
-        <GridLayout
-            android:id="@+id/diceSelectionGrid"
+        <ScrollView
+            android:id="@+id/diceSelectionScroll"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:columnCount="4" />
+            android:paddingTop="24dp"
+            android:clipToPadding="false">
+
+            <GridLayout
+                android:id="@+id/diceSelectionGrid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="4" />
+        </ScrollView>
 
         <TextView
             android:id="@+id/diceSelectionLabel"
