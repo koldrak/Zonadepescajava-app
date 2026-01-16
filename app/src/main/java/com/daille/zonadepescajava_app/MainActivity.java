@@ -47,14 +47,17 @@ import com.daille.zonadepescajava_app.ui.CollectionCardAdapter;
 import com.daille.zonadepescajava_app.ui.DeckSelectionAdapter;
 import com.daille.zonadepescajava_app.ui.DiceImageResolver;
 import com.daille.zonadepescajava_app.ui.TideParticlesView;
+import com.google.android.material.card.MaterialCardView;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+import java.util.Set;
 import java.text.DateFormat;
 import java.util.Date;
 
@@ -588,6 +591,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void runPendingCurrentsSequence(String baseMessage, Runnable onComplete) {
         if (tideParticlesView == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+        if (gameState.hasPendingTurnResolutions()) {
             if (onComplete != null) {
                 onComplete.run();
             }
@@ -1879,19 +1888,186 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .show();
     }
 
-    private void promptPulpoChoice() {
-        if (!gameState.isAwaitingPulpoChoice()) return;
-        List<String> names = gameState.getPendingPulpoNames();
-        if (names.isEmpty()) return;
-        CharSequence[] items = names.toArray(new CharSequence[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("Pulpo")
-                .setItems(items, (dialog, which) -> {
-                    String msg = gameState.choosePulpoReplacement(which);
+    private interface CardSelectionHandler {
+        String onSelect(int index);
+    }
+
+    private interface CardMultiSelectionHandler {
+        String onSelect(List<Integer> indices);
+    }
+
+    private interface CardCancelHandler {
+        String onCancel();
+    }
+
+    private class CardGridAdapter extends BaseAdapter {
+        private final List<Card> cards;
+        private final Set<Integer> selected;
+        private final boolean showSelection;
+
+        CardGridAdapter(List<Card> cards, Set<Integer> selected, boolean showSelection) {
+            this.cards = cards;
+            this.selected = selected;
+            this.showSelection = showSelection;
+        }
+
+        @Override
+        public int getCount() {
+            return cards.size();
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return cards.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            View view = convertView;
+            if (view == null) {
+                view = getLayoutInflater().inflate(R.layout.item_dialog_card, parent, false);
+            }
+            MaterialCardView container = view.findViewById(R.id.dialogCardContainer);
+            ImageView imageView = view.findViewById(R.id.dialogCardImage);
+            Card card = cards.get(position);
+            Bitmap image = cardImageResolver.getImageFor(card, true);
+            if (image == null) {
+                image = cardImageResolver.getCardBack();
+            }
+            imageView.setImageBitmap(image);
+            imageView.setContentDescription(card != null ? card.getName()
+                    : getString(R.string.card_image_content_description));
+
+            if (showSelection && selected != null) {
+                int strokeWidth = selected.contains(position) ? dpToPx(3) : 0;
+                container.setStrokeWidth(strokeWidth);
+            } else {
+                container.setStrokeWidth(0);
+            }
+
+            return view;
+        }
+    }
+
+    private GridView createCardGridView(int count, BaseAdapter adapter) {
+        GridView gridView = new GridView(this);
+        int padding = dpToPx(12);
+        gridView.setPadding(padding, padding, padding, padding);
+        gridView.setHorizontalSpacing(dpToPx(10));
+        gridView.setVerticalSpacing(dpToPx(10));
+        gridView.setNumColumns(Math.min(3, Math.max(1, count)));
+        gridView.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
+        gridView.setAdapter(adapter);
+        return gridView;
+    }
+
+    private void showSingleCardChoiceDialog(String title, List<Card> cards,
+                                            CardSelectionHandler onSelect,
+                                            CardCancelHandler onCancel) {
+        CardGridAdapter adapter = new CardGridAdapter(cards, null, false);
+        GridView gridView = createCardGridView(cards.size(), adapter);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setView(gridView)
+                .setCancelable(false);
+
+        if (onCancel != null) {
+            builder.setNegativeButton("Cancelar", (dialog, which) -> {
+                String msg = onCancel.onCancel();
+                handleGameResult(msg);
+            });
+        }
+
+        AlertDialog dialog = builder.create();
+
+        gridView.setOnItemClickListener((parent, view, position, id) -> {
+            String msg = onSelect.onSelect(position);
+            dialog.dismiss();
+            handleGameResult(msg);
+        });
+
+        gridView.setOnItemLongClickListener((parent, view, position, id) -> {
+            Card card = cards.get(position);
+            Bitmap fullImage = cardImageResolver.getImageFor(card, true);
+            if (fullImage == null) {
+                fullImage = cardImageResolver.getCardBack();
+            }
+            CardFullscreenDialog.show(this, fullImage);
+            return true;
+        });
+
+        dialog.show();
+    }
+
+    private void showMultiCardChoiceDialog(String title, List<Card> cards, int maxSelections,
+                                           CardMultiSelectionHandler onConfirm,
+                                           CardCancelHandler onCancel) {
+        Set<Integer> selected = new LinkedHashSet<>();
+        CardGridAdapter adapter = new CardGridAdapter(cards, selected, true);
+        GridView gridView = createCardGridView(cards.size(), adapter);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setView(gridView)
+                .setPositiveButton("Aceptar", (dialogInterface, which) -> {
+                    List<Integer> indices = new ArrayList<>(selected);
+                    Collections.sort(indices);
+                    String msg = onConfirm.onSelect(indices);
                     handleGameResult(msg);
                 })
+                .setNegativeButton("Cancelar", (dialogInterface, which) -> {
+                    if (onCancel != null) {
+                        String msg = onCancel.onCancel();
+                        handleGameResult(msg);
+                    }
+                })
                 .setCancelable(false)
-                .show();
+                .create();
+
+        gridView.setOnItemClickListener((parent, view, position, id) -> {
+            if (selected.contains(position)) {
+                selected.remove(position);
+            } else {
+                if (selected.size() >= maxSelections) {
+                    Toast.makeText(this,
+                            "Solo puedes elegir hasta " + maxSelections + " cartas.",
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                selected.add(position);
+            }
+            adapter.notifyDataSetChanged();
+        });
+
+        gridView.setOnItemLongClickListener((parent, view, position, id) -> {
+            Card card = cards.get(position);
+            Bitmap fullImage = cardImageResolver.getImageFor(card, true);
+            if (fullImage == null) {
+                fullImage = cardImageResolver.getCardBack();
+            }
+            CardFullscreenDialog.show(this, fullImage);
+            return true;
+        });
+
+        dialog.show();
+    }
+
+    private void promptPulpoChoice() {
+        if (!gameState.isAwaitingPulpoChoice()) return;
+        List<Card> cards = gameState.getPendingPulpoCards();
+        if (cards.isEmpty()) return;
+        showSingleCardChoiceDialog(
+                "Pulpo",
+                cards,
+                gameState::choosePulpoReplacement,
+                null
+        );
     }
 
     private void promptPezVelaDecision() {
@@ -1939,107 +2115,80 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void promptArenqueChoice() {
         if (!gameState.isAwaitingArenqueChoice()) return;
-        List<String> names = gameState.getPendingArenqueNames();
-        if (names.isEmpty()) return;
-        boolean[] checked = new boolean[names.size()];
-        CharSequence[] items = names.toArray(new CharSequence[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("Elige hasta 2 peces pequeños")
-                .setMultiChoiceItems(items, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
-                .setPositiveButton("Aceptar", (dialog, which) -> {
-                    List<Integer> selected = new ArrayList<>();
-                    for (int i = 0; i < checked.length; i++) {
-                        if (checked[i]) selected.add(i);
-                    }
-                    String msg = gameState.chooseArenqueFish(selected);
-                    handleGameResult(msg);
-                })
-                .setNegativeButton("Cancelar", (dialog, which) -> {
-                    String msg = gameState.chooseArenqueFish(java.util.Collections.emptyList());
-                    handleGameResult(msg);
-                })
-                .setCancelable(false)
-                .show();
+        List<Card> cards = gameState.getPendingArenqueCards();
+        if (cards.isEmpty()) return;
+        showMultiCardChoiceDialog(
+                "Elige hasta 2 peces pequeños",
+                cards,
+                2,
+                gameState::chooseArenqueFish,
+                () -> gameState.chooseArenqueFish(java.util.Collections.emptyList())
+        );
     }
 
     private void promptSepiaChoice() {
         if (!gameState.isAwaitingSepiaChoice()) return;
-        List<String> names = gameState.getPendingSepiaNames();
-        if (names.isEmpty()) return;
-        CharSequence[] items = names.toArray(new CharSequence[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("Sepia")
-                .setItems(items, (dialog, which) -> {
-                    String msg = gameState.chooseSepiaCapture(which);
-                    handleGameResult(msg);
-                })
-                .setCancelable(false)
-                .show();
+        List<Card> cards = gameState.getPendingSepiaCards();
+        if (cards.isEmpty()) return;
+        showSingleCardChoiceDialog(
+                "Sepia",
+                cards,
+                gameState::chooseSepiaCapture,
+                null
+        );
     }
 
     private void promptDragnetReleaseChoice() {
         if (!gameState.isAwaitingDragnetReleaseChoice()) return;
-        List<String> names = gameState.getPendingDragnetNames();
-        if (names.isEmpty()) return;
-        CharSequence[] items = names.toArray(new CharSequence[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("Red de arrastre")
-                .setItems(items, (dialog, which) -> {
-                    String msg = gameState.chooseDragnetRelease(which);
-                    handleGameResult(msg);
-                })
-                .setCancelable(false)
-                .show();
+        List<Card> cards = gameState.getPendingDragnetCards();
+        if (cards.isEmpty()) return;
+        showSingleCardChoiceDialog(
+                "Red de arrastre",
+                cards,
+                gameState::chooseDragnetRelease,
+                null
+        );
     }
 
     private void promptHachaReleaseChoice() {
         if (!gameState.isAwaitingHachaReleaseChoice()) return;
-        List<String> names = gameState.getPendingHachaReleaseNames();
-        if (names.isEmpty()) return;
-        CharSequence[] items = names.toArray(new CharSequence[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("Pez Hacha Abisal")
-                .setItems(items, (dialog, which) -> {
-                    String msg = gameState.chooseHachaRelease(which);
-                    handleGameResult(msg);
-                })
-                .setCancelable(false)
-                .show();
+        List<Card> cards = gameState.getPendingHachaReleaseCards();
+        if (cards.isEmpty()) return;
+        showSingleCardChoiceDialog(
+                "Pez Hacha Abisal",
+                cards,
+                gameState::chooseHachaRelease,
+                null
+        );
     }
 
     private void promptDamiselasChoice() {
         if (!gameState.isAwaitingDamiselasChoice()) return;
-        List<String> names = gameState.getPendingDamiselasNames();
-        if (names.isEmpty()) return;
-        CharSequence[] items = names.toArray(new CharSequence[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("Damiselas: ordena el mazo")
-                .setItems(items, (dialog, which) -> {
-                    String msg = gameState.chooseDamiselasOrder(which);
-                    handleGameResult(msg);
-                })
-                .setCancelable(false)
-                .show();
+        List<Card> cards = gameState.getPendingDamiselasCards();
+        if (cards.isEmpty()) return;
+        showSingleCardChoiceDialog(
+                "Damiselas: ordena el mazo",
+                cards,
+                gameState::chooseDamiselasOrder,
+                null
+        );
     }
 
     private void promptPeregrinoChoice() {
         if (!gameState.isAwaitingPeregrinoChoice()) return;
-        List<String> names = gameState.getPendingPeregrinoNames();
-        if (names.isEmpty()) return;
-        CharSequence[] items = names.toArray(new CharSequence[0]);
+        List<Card> cards = gameState.getPendingPeregrinoCards();
+        if (cards.isEmpty()) return;
         String title = gameState.isAwaitingPeregrinoBottomChoice()
                 ? "Tiburón Peregrino: carta al fondo"
                 : "Tiburón Peregrino: carta arriba";
-        new AlertDialog.Builder(this)
-                .setTitle(title)
-                .setItems(items, (dialog, which) -> {
-                    String msg = gameState.isAwaitingPeregrinoBottomChoice()
-                            ? gameState.choosePeregrinoBottom(which)
-                            : gameState.choosePeregrinoTop(which);
-                    handleGameResult(msg);
-                })
-                .setCancelable(false)
-                .show();
+        showSingleCardChoiceDialog(
+                title,
+                cards,
+                index -> gameState.isAwaitingPeregrinoBottomChoice()
+                        ? gameState.choosePeregrinoBottom(index)
+                        : gameState.choosePeregrinoTop(index),
+                null
+        );
     }
 
     private void promptHumpbackDirection() {
@@ -2366,73 +2515,46 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         animationHandler.post(runner[0]);
     }
 
-private void promptSpiderCrabCardChoice() {
-        List<String> names = new ArrayList<>(gameState.getFailedDiscardNames());
-        names.removeIf(s -> s == null || s.trim().isEmpty());
-
-        if (names.isEmpty()) {
+    private void promptSpiderCrabCardChoice() {
+        List<Card> cards = new ArrayList<>(gameState.getFailedDiscardCards());
+        if (cards.isEmpty()) {
             handleGameResult("No hay cartas descartadas por fallo para recuperar.");
             return;
         }
-
-        CharSequence[] items = names.toArray(new CharSequence[0]);
-
-        new AlertDialog.Builder(this)
-                .setTitle("Cangrejo araña")
-                .setItems(items, (d, which) -> {
-                    String msg = gameState.chooseSpiderCrabCard(which);
-                    handleGameResult(msg);
-                })
-                .setNegativeButton("Cancelar", (d, which) -> {
-                    String msg = gameState.cancelSpiderCrab();
-                    handleGameResult(msg);
-                })
-                .setCancelable(false)
-                .show();
+        showSingleCardChoiceDialog(
+                "Cangrejo araña",
+                cards,
+                gameState::chooseSpiderCrabCard,
+                gameState::cancelSpiderCrab
+        );
     }
 
     private void promptDecoradorChoice() {
-        List<String> names = new ArrayList<>(gameState.getPendingDecoradorNames());
-        names.removeIf(s -> s == null || s.trim().isEmpty());
-        if (names.isEmpty()) {
+        List<Card> cards = new ArrayList<>(gameState.getPendingDecoradorCards());
+        if (cards.isEmpty()) {
             handleGameResult("Cangrejo decorador: no hay objetos disponibles.");
             return;
         }
-        CharSequence[] items = names.toArray(new CharSequence[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("Cangrejo decorador")
-                .setItems(items, (d, which) -> {
-                    String msg = gameState.chooseDecoradorCard(which);
-                    handleGameResult(msg);
-                })
-                .setNegativeButton("Cancelar", (d, which) -> {
-                    String msg = gameState.cancelDecoradorAbility();
-                    handleGameResult(msg);
-                })
-                .setCancelable(false)
-                .show();
+        showSingleCardChoiceDialog(
+                "Cangrejo decorador",
+                cards,
+                gameState::chooseDecoradorCard,
+                gameState::cancelDecoradorAbility
+        );
     }
 
     private void promptViolinistChoice() {
-        List<String> names = new ArrayList<>(gameState.getFailedDiscardNames());
-        names.removeIf(s -> s == null || s.trim().isEmpty());
-        if (names.isEmpty()) {
+        List<Card> cards = new ArrayList<>(gameState.getFailedDiscardCards());
+        if (cards.isEmpty()) {
             handleGameResult("No hay cartas descartadas por fallo para capturar.");
             return;
         }
-        CharSequence[] items = names.toArray(new CharSequence[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("Cangrejo violinista")
-                .setItems(items, (d, which) -> {
-                    String msg = gameState.chooseViolinistCard(which);
-                    handleGameResult(msg);
-                })
-                .setNegativeButton("Cancelar", (d, which) -> {
-                    String msg = gameState.cancelViolinistAbility();
-                    handleGameResult(msg);
-                })
-                .setCancelable(false)
-                .show();
+        showSingleCardChoiceDialog(
+                "Cangrejo violinista",
+                cards,
+                gameState::chooseViolinistCard,
+                gameState::cancelViolinistAbility
+        );
     }
 
     private void promptHorseshoeValue() {
