@@ -642,6 +642,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void setupDiceSelectionUi() {
         refreshDiceTokens();
+        updateDiceGridColumns();
+        binding.diceSelectionPanel.getRoot().post(this::updateDiceGridColumns);
     }
 
     private void refreshDiceTokens() {
@@ -671,6 +673,26 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
         }
         updateSelectionCounter();
+    }
+
+    private void updateDiceGridColumns() {
+        int columnCount = calculateDiceColumns();
+        binding.diceSelectionPanel.diceSelectionGrid.setColumnCount(columnCount);
+        binding.diceSelectionPanel.diceWarehouseGrid.setColumnCount(columnCount);
+    }
+
+    private int calculateDiceColumns() {
+        int gridWidth = binding.diceSelectionPanel.diceWarehouseGrid.getWidth();
+        if (gridWidth == 0) {
+            gridWidth = binding.diceSelectionPanel.diceSelectionGrid.getWidth();
+        }
+        if (gridWidth == 0) {
+            return 4;
+        }
+        int dieSize = dpToPx(70);
+        int spacing = dpToPx(8);
+        int cellSize = dieSize + spacing * 2;
+        return Math.max(2, gridWidth / cellSize);
     }
 
     private void clearDiceTokensFromContainer(ViewGroup container) {
