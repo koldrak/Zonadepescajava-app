@@ -401,6 +401,50 @@ public final class GameUtils {
         return cards;
     }
 
+    public static List<Card> buildRandomDeckSelection(Random rng, List<Card> availableCards,
+                                                     int minPoints, int maxPoints, int minCards) {
+        if (availableCards == null || availableCards.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<Card> cards = new ArrayList<>(availableCards);
+        for (int attempt = 0; attempt < 2000; attempt++) {
+            Collections.shuffle(cards, rng);
+            List<Card> selection = new ArrayList<>();
+            int total = 0;
+            for (Card card : cards) {
+                int copies = rng.nextInt(3); // 0-2
+                for (int i = 0; i < copies; i++) {
+                    int nextTotal = total + card.getPoints();
+                    if (nextTotal > maxPoints) {
+                        break;
+                    }
+                    selection.add(card);
+                    total = nextTotal;
+                }
+            }
+            if (selection.size() >= minCards && total >= minPoints && total <= maxPoints) {
+                return selection;
+            }
+        }
+        List<Card> fallback = new ArrayList<>();
+        int total = 0;
+        Collections.shuffle(cards, rng);
+        for (Card card : cards) {
+            for (int i = 0; i < 2; i++) {
+                int nextTotal = total + card.getPoints();
+                if (nextTotal > maxPoints) {
+                    break;
+                }
+                fallback.add(card);
+                total = nextTotal;
+                if (fallback.size() >= minCards && total >= minPoints) {
+                    return fallback;
+                }
+            }
+        }
+        return fallback;
+    }
+
     public static List<Card> buildDeck(Random rng) {
         return buildDeck(rng, null);
     }

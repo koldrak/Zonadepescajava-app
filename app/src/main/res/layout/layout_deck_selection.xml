@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="24dp"
+    android:padding="16dp"
     android:background="@android:color/white"
     tools:context=".MainActivity">
 
@@ -27,7 +27,7 @@
         android:id="@+id/deckSelectionRecycler"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:layout_weight="1"
         tools:listitem="@layout/item_deck_selection_card" />
 

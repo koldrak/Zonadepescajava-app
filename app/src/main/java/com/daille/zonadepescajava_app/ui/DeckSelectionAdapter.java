@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.daille.zonadepescajava_app.R;
 import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardId;
+import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -77,6 +78,7 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
             image = imageResolver.getCardBack();
         }
         holder.cardImage.setImageBitmap(image);
+        holder.cardImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
         holder.cardImage.setContentDescription(card != null ? card.getName()
                 : holder.cardImage.getContext().getString(R.string.card_image_content_description));
 
@@ -101,6 +103,14 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
             if (selectionListener != null) {
                 selectionListener.onSelectionChanged();
             }
+        });
+        holder.itemView.setOnLongClickListener(v -> {
+            Bitmap fullImage = imageResolver.getImageFor(card, true);
+            if (fullImage == null) {
+                fullImage = imageResolver.getCardBack();
+            }
+            CardFullscreenDialog.show(holder.itemView.getContext(), fullImage);
+            return true;
         });
     }
 

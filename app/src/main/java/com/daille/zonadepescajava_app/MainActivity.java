@@ -160,18 +160,24 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             showDeckSelectionPanel();
         });
         binding.startMenu.openDiceShop.setOnClickListener(v -> showDiceShopPanel());
+        binding.diceSelectionPanel.openDeckSelection.setOnClickListener(v -> showDeckSelectionPanel());
         binding.diceSelectionPanel.confirmDiceSelection.setOnClickListener(v -> {
             List<DieType> startingReserve = extractSelectedDice();
             if (startingReserve.isEmpty()) {
                 Toast.makeText(this, "Selecciona al menos 1 dado para iniciar.", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if (selectedDeck == null || selectedDeck.size() < 9) {
-                Toast.makeText(this, "Selecciona primero un mazo válido.", Toast.LENGTH_SHORT).show();
-                showDeckSelectionPanel();
-                return;
-            }
             Map<CardId, Integer> captureCounts = scoreDatabaseHelper.getCaptureCounts();
+            if (selectedDeck == null || selectedDeck.size() < 9 || deckSelectionPoints < 150 || deckSelectionPoints > 200) {
+                List<Card> autoDeck = GameUtils.buildRandomDeckSelection(
+                        new java.util.Random(),
+                        GameUtils.getSelectableCards(captureCounts),
+                        150,
+                        200,
+                        9
+                );
+                selectedDeck = autoDeck;
+            }
             viewModel.startNewGame(startingReserve, captureCounts, selectedDeck);
             gameState = viewModel.getGameState();
             endScoringShown = false;
@@ -295,6 +301,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void showStartMenu() {
         resetDiceSelection();
+        selectedDeck = new ArrayList<>();
+        deckSelectionPoints = 0;
         binding.startMenu.getRoot().setVisibility(View.VISIBLE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
