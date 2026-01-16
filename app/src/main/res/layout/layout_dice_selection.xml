@@ -24,7 +24,15 @@
         android:background="@drawable/dice_zone_background"
         android:padding="12dp">
 
+        <GridLayout
+            android:id="@+id/diceSelectionGrid"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:columnCount="4"
+            android:rowCount="2" />
+
         <TextView
+            android:id="@+id/diceSelectionLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
@@ -48,7 +56,23 @@
         android:background="@drawable/dice_warehouse_background"
         android:padding="12dp">
 
+        <ScrollView
+            android:id="@+id/diceWarehouseScroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingTop="24dp"
+            android:clipToPadding="false">
+
+            <GridLayout
+                android:id="@+id/diceWarehouseGrid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="4"
+                android:rowCount="1" />
+        </ScrollView>
+
         <TextView
+            android:id="@+id/diceWarehouseLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="start|top"

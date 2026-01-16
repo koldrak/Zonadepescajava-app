@@ -33,7 +33,7 @@
     <string name="card_pack_reward_detail">Carta obtenida: %1$s</string>
     <string name="buy">Comprar</string>
     <string name="back">Volver</string>
-    <string name="dice_selection_instruction">Arrastra los dados que usarás (máx. 7) a la zona de selección</string>
+    <string name="dice_selection_instruction">Toca los dados que usarás (máx. 7) para moverlos a la zona de selección</string>
     <string name="dice_selection_counter_placeholder">Dados seleccionados: 0 (máx. 7)</string>
     <string name="dice_selection_counter_format">Dados seleccionados: %1$d (máx. 7)</string>
     <string name="settings_title">Configuraciones</string>
