@@ -689,8 +689,26 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void updateDiceGridColumns() {
         int columnCount = calculateDiceColumns();
+        resetDiceGridLayoutParams(binding.diceSelectionPanel.diceSelectionGrid);
+        resetDiceGridLayoutParams(binding.diceSelectionPanel.diceWarehouseGrid);
         binding.diceSelectionPanel.diceSelectionGrid.setColumnCount(columnCount);
         binding.diceSelectionPanel.diceWarehouseGrid.setColumnCount(columnCount);
+    }
+
+    private void resetDiceGridLayoutParams(GridLayout grid) {
+        int size = dpToPx(70);
+        int spacing = dpToPx(8);
+        for (int i = 0; i < grid.getChildCount(); i++) {
+            View child = grid.getChildAt(i);
+            if (!(child instanceof ImageView)) {
+                continue;
+            }
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+            params.width = size;
+            params.height = size;
+            params.setMargins(spacing, spacing, spacing, spacing);
+            child.setLayoutParams(params);
+        }
     }
 
     private int calculateDiceColumns() {
