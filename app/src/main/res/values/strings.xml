@@ -7,6 +7,8 @@
     <string name="collection_capture_count">%1$d capturas</string>
     <string name="collection_capture_progress">%1$d de %2$d capturas</string>
     <string name="collection_locked">Bloqueado</string>
+    <string name="collection_copy_badge">x%1$d</string>
+    <string name="collection_copy_progress">%1$d/%2$d para nueva copia</string>
     <string name="deck_selection_title">Selección de mazo</string>
     <string name="deck_selection_button">Armado de mazo</string>
     <string name="deck_selection_score_placeholder">Puntaje seleccionado: 0 (150–200)</string>
@@ -22,9 +24,19 @@
     <string name="dice_shop_d6">D6 • 400 puntos</string>
     <string name="dice_shop_d8">D8 • 600 puntos</string>
     <string name="dice_shop_d12">D12 • 1000 puntos</string>
+    <string name="card_pack_title">Paquetes de cartas</string>
+    <string name="card_pack_random">Paquete sorpresa • 2000 puntos</string>
+    <string name="card_pack_crustaceo">Paquete naranjo (Crustáceos) • 2500 puntos</string>
+    <string name="card_pack_small_fish">Paquete celeste (Peces pequeños) • 2500 puntos</string>
+    <string name="card_pack_big_fish">Paquete verde (Peces grandes) • 2500 puntos</string>
+    <string name="card_pack_object">Paquete negro (Objetos) • 2500 puntos</string>
+    <string name="card_pack_reward_detail">Carta obtenida: %1$s</string>
     <string name="buy">Comprar</string>
     <string name="back">Volver</string>
     <string name="dice_selection_instruction">Arrastra los dados que usarás (máx. 7) a la zona de selección</string>
     <string name="dice_selection_counter_placeholder">Dados seleccionados: 0 (máx. 7)</string>
     <string name="dice_selection_counter_format">Dados seleccionados: %1$d (máx. 7)</string>
+    <string name="settings_title">Configuraciones</string>
+    <string name="settings_reset_data">Borrar datos</string>
+    <string name="settings_add_points">1000 pts</string>
 </resources>

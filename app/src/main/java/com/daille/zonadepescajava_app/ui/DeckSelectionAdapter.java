@@ -31,6 +31,7 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
     private final CardImageResolver imageResolver;
     private final List<Card> cards = new ArrayList<>();
     private final Map<CardId, Integer> selectionCounts = new EnumMap<>(CardId.class);
+    private final Map<CardId, Integer> inventoryCounts = new EnumMap<>(CardId.class);
     private final OnSelectionChangedListener selectionListener;
 
     public DeckSelectionAdapter(Context context, OnSelectionChangedListener selectionListener) {
@@ -49,6 +50,14 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
         if (selectionListener != null) {
             selectionListener.onSelectionChanged();
         }
+    }
+
+    public void setInventoryCounts(Map<CardId, Integer> counts) {
+        inventoryCounts.clear();
+        if (counts != null) {
+            inventoryCounts.putAll(counts);
+        }
+        notifyDataSetChanged();
     }
 
     public Map<CardId, Integer> getSelectionCounts() {
@@ -93,7 +102,14 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
 
         holder.itemView.setOnClickListener(v -> {
             int current = selectionCounts.getOrDefault(card.getId(), 0);
-            int next = (current + 1) % 3;
+            int maxCopies = inventoryCounts.getOrDefault(card.getId(), 0);
+            if (maxCopies <= 0) {
+                return;
+            }
+            int next = current + 1;
+            if (next > maxCopies) {
+                next = 0;
+            }
             if (next == 0) {
                 selectionCounts.remove(card.getId());
             } else {

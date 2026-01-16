@@ -56,4 +56,10 @@ public class GameViewModel extends ViewModel {
     public void markFinalScoreRecorded() {
         finalScoreRecorded = true;
     }
+
+    public void resetProgress() {
+        initialized = false;
+        finalScoreRecorded = false;
+        gameState.newGame();
+    }
 }

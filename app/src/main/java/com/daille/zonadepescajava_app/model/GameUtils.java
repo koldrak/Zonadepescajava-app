@@ -372,11 +372,16 @@ public final class GameUtils {
     }
 
     public static List<Card> buildDeck(Random rng, Map<CardId, Integer> captureCounts) {
-        List<Card> deck = new ArrayList<>(createAllCards());
-        if (captureCounts != null) {
-            applyUnlocks(deck, captureCounts);
+        List<Card> deck = new ArrayList<>();
+        if (captureCounts == null) {
+            deck.addAll(createAllCards());
         } else {
-            removeLockedCards(deck);
+            for (Card card : createAllCards()) {
+                int copies = captureCounts.getOrDefault(card.getId(), 0);
+                for (int i = 0; i < copies; i++) {
+                    deck.add(card);
+                }
+            }
         }
         Collections.shuffle(deck, rng);
         return deck;
@@ -394,14 +399,13 @@ public final class GameUtils {
     public static List<Card> getSelectableCards(Map<CardId, Integer> captureCounts) {
         List<Card> cards = new ArrayList<>(createAllCards());
         if (captureCounts != null) {
-            applyUnlocks(cards, captureCounts);
-        } else {
-            removeLockedCards(cards);
+            cards.removeIf(card -> captureCounts.getOrDefault(card.getId(), 0) <= 0);
         }
         return cards;
     }
 
     public static List<Card> buildRandomDeckSelection(Random rng, List<Card> availableCards,
+                                                     Map<CardId, Integer> ownedCounts,
                                                      int minPoints, int maxPoints, int minCards) {
         if (availableCards == null || availableCards.isEmpty()) {
             return new ArrayList<>();
@@ -412,7 +416,11 @@ public final class GameUtils {
             List<Card> selection = new ArrayList<>();
             int total = 0;
             for (Card card : cards) {
-                int copies = rng.nextInt(3); // 0-2
+                int maxCopies = ownedCounts != null ? ownedCounts.getOrDefault(card.getId(), 0) : 2;
+                if (maxCopies <= 0) {
+                    continue;
+                }
+                int copies = rng.nextInt(maxCopies + 1);
                 for (int i = 0; i < copies; i++) {
                     int nextTotal = total + card.getPoints();
                     if (nextTotal > maxPoints) {
@@ -430,7 +438,8 @@ public final class GameUtils {
         int total = 0;
         Collections.shuffle(cards, rng);
         for (Card card : cards) {
-            for (int i = 0; i < 2; i++) {
+            int maxCopies = ownedCounts != null ? ownedCounts.getOrDefault(card.getId(), 0) : 2;
+            for (int i = 0; i < maxCopies; i++) {
                 int nextTotal = total + card.getPoints();
                 if (nextTotal > maxPoints) {
                     break;
@@ -449,182 +458,68 @@ public final class GameUtils {
         return buildDeck(rng, null);
     }
 
-    private static void applyUnlocks(List<Card> deck, Map<CardId, Integer> captureCounts) {
-        if (captureCounts.getOrDefault(CardId.CANGREJO_ROJO, 0) < 3) {
-            removeCard(deck, CardId.CANGREJO_BOXEADOR);
-        }
-        if (captureCounts.getOrDefault(CardId.JAIBA_AZUL, 0) < 3) {
-            removeCard(deck, CardId.LANGOSTINO_MANTIS);
-        }
-        if (captureCounts.getOrDefault(CardId.CAMARON_FANTASMA, 0) < 3) {
-            removeCard(deck, CardId.CAMARON_PISTOLA);
-        }
-        if (captureCounts.getOrDefault(CardId.LANGOSTA_ESPINOSA, 0) < 3) {
-            removeCard(deck, CardId.BOGAVANTE);
-        }
-        if (captureCounts.getOrDefault(CardId.KRILL, 0) < 3) {
-            removeCard(deck, CardId.COPEPODO_BRILLANTE);
-        }
-        if (captureCounts.getOrDefault(CardId.CANGREJO_ERMITANO, 0) < 3) {
-            removeCard(deck, CardId.CANGREJO_DECORADOR);
-        }
-        if (captureCounts.getOrDefault(CardId.PERCEBES, 0) < 3) {
-            removeCard(deck, CardId.LOCO);
-        }
-        if (captureCounts.getOrDefault(CardId.CENTOLLA, 0) < 3) {
-            removeCard(deck, CardId.JAIBA_GIGANTE_DE_COCO);
-        }
-        if (captureCounts.getOrDefault(CardId.NAUTILUS, 0) < 3) {
-            removeCard(deck, CardId.CANGREJO_HERRADURA);
-        }
-        if (captureCounts.getOrDefault(CardId.ALMEJAS, 0) < 3) {
-            removeCard(deck, CardId.OSTRAS);
-        }
-        if (captureCounts.getOrDefault(CardId.CANGREJO_ARANA, 0) < 3) {
-            removeCard(deck, CardId.CANGREJO_VIOLINISTA);
-        }
-        if (captureCounts.getOrDefault(CardId.SARDINA, 0) < 3) {
-            removeCard(deck, CardId.CONGRIO);
-        }
-        if (captureCounts.getOrDefault(CardId.ATUN, 0) < 3) {
-            removeCard(deck, CardId.PEZ_BETTA);
-        }
-        if (captureCounts.getOrDefault(CardId.SALMON, 0) < 3) {
-            removeCard(deck, CardId.TRUCHA_ARCOIRIS);
-        }
-        if (captureCounts.getOrDefault(CardId.PEZ_PAYASO, 0) < 3) {
-            removeCard(deck, CardId.PEZ_PIEDRA);
-        }
-        if (captureCounts.getOrDefault(CardId.PEZ_GLOBO, 0) < 3) {
-            removeCard(deck, CardId.PEZ_LEON);
-        }
-        if (captureCounts.getOrDefault(CardId.MORENA, 0) < 3) {
-            removeCard(deck, CardId.PEZ_DRAGON_AZUL);
-        }
-        if (captureCounts.getOrDefault(CardId.CABALLITO_DE_MAR, 0) < 3) {
-            removeCard(deck, CardId.PEZ_PIPA);
-        }
-        if (captureCounts.getOrDefault(CardId.PEZ_LINTERNA, 0) < 3) {
-            removeCard(deck, CardId.PEZ_HACHA_ABISAL);
-        }
-        if (captureCounts.getOrDefault(CardId.KOI, 0) < 3) {
-            removeCard(deck, CardId.CARPA_DORADA);
-        }
-        if (captureCounts.getOrDefault(CardId.PEZ_VOLADOR, 0) < 3) {
-            removeCard(deck, CardId.FLETAN);
-        }
-        if (captureCounts.getOrDefault(CardId.PIRANA, 0) < 3) {
-            removeCard(deck, CardId.PEZ_LOBO);
-        }
-        if (captureCounts.getOrDefault(CardId.PEZ_FANTASMA, 0) < 3) {
-            removeCard(deck, CardId.PEZ_BORRON);
-        }
-        if (captureCounts.getOrDefault(CardId.PULPO, 0) < 3) {
-            removeCard(deck, CardId.SEPIA);
-        }
-        if (captureCounts.getOrDefault(CardId.ARENQUE, 0) < 3) {
-            removeCard(deck, CardId.DAMISELAS);
-        }
-        if (captureCounts.getOrDefault(CardId.REMORA, 0) < 3) {
-            removeCard(deck, CardId.LAMPREA);
-        }
-        if (captureCounts.getOrDefault(CardId.TIBURON_BLANCO, 0) < 3) {
-            removeCard(deck, CardId.TIBURON_TIGRE);
-        }
-        if (captureCounts.getOrDefault(CardId.TIBURON_MARTILLO, 0) < 3) {
-            removeCard(deck, CardId.DELFIN);
-        }
-        if (captureCounts.getOrDefault(CardId.TIBURON_BALLENA, 0) < 3) {
-            removeCard(deck, CardId.TIBURON_PEREGRINO);
-        }
-        if (captureCounts.getOrDefault(CardId.PEZ_VELA, 0) < 3) {
-            removeCard(deck, CardId.NARVAL);
-        }
-        if (captureCounts.getOrDefault(CardId.CALAMAR_GIGANTE, 0) < 3) {
-            removeCard(deck, CardId.ORCA);
-        }
-        if (captureCounts.getOrDefault(CardId.MANTA_GIGANTE, 0) < 3) {
-            removeCard(deck, CardId.ANGUILA_ELECTRICA);
-        }
-        if (captureCounts.getOrDefault(CardId.BALLENA_AZUL, 0) < 3) {
-            removeCard(deck, CardId.CACHALOTE);
-        }
-        if (captureCounts.getOrDefault(CardId.MERO_GIGANTE, 0) < 3) {
-            removeCard(deck, CardId.ESTURION);
-        }
-        if (captureCounts.getOrDefault(CardId.PEZ_LUNA, 0) < 3) {
-            removeCard(deck, CardId.BALLENA_JOROBADA);
-        }
-        if (captureCounts.getOrDefault(CardId.BOTA_VIEJA, 0) < 3) {
-            removeCard(deck, CardId.AUTO_HUNDIDO);
-        }
-        if (captureCounts.getOrDefault(CardId.BOTELLA_PLASTICO, 0) < 3) {
-            removeCard(deck, CardId.BOTELLA_DE_VIDRIO);
-        }
-        if (captureCounts.getOrDefault(CardId.RED_ENREDADA, 0) < 3) {
-            removeCard(deck, CardId.RED_DE_ARRASTRE);
-        }
-        if (captureCounts.getOrDefault(CardId.LATA_OXIDADA, 0) < 3) {
-            removeCard(deck, CardId.MICRO_PLASTICOS);
-        }
-        if (captureCounts.getOrDefault(CardId.LIMPIADOR_MARINO, 0) < 3) {
-            removeCard(deck, CardId.FOSA_ABISAL);
-        }
-        if (captureCounts.getOrDefault(CardId.ANZUELO_ROTO, 0) < 3) {
-            removeCard(deck, CardId.DERRAME_PETROLEO);
-        }
-        if (captureCounts.getOrDefault(CardId.CORRIENTES_PROFUNDAS, 0) < 3) {
-            removeCard(deck, CardId.BARCO_PESQUERO);
-        }
+    public static List<Card> getStarterCards() {
+        List<Card> starters = new ArrayList<>(createAllCards());
+        List<CardId> locked = getLockedCardIds();
+        starters.removeIf(card -> locked.contains(card.getId()));
+        return starters;
     }
 
-    private static void removeLockedCards(List<Card> deck) {
-        removeCard(deck, CardId.CANGREJO_BOXEADOR);
-        removeCard(deck, CardId.LANGOSTINO_MANTIS);
-        removeCard(deck, CardId.CAMARON_PISTOLA);
-        removeCard(deck, CardId.BOGAVANTE);
-        removeCard(deck, CardId.COPEPODO_BRILLANTE);
-        removeCard(deck, CardId.CANGREJO_DECORADOR);
-        removeCard(deck, CardId.LOCO);
-        removeCard(deck, CardId.JAIBA_GIGANTE_DE_COCO);
-        removeCard(deck, CardId.CANGREJO_HERRADURA);
-        removeCard(deck, CardId.OSTRAS);
-        removeCard(deck, CardId.CANGREJO_VIOLINISTA);
-        removeCard(deck, CardId.CONGRIO);
-        removeCard(deck, CardId.PEZ_BETTA);
-        removeCard(deck, CardId.TRUCHA_ARCOIRIS);
-        removeCard(deck, CardId.PEZ_PIEDRA);
-        removeCard(deck, CardId.PEZ_LEON);
-        removeCard(deck, CardId.PEZ_DRAGON_AZUL);
-        removeCard(deck, CardId.PEZ_PIPA);
-        removeCard(deck, CardId.PEZ_HACHA_ABISAL);
-        removeCard(deck, CardId.CARPA_DORADA);
-        removeCard(deck, CardId.FLETAN);
-        removeCard(deck, CardId.PEZ_LOBO);
-        removeCard(deck, CardId.PEZ_BORRON);
-        removeCard(deck, CardId.SEPIA);
-        removeCard(deck, CardId.DAMISELAS);
-        removeCard(deck, CardId.LAMPREA);
-        removeCard(deck, CardId.TIBURON_TIGRE);
-        removeCard(deck, CardId.DELFIN);
-        removeCard(deck, CardId.TIBURON_PEREGRINO);
-        removeCard(deck, CardId.NARVAL);
-        removeCard(deck, CardId.ORCA);
-        removeCard(deck, CardId.ANGUILA_ELECTRICA);
-        removeCard(deck, CardId.CACHALOTE);
-        removeCard(deck, CardId.ESTURION);
-        removeCard(deck, CardId.BALLENA_JOROBADA);
-        removeCard(deck, CardId.AUTO_HUNDIDO);
-        removeCard(deck, CardId.BOTELLA_DE_VIDRIO);
-        removeCard(deck, CardId.RED_DE_ARRASTRE);
-        removeCard(deck, CardId.MICRO_PLASTICOS);
-        removeCard(deck, CardId.FOSA_ABISAL);
-        removeCard(deck, CardId.DERRAME_PETROLEO);
-        removeCard(deck, CardId.BARCO_PESQUERO);
+    public static List<Card> getCardsByType(CardType type) {
+        List<Card> cards = new ArrayList<>();
+        for (Card card : createAllCards()) {
+            if (card.getType() == type) {
+                cards.add(card);
+            }
+        }
+        return cards;
     }
 
-    private static void removeCard(List<Card> deck, CardId id) {
-        deck.removeIf(card -> card.getId() == id);
+    private static List<CardId> getLockedCardIds() {
+        List<CardId> locked = new ArrayList<>();
+        locked.add(CardId.CANGREJO_BOXEADOR);
+        locked.add(CardId.LANGOSTINO_MANTIS);
+        locked.add(CardId.CAMARON_PISTOLA);
+        locked.add(CardId.BOGAVANTE);
+        locked.add(CardId.COPEPODO_BRILLANTE);
+        locked.add(CardId.CANGREJO_DECORADOR);
+        locked.add(CardId.LOCO);
+        locked.add(CardId.JAIBA_GIGANTE_DE_COCO);
+        locked.add(CardId.CANGREJO_HERRADURA);
+        locked.add(CardId.OSTRAS);
+        locked.add(CardId.CANGREJO_VIOLINISTA);
+        locked.add(CardId.CONGRIO);
+        locked.add(CardId.PEZ_BETTA);
+        locked.add(CardId.TRUCHA_ARCOIRIS);
+        locked.add(CardId.PEZ_PIEDRA);
+        locked.add(CardId.PEZ_LEON);
+        locked.add(CardId.PEZ_DRAGON_AZUL);
+        locked.add(CardId.PEZ_PIPA);
+        locked.add(CardId.PEZ_HACHA_ABISAL);
+        locked.add(CardId.CARPA_DORADA);
+        locked.add(CardId.FLETAN);
+        locked.add(CardId.PEZ_LOBO);
+        locked.add(CardId.PEZ_BORRON);
+        locked.add(CardId.SEPIA);
+        locked.add(CardId.DAMISELAS);
+        locked.add(CardId.LAMPREA);
+        locked.add(CardId.TIBURON_TIGRE);
+        locked.add(CardId.DELFIN);
+        locked.add(CardId.TIBURON_PEREGRINO);
+        locked.add(CardId.NARVAL);
+        locked.add(CardId.ORCA);
+        locked.add(CardId.ANGUILA_ELECTRICA);
+        locked.add(CardId.CACHALOTE);
+        locked.add(CardId.ESTURION);
+        locked.add(CardId.BALLENA_JOROBADA);
+        locked.add(CardId.AUTO_HUNDIDO);
+        locked.add(CardId.BOTELLA_DE_VIDRIO);
+        locked.add(CardId.RED_DE_ARRASTRE);
+        locked.add(CardId.MICRO_PLASTICOS);
+        locked.add(CardId.FOSA_ABISAL);
+        locked.add(CardId.DERRAME_PETROLEO);
+        locked.add(CardId.BARCO_PESQUERO);
+        return locked;
     }
 
     public static int sumWithModifiers(int slotIndex, GameState g) {
