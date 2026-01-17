@@ -2799,6 +2799,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
 
         cardView.setHasTransientState(true);
+        binding.gamePanel.selectedDieImage.setVisibility(View.INVISIBLE);
         animateDieToSlot(cardView, () -> {
             playPlacementRipple(cardView, null);
             if (shouldFlip) {
@@ -2865,7 +2866,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void floatingDieTravel(ImageView source, ImageView flying, float endX, float endY,
                                    Runnable onComplete) {
-        float originalAlpha = source.getAlpha();
         source.setAlpha(0f);
         flying.animate()
                 .x(endX)
@@ -2878,7 +2878,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                         ((ViewGroup) flying.getParent()).removeView(flying);
                     } catch (Exception ignore) {
                     }
-                    source.setAlpha(originalAlpha);
                     if (onComplete != null) {
                         onComplete.run();
                     }
