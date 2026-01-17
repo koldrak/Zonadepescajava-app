@@ -960,6 +960,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             promptHorseshoeValue();
             return;
         }
+        if (gameState.isAwaitingBoxerDecision()) {
+            promptBoxerDecision();
+            return;
+        }
         if (gameState.isAwaitingSpiderCrabCardChoice()) {
             promptSpiderCrabCardChoice();
             return;
@@ -1807,6 +1811,23 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .show();
     }
 
+    private void promptBoxerDecision() {
+        if (!gameState.isAwaitingBoxerDecision()) return;
+        new AlertDialog.Builder(this)
+                .setTitle("Cangrejo boxeador")
+                .setMessage("¿Quieres mover otro dado adyacente?")
+                .setPositiveButton("Mover", (dialog, which) -> {
+                    String msg = gameState.chooseBoxerContinue(true);
+                    handleGameResult(msg);
+                })
+                .setNegativeButton("Omitir", (dialog, which) -> {
+                    String msg = gameState.chooseBoxerContinue(false);
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
     private void promptMantisLostDieChoice() {
         if (!gameState.isAwaitingMantisLostDieChoice()) return;
         List<Die> options = new ArrayList<>(gameState.getLostDice());
@@ -2496,6 +2517,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (gameState.isAwaitingDecoradorChoice()) { promptDecoradorChoice(); return; }
         if (gameState.isAwaitingViolinistChoice()) { promptViolinistChoice(); return; }
         if (gameState.isAwaitingHorseshoeValue()) { promptHorseshoeValue(); return; }
+        if (gameState.isAwaitingBoxerDecision()) { promptBoxerDecision(); return; }
         if (gameState.isAwaitingSepiaChoice()) { promptSepiaChoice(); return; }
         if (gameState.isAwaitingDragnetReleaseChoice()) { promptDragnetReleaseChoice(); return; }
         if (gameState.isAwaitingHachaReleaseChoice()) { promptHachaReleaseChoice(); return; }
