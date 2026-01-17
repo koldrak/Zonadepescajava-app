@@ -6,5 +6,8 @@
     <color name="remora_highlight">#0F0404</color>
     <color name="bottle_highlight">#FFA000</color>
     <color name="betta_row_highlight">#33B5E5</color>
+    <color name="marine_foam">#E8FFFF</color>      <!-- blanco espuma -->
+    <color name="marine_turquoise">#18D5C7</color> <!-- turquesa -->
+    <color name="marine_deep">#0B1F2A</color>      <!-- azul profundo para sombra -->
 
 </resources>

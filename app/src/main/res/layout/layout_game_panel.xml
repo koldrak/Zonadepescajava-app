@@ -27,7 +27,7 @@
                 android:id="@+id/score"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                style="@style/App.Text.Title.Ocean.Sub"
                 android:paddingHorizontal="20dp"
                 tools:text="Puntaje: 0" />
 
@@ -139,6 +139,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="Toca un dado de la reserva para lanzarlo"
+            style="@style/App.Text.Title.Ocean.Sub"
             android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
 
         <HorizontalScrollView
@@ -160,6 +161,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
+            style="@style/App.Text.Title.Ocean.Sub"
             android:textAppearance="@style/TextAppearance.Material3.BodySmall"
             tools:text="Perdidos: 0" />
 
@@ -183,7 +185,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:text="zona de capturas"
-            android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+            style="@style/App.Text.Title.Ocean.Sub" />
 
         <HorizontalScrollView
             android:id="@+id/captureScroll"

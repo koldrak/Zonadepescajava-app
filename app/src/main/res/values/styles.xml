@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 1) Botón “Glass” turquesa (vidrio moderno) -->
+    <style name="App.Button.Glass" parent="Widget.Material3.Button.OutlinedButton">
+        <!-- Forma -->
+        <item name="cornerRadius">18dp</item>
+
+        <!-- Vidrio turquesa semitranslúcido -->
+        <!-- ARGB: AA RR GG BB -->
+        <item name="backgroundTint">#6618D5C7</item>
+
+        <!-- Borde con tinte turquesa + un toque blanco -->
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">#80E8FFFF</item>
+
+        <!-- Texto (mejor contraste sobre turquesa) -->
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">#F2FFFFFF</item>
+
+        <!-- Sombra -->
+        <item name="android:elevation">10dp</item>
+
+        <!-- Ripple turquesa -->
+        <item name="rippleColor">#3318D5C7</item>
+    </style>
+
+    <!-- 2) Botón “Watercolor” azul oscuro (sin drawable = sin “forma de mancha” real) -->
+    <style name="App.Button.Watercolor" parent="Widget.Material3.Button.OutlinedButton">
+        <!-- Forma (solo redondeado) -->
+        <item name="cornerRadius">22dp</item>
+
+        <!-- Mancha agua azul oscuro semitranslúcida -->
+        <item name="backgroundTint">#80204CFF</item>
+
+        <!-- Borde suave para definir en fondos con detalle -->
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">#553B6BFF</item>
+
+        <!-- Texto -->
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">#F2FFFFFF</item>
+
+        <!-- Sombra -->
+        <item name="android:elevation">6dp</item>
+
+        <!-- Ripple azul -->
+        <item name="rippleColor">#33204CFF</item>
+    </style>
+
+
+        <!-- Título marino principal -->
+        <style name="App.Text.Title.Ocean" parent="TextAppearance.Material3.TitleLarge">
+
+            <!-- Fuente (compatibilidad) -->
+            <item name="android:fontFamily">@font/ocean</item>
+            <item name="fontFamily">@font/ocean</item>
+
+            <!-- Presencia -->
+            <item name="android:textStyle">normal</item>
+            <item name="android:textAllCaps">true</item>
+            <item name="android:letterSpacing">0.0</item>
+
+            <!-- Color espuma -->
+            <item name="android:textColor">#BA000957</item>
+
+            <!-- Profundidad (sombra suave, no “borde duro”) -->
+            <item name="android:shadowColor">#B3001018</item>
+            <item name="android:shadowDx">0</item>
+            <item name="android:shadowDy">3</item>
+            <item name="android:shadowRadius">18</item>
+        </style>
+
+        <!-- Variante para subtítulos / secciones -->
+        <style name="App.Text.Title.Ocean.Sub" parent="TextAppearance.Material3.TitleMedium">
+
+            <item name="android:fontFamily">@font/basica</item>
+            <item name="fontFamily">@font/basica</item>
+
+            <item name="android:textStyle">normal</item>
+            <item name="android:textAllCaps">false</item>
+            <item name="android:letterSpacing">0.0</item>
+
+            <!-- Más suave que el título -->
+            <item name="android:textColor">#DE000000</item>
+
+            <item name="android:shadowColor">#99FFFFFF</item>
+            <item name="android:shadowDx">0</item>
+            <item name="android:shadowDy">2</item>
+            <item name="android:shadowRadius">10</item>
+        </style>
+
+
+</resources>

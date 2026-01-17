@@ -19,20 +19,21 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="30dp"
             android:text="Zona de Pesca"
-            android:textAppearance="@style/TextAppearance.Material3.DisplaySmall" />
+            android:textSize="35sp"
+            style="@style/App.Text.Title.Ocean" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/startNewGame"
-            style="@style/Widget.Material3.Button.TonalButton"
+            style="@style/App.Button.Watercolor"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Nuevo juego" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/openDiceShop"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/App.Button.Glass"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
@@ -40,7 +41,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/openSettings"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/App.Button.Glass"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
@@ -48,7 +49,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/openCollections"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/App.Button.Glass"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
@@ -60,7 +61,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:text="Records de puntaje"
-            android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
+            style="@style/App.Text.Title.Ocean.Sub" />
 
         <ListView
             android:id="@+id/scoreRecordsList"

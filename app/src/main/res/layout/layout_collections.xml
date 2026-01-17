@@ -28,11 +28,11 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/collections_title"
-                android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
+                style="@style/App.Text.Title.Ocean" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/closeCollections"
-                style="@style/Widget.Material3.Button.TextButton"
+                style="@style/App.Button.Watercolor"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/close" />

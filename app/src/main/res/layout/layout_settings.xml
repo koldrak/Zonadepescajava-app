@@ -21,7 +21,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/settings_title"
-            android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
+            style="@style/App.Text.Title.Ocean"/>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/settingsResetData"

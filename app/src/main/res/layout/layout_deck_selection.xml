@@ -21,7 +21,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/deck_selection_title"
-            android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
+            style="@style/App.Text.Title.Ocean" />
 
         <TextView
             android:id="@+id/deckSelectionScore"
@@ -29,7 +29,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:text="@string/deck_selection_score_placeholder"
-            android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+            style="@style/App.Text.Title.Ocean.Sub" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/deckSelectionRecycler"
@@ -49,7 +49,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/deckSelectionBack"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+                style="@style/App.Button.Glass"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -57,7 +57,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/deckSelectionConfirm"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+                style="@style/App.Button.Watercolor"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
