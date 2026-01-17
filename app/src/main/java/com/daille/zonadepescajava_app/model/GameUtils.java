@@ -19,7 +19,7 @@ public final class GameUtils {
                 condSumRange(6, 8), "Mueve 1 dado entre peces adyacentes.", "", ""));
 
         cards.add(new Card(CardId.CANGREJO_BOXEADOR, "Cangrejo Boxeador", CardType.CRUSTACEO, 8,
-                condSumExact(5), "Mueve 2 dados entre cartas adyacentes.", "", ""));
+                condSumExact(5), "Mueve 1 dado entre cartas adyacentes (hasta 2 veces).", "", ""));
 
         cards.add(new Card(CardId.JAIBA_AZUL, "Jaiba Azul", CardType.CRUSTACEO, 8,
                 (slotIndex, g) -> bothDiceEven(slotIndex, g), "Ajusta el último dado ±1.", "", ""));

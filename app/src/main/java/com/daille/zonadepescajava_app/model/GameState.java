@@ -80,6 +80,9 @@ public class GameState {
     private int horseshoeSlotIndex = -1;
     private int horseshoeDieIndex = -1;
     private boolean awaitingHorseshoeValue = false;
+    private boolean awaitingBoxerDecision = false;
+    private int boxerMovesRemaining = 0;
+    private int boxerSlotIndex = -1;
     private boolean awaitingPulpoChoice = false;
     private int pulpoSlotIndex = -1;
     private int pulpoPlacedValue = 0;
@@ -278,6 +281,7 @@ public class GameState {
         pendingHumpbackSlot = -1;
         awaitingHumpbackDirection = false;
         clearHorseshoeState();
+        clearBoxerState();
         awaitingPulpoChoice = false;
         pulpoSlotIndex = -1;
         pulpoPlacedValue = 0;
@@ -395,6 +399,10 @@ public class GameState {
         return awaitingHorseshoeValue;
     }
 
+    public boolean isAwaitingBoxerDecision() {
+        return awaitingBoxerDecision;
+    }
+
     public boolean hasPendingTurnResolutions() {
         return isAwaitingDieLoss()
                 || awaitingAtunDecision
@@ -412,6 +420,7 @@ public class GameState {
                 || awaitingDecoradorChoice
                 || awaitingViolinistChoice
                 || awaitingHorseshoeValue
+                || awaitingBoxerDecision
                 || awaitingPulpoChoice
                 || awaitingValueAdjustment
                 || awaitingGhostShrimpDecision
@@ -803,7 +812,7 @@ public class GameState {
                 break;
             case BOXER_FROM:
                 for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
-                    if (board[idx].getDice().size() >= 2) {
+                    if (!board[idx].getDice().isEmpty()) {
                         highlight.add(idx);
                     }
                 }
@@ -811,7 +820,7 @@ public class GameState {
             case BOXER_TO:
                 for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
                     if (idx != pendingSelectionAux && board[idx].getCard() != null
-                            && board[idx].getDice().isEmpty()) {
+                            && board[idx].getDice().size() < 2) {
                         highlight.add(idx);
                     }
                 }
@@ -1512,7 +1521,7 @@ public class GameState {
         horseshoeSlotIndex = slotIndex;
         horseshoeDieIndex = slot.getDice().size() - 1;
         awaitingHorseshoeValue = true;
-        clearPendingSelection();
+        suspendPendingSelection();
         return "Cangrejo herradura: elige el nuevo valor del dado.";
     }
 
@@ -1537,6 +1546,7 @@ public class GameState {
         slot.setDie(horseshoeDieIndex, new Die(die.getType(), value));
         String msg = "Cangrejo herradura ajustó el dado a " + value + ".";
         clearHorseshoeState();
+        advancePendingSelectionQueue();
 
         if (hasPendingTurnResolutions()) {
             return msg;
@@ -1559,6 +1569,12 @@ public class GameState {
         horseshoeSlotIndex = -1;
         horseshoeDieIndex = -1;
         awaitingHorseshoeValue = false;
+    }
+
+    private void clearBoxerState() {
+        awaitingBoxerDecision = false;
+        boxerMovesRemaining = 0;
+        boxerSlotIndex = -1;
     }
 
 
@@ -1904,6 +1920,9 @@ public class GameState {
         if (awaitingHorseshoeValue) {
             return "Resuelve el ajuste del Cangrejo herradura antes de lanzar otro dado.";
         }
+        if (awaitingBoxerDecision) {
+            return "Decide si moverás otro dado con el Cangrejo boxeador.";
+        }
         if (awaitingGhostShrimpDecision) {
             return "Decide primero si intercambiar las cartas vistas por el Camarón fantasma.";
         }
@@ -2001,6 +2020,9 @@ public class GameState {
         }
         if (awaitingHorseshoeValue) {
             return "Resuelve el ajuste del Cangrejo herradura antes de colocar dados.";
+        }
+        if (awaitingBoxerDecision) {
+            return "Decide si moverás otro dado con el Cangrejo boxeador.";
         }
         if (awaitingGhostShrimpDecision) {
             return "Decide si intercambiar las cartas vistas por el Camarón fantasma antes de continuar.";
@@ -2666,6 +2688,11 @@ public class GameState {
             clearHorseshoeState();
         }
 
+        boxerSlotIndex = remapIndex(boxerSlotIndex, indexMap);
+        if (awaitingBoxerDecision && boxerSlotIndex < 0) {
+            clearBoxerState();
+        }
+
         pezVelaSlotIndex = remapIndex(pezVelaSlotIndex, indexMap);
         if ((awaitingPezVelaDecision || awaitingPezVelaResultChoice) && pezVelaSlotIndex < 0) {
             clearPezVelaState();
@@ -3294,6 +3321,7 @@ public class GameState {
                 || awaitingDecoradorChoice
                 || awaitingViolinistChoice
                 || awaitingHorseshoeValue
+                || awaitingBoxerDecision
                 || awaitingPulpoChoice
                 || awaitingValueAdjustment
                 || awaitingLangostaRecovery
@@ -4716,25 +4744,20 @@ public class GameState {
             return "";
         }
         if (pendingSelectionActor < 0 || pendingSelectionActor >= board.length) {
+            clearBoxerState();
             clearPendingSelection();
             return "Cangrejo boxeador: acción cancelada (carta no disponible).";
         }
         BoardSlot boxerSlot = board[pendingSelectionActor];
         if (boxerSlot.getCard() == null || boxerSlot.getCard().getId() != CardId.CANGREJO_BOXEADOR) {
+            clearBoxerState();
             clearPendingSelection();
             return "Cangrejo boxeador: acción cancelada (carta no disponible).";
         }
 
-        boolean hasOrigin = false;
-        boolean hasTarget = false;
-        for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
-            BoardSlot adj = board[idx];
-            if (adj.getDice().size() >= 2) hasOrigin = true;
-            if (adj.getCard() != null && adj.getDice().isEmpty()) hasTarget = true;
-        }
-
         if (pendingSelection == PendingSelection.BOXER_FROM) {
-            if (!hasOrigin || !hasTarget) {
+            if (!hasValidBoxerMove(pendingSelectionActor)) {
+                clearBoxerState();
                 clearPendingSelection();
                 return "Cangrejo boxeador: no hay movimientos válidos.";
             }
@@ -4744,23 +4767,25 @@ public class GameState {
         BoardSlot origin = pendingSelectionAux >= 0 && pendingSelectionAux < board.length
                 ? board[pendingSelectionAux]
                 : null;
-        if (origin == null || origin.getDice().size() < 2) {
+        if (origin == null || origin.getDice().isEmpty()) {
+            clearBoxerState();
             clearPendingSelection();
-            return "Cangrejo boxeador: no hay suficientes dados para mover.";
+            return "Cangrejo boxeador: no hay dados para mover.";
         }
 
         boolean hasDestination = false;
         for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
             if (idx == pendingSelectionAux) continue;
             BoardSlot adj = board[idx];
-            if (adj.getCard() != null && adj.getDice().isEmpty()) {
+            if (adj.getCard() != null && adj.getDice().size() < 2) {
                 hasDestination = true;
                 break;
             }
         }
         if (!hasDestination) {
+            clearBoxerState();
             clearPendingSelection();
-            return "Cangrejo boxeador: no hay destino válido para los dados.";
+            return "Cangrejo boxeador: no hay destino válido para el dado.";
         }
         return "";
     }
@@ -4806,34 +4831,27 @@ public class GameState {
     }
 
     private String startBoxerCrabMove(int slotIndex) {
-        boolean hasOrigin = false;
-        boolean hasTarget = false;
-        for (Integer idx : adjacentIndices(slotIndex, true)) {
-            BoardSlot adj = board[idx];
-            if (adj.getDice().size() >= 2) {
-                hasOrigin = true;
-            }
-            if (adj.getCard() != null && adj.getDice().isEmpty()) {
-                hasTarget = true;
-            }
-        }
-        if (!hasOrigin || !hasTarget) {
+        if (!hasValidBoxerMove(slotIndex)) {
+            clearBoxerState();
             return "Cangrejo boxeador: no hay movimientos válidos.";
         }
+        boxerMovesRemaining = 2;
+        boxerSlotIndex = slotIndex;
+        awaitingBoxerDecision = false;
         return queueableSelection(
                 PendingSelection.BOXER_FROM,
                 slotIndex,
-                "Cangrejo boxeador: elige una carta adyacente con 2 dados."
+                "Cangrejo boxeador: elige una carta adyacente con dados."
         );
     }
 
     private String chooseBoxerOrigin(int slotIndex) {
-        if (!isAdjacentToActor(slotIndex) || board[slotIndex].getDice().size() < 2) {
-            return "Elige una carta adyacente con 2 dados.";
+        if (!isAdjacentToActor(slotIndex) || board[slotIndex].getDice().isEmpty()) {
+            return "Elige una carta adyacente con dado.";
         }
         pendingSelectionAux = slotIndex;
         pendingSelection = PendingSelection.BOXER_TO;
-        return "Selecciona una carta adyacente destino sin dados.";
+        return "Selecciona una carta adyacente destino (máx. 2 dados).";
     }
 
     private String chooseBoxerDestination(int slotIndex) {
@@ -4844,31 +4862,89 @@ public class GameState {
             return "Elige una carta distinta como destino.";
         }
         BoardSlot target = board[slotIndex];
-        if (target.getCard() == null || !target.getDice().isEmpty()) {
-            return "La carta destino debe estar vacía de dados.";
+        if (target.getCard() == null || target.getDice().size() >= 2) {
+            return "La carta destino debe tener espacio para un dado.";
         }
         BoardSlot origin = board[pendingSelectionAux];
-        if (origin.getDice().size() < 2) {
+        if (origin.getDice().isEmpty()) {
+            clearBoxerState();
             clearPendingSelection();
-            return "No hay suficientes dados para mover.";
+            return "No hay dados para mover.";
         }
-        List<Die> moving = new ArrayList<>();
-        for (int i = 0; i < 2; i++) {
-            moving.add(origin.removeDie(origin.getDice().size() - 1));
+        Die moving = origin.removeDie(origin.getDice().size() - 1);
+        String reveal = addDieToSlot(slotIndex, moving);
+        suspendPendingSelection();
+        boxerMovesRemaining = Math.max(0, boxerMovesRemaining - 1);
+
+        String msg = reveal.isEmpty()
+                ? "Cangrejo boxeador movió 1 dado entre cartas adyacentes."
+                : "Cangrejo boxeador movió 1 dado entre cartas adyacentes. " + reveal;
+
+        if (boxerMovesRemaining > 0 && hasValidBoxerMove(boxerSlotIndex)) {
+            awaitingBoxerDecision = true;
+            return msg;
         }
-        StringBuilder log = new StringBuilder();
-        for (Die die : moving) {
-            String reveal = addDieToSlot(slotIndex, die);
-            if (!reveal.isEmpty()) {
-                if (log.length() > 0) log.append(" ");
-                log.append(reveal);
+
+        clearBoxerState();
+        advancePendingSelectionQueue();
+        return msg;
+    }
+
+    public String chooseBoxerContinue(boolean use) {
+        if (!awaitingBoxerDecision) {
+            return "No hay decisión pendiente del Cangrejo boxeador.";
+        }
+        awaitingBoxerDecision = false;
+        if (!use) {
+            clearBoxerState();
+            return "Cangrejo boxeador: habilidad finalizada.";
+        }
+        if (!hasValidBoxerMove(boxerSlotIndex)) {
+            clearBoxerState();
+            return "Cangrejo boxeador: no hay movimientos válidos.";
+        }
+        return queueableSelection(
+                PendingSelection.BOXER_FROM,
+                boxerSlotIndex,
+                "Cangrejo boxeador: elige una carta adyacente con dados."
+        );
+    }
+
+    private boolean hasValidBoxerMove(int slotIndex) {
+        if (slotIndex < 0 || slotIndex >= board.length) {
+            return false;
+        }
+        List<Integer> adjacents = adjacentIndices(slotIndex, true);
+        for (Integer originIdx : adjacents) {
+            BoardSlot origin = board[originIdx];
+            if (origin.getDice().isEmpty()) continue;
+            for (Integer destIdx : adjacents) {
+                if (destIdx.equals(originIdx)) continue;
+                BoardSlot target = board[destIdx];
+                if (target.getCard() != null && target.getDice().size() < 2) {
+                    return true;
+                }
             }
         }
-        clearPendingSelection();
-        if (log.length() == 0) {
-            return "Cangrejo boxeador movió 2 dados entre cartas adyacentes.";
+        return false;
+    }
+
+    private void suspendPendingSelection() {
+        pendingSelection = PendingSelection.NONE;
+        pendingSelectionActor = -1;
+        pendingSelectionAux = -1;
+    }
+
+    private void advancePendingSelectionQueue() {
+        if (pendingSelection != PendingSelection.NONE) {
+            return;
         }
-        return "Cangrejo boxeador movió 2 dados entre cartas adyacentes. " + log;
+        PendingSelectionState next = pendingSelectionQueue.poll();
+        if (next != null) {
+            pendingSelection = next.selection;
+            pendingSelectionActor = next.actor;
+            pendingSelectionAux = next.aux;
+        }
     }
 
     private String startMantisDecision(int slotIndex) {
