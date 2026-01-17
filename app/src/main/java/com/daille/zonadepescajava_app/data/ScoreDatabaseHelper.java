@@ -18,7 +18,7 @@ import java.util.Map;
 public class ScoreDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "scores.db";
-    private static final int DATABASE_VERSION = 4;
+    private static final int DATABASE_VERSION = 5;
     private static final String TABLE_SCORES = "scores";
     private static final String COLUMN_ID = "id";
     private static final String COLUMN_SCORE = "score";
@@ -33,6 +33,9 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_OWNED_COUNT = "owned_count";
     private static final String TABLE_WALLET = "wallet";
     private static final String COLUMN_SPENT_POINTS = "spent_points";
+    private static final String TABLE_DICE_CAPACITY = "dice_capacity";
+    private static final String COLUMN_MAX_DICE = "max_dice";
+    private static final int BASE_DICE_CAPACITY = 6;
 
     public ScoreDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -62,10 +65,15 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                 COLUMN_ID + " INTEGER PRIMARY KEY CHECK (" + COLUMN_ID + " = 1), " +
                 COLUMN_SPENT_POINTS + " INTEGER NOT NULL DEFAULT 0"
                 + ")");
+        db.execSQL("CREATE TABLE " + TABLE_DICE_CAPACITY + " (" +
+                COLUMN_ID + " INTEGER PRIMARY KEY CHECK (" + COLUMN_ID + " = 1), " +
+                COLUMN_MAX_DICE + " INTEGER NOT NULL DEFAULT " + BASE_DICE_CAPACITY
+                + ")");
         seedCaptureCounts(db);
         seedDiceInventory(db);
         seedCardInventory(db);
         seedWallet(db);
+        seedDiceCapacity(db);
     }
 
     @Override
@@ -95,6 +103,13 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                     COLUMN_OWNED_COUNT + " INTEGER NOT NULL DEFAULT 0"
                     + ")");
             seedCardInventory(db);
+        }
+        if (oldVersion < 5) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_DICE_CAPACITY + " (" +
+                    COLUMN_ID + " INTEGER PRIMARY KEY CHECK (" + COLUMN_ID + " = 1), " +
+                    COLUMN_MAX_DICE + " INTEGER NOT NULL DEFAULT " + BASE_DICE_CAPACITY
+                    + ")");
+            seedDiceCapacity(db);
         }
     }
 
@@ -257,6 +272,26 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         addSpentPoints(-amount);
     }
 
+    public int getDiceCapacity() {
+        SQLiteDatabase db = getReadableDatabase();
+        int capacity = BASE_DICE_CAPACITY;
+        try (Cursor cursor = db.query(TABLE_DICE_CAPACITY, new String[]{COLUMN_MAX_DICE},
+                COLUMN_ID + " = 1", null, null, null, null)) {
+            if (cursor.moveToFirst()) {
+                capacity = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_MAX_DICE));
+            }
+        }
+        return capacity;
+    }
+
+    public void setDiceCapacity(int capacity) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_ID, 1);
+        values.put(COLUMN_MAX_DICE, capacity);
+        db.insertWithOnConflict(TABLE_DICE_CAPACITY, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
     public Map<CardId, Integer> getCardInventoryCounts() {
         SQLiteDatabase db = getReadableDatabase();
         Map<CardId, Integer> counts = new EnumMap<>(CardId.class);
@@ -305,10 +340,12 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         db.delete(TABLE_DICE_INVENTORY, null, null);
         db.delete(TABLE_CARD_INVENTORY, null, null);
         db.delete(TABLE_WALLET, null, null);
+        db.delete(TABLE_DICE_CAPACITY, null, null);
         seedCaptureCounts(db);
         seedDiceInventory(db);
         seedCardInventory(db);
         seedWallet(db);
+        seedDiceCapacity(db);
     }
 
     private void ensureCaptureRows() {
@@ -321,6 +358,7 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         ensureDiceInventoryRows(db);
         ensureWalletRow(db);
         ensureCardInventoryRows(db);
+        ensureDiceCapacityRow(db);
     }
 
     private void seedCaptureCounts(SQLiteDatabase db) {
@@ -349,7 +387,7 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
     private void seedDiceInventory(SQLiteDatabase db) {
         db.beginTransaction();
         try {
-            String[] dice = new String[]{"D4", "D6", "D8", "D12"};
+            String[] dice = new String[]{"D4", "D6", "D8", "D10", "D12", "D20"};
             for (String die : dice) {
                 ContentValues values = new ContentValues();
                 values.put(COLUMN_DIE_TYPE, die);
@@ -378,6 +416,14 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         seedCardInventory(db);
     }
 
+    private void ensureDiceCapacityRow(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_DICE_CAPACITY + " (" +
+                COLUMN_ID + " INTEGER PRIMARY KEY CHECK (" + COLUMN_ID + " = 1), " +
+                COLUMN_MAX_DICE + " INTEGER NOT NULL DEFAULT " + BASE_DICE_CAPACITY
+                + ")");
+        seedDiceCapacity(db);
+    }
+
     private void seedCardInventory(SQLiteDatabase db) {
         db.beginTransaction();
         try {
@@ -404,5 +450,12 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_ID, 1);
         values.put(COLUMN_SPENT_POINTS, 0);
         db.insertWithOnConflict(TABLE_WALLET, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+    }
+
+    private void seedDiceCapacity(SQLiteDatabase db) {
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_ID, 1);
+        values.put(COLUMN_MAX_DICE, BASE_DICE_CAPACITY);
+        db.insertWithOnConflict(TABLE_DICE_CAPACITY, null, values, SQLiteDatabase.CONFLICT_IGNORE);
     }
 }

@@ -186,6 +186,52 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <ImageView
+                        android:id="@+id/diceShopD10Image"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:contentDescription="@string/dice_shop_d10_description"
+                        android:scaleType="fitCenter" />
+
+                    <TextView
+                        android:id="@+id/diceShopD10Price"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/dice_shop_price_800" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/diceShopD10Owned"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="12dp"
+                    android:text="@string/dice_shop_owned_placeholder" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/diceShopBuyD10"
+                    style="@style/App.Button.Glass"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/buy" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -226,6 +272,80 @@
                     android:text="@string/buy" />
 
             </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
+
+                    <ImageView
+                        android:id="@+id/diceShopD20Image"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:contentDescription="@string/dice_shop_d20_description"
+                        android:scaleType="fitCenter" />
+
+                    <TextView
+                        android:id="@+id/diceShopD20Price"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/dice_shop_price_2000" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/diceShopD20Owned"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="12dp"
+                    android:text="@string/dice_shop_owned_placeholder" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/diceShopBuyD20"
+                    style="@style/App.Button.Glass"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/buy" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/diceCapacityTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/dice_capacity_title"
+                style="@style/App.Text.Title.Ocean.Sub" />
+
+            <TextView
+                android:id="@+id/diceCapacityCurrent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/dice_capacity_current_placeholder" />
+
+            <TextView
+                android:id="@+id/diceCapacityNext"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/dice_capacity_next_placeholder" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/diceCapacityBuy"
+                style="@style/App.Button.Glass"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/buy" />
 
             <TextView
                 android:id="@+id/cardPackTitle"
