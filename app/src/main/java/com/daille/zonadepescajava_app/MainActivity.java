@@ -83,8 +83,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private DeckSelectionAdapter deckSelectionAdapter;
     private final List<ImageView> diceTokens = new ArrayList<>();
     private final Card[] lastBoardCards = new Card[9];
+    private final List<List<Die>> lastBoardDice = new ArrayList<>();
     private BoardLinksDecoration boardLinksDecoration;
     private final List<Card> lastCaptures = new ArrayList<>();
+    private final Map<DieType, Integer> lastReserveCounts = new EnumMap<>(DieType.class);
     private float lastReserveTapCenterX = Float.NaN;
     private float lastReserveTapCenterY = Float.NaN;
     private long lastReserveTapAtMs = 0L;
@@ -107,6 +109,16 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
         CaptureAnimationRequest(Card card, int slotIndex) {
             this.card = card;
+            this.slotIndex = slotIndex;
+        }
+    }
+
+    private static class ReturnDiceAnimationRequest {
+        private final Die die;
+        private final int slotIndex;
+
+        ReturnDiceAnimationRequest(Die die, int slotIndex) {
+            this.die = die;
             this.slotIndex = slotIndex;
         }
     }
@@ -558,6 +570,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<CaptureAnimationRequest> captureAnimations = collectCaptureAnimations();
         List<ReleaseAnimationRequest> releaseAnimations = collectReleaseAnimations();
         List<Integer> refillSlots = collectRefillSlots();
+        List<ReturnDiceAnimationRequest> returnDiceAnimations = collectReturnDiceAnimations();
 
         adapter.update(
                 Arrays.asList(gameState.getBoard()),
@@ -599,11 +612,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         renderCapturedCards();
         binding.getRoot().post(() -> {
             hideRefillSlots(refillSlots);
-            runCaptureAnimationQueue(new ArrayList<>(captureAnimations),
-                    () -> runReleaseAnimationQueue(new ArrayList<>(releaseAnimations),
-                            () -> runRefillAnimationQueue(new ArrayList<>(refillSlots), null)
-                    )
-            );
+            runReturnDiceAnimationQueue(new ArrayList<>(returnDiceAnimations),
+                    () -> runCaptureAnimationQueue(new ArrayList<>(captureAnimations),
+                            () -> runReleaseAnimationQueue(new ArrayList<>(releaseAnimations),
+                                    () -> runRefillAnimationQueue(new ArrayList<>(refillSlots), null)
+                            )
+                    ));
         });
 
         recordNewCaptures();
@@ -1160,6 +1174,59 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         return events;
     }
 
+    private List<ReturnDiceAnimationRequest> collectReturnDiceAnimations() {
+        if (lastBoardDice.size() != gameState.getBoard().length || lastReserveCounts.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Map<DieType, Integer> reserveGained = buildReserveCounts();
+        for (Map.Entry<DieType, Integer> entry : lastReserveCounts.entrySet()) {
+            reserveGained.put(entry.getKey(),
+                    reserveGained.getOrDefault(entry.getKey(), 0) - entry.getValue());
+        }
+        List<ReturnDiceAnimationRequest> events = new ArrayList<>();
+        BoardSlot[] board = gameState.getBoard();
+        for (int i = 0; i < board.length; i++) {
+            List<Die> removed = computeRemovedDice(lastBoardDice.get(i), board[i].getDice());
+            for (Die die : removed) {
+                int remaining = reserveGained.getOrDefault(die.getType(), 0);
+                if (remaining > 0) {
+                    events.add(new ReturnDiceAnimationRequest(die, i));
+                    reserveGained.put(die.getType(), remaining - 1);
+                }
+            }
+        }
+        return events;
+    }
+
+    private List<Die> computeRemovedDice(List<Die> before, List<Die> after) {
+        List<Die> remaining = new ArrayList<>(before);
+        for (Die die : after) {
+            int idx = indexOfDie(remaining, die);
+            if (idx >= 0) {
+                remaining.remove(idx);
+            }
+        }
+        return remaining;
+    }
+
+    private int indexOfDie(List<Die> list, Die die) {
+        for (int i = 0; i < list.size(); i++) {
+            Die candidate = list.get(i);
+            if (candidate.getType() == die.getType() && candidate.getValue() == die.getValue()) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private Map<DieType, Integer> buildReserveCounts() {
+        Map<DieType, Integer> counts = new EnumMap<>(DieType.class);
+        for (DieType type : gameState.getReserve()) {
+            counts.put(type, counts.getOrDefault(type, 0) + 1);
+        }
+        return counts;
+    }
+
     private List<ReleaseAnimationRequest> collectReleaseAnimations() {
         List<ReleaseAnimationRequest> events = new ArrayList<>();
 
@@ -1359,9 +1426,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         for (int i = 0; i < board.length; i++) {
             lastBoardCards[i] = board[i].getCard();
         }
+        lastBoardDice.clear();
+        for (BoardSlot slot : board) {
+            lastBoardDice.add(new ArrayList<>(slot.getDice()));
+        }
         // NUEVO: snapshot de capturas
         lastCaptures.clear();
         lastCaptures.addAll(gameState.getCaptures());
+        lastReserveCounts.clear();
+        lastReserveCounts.putAll(buildReserveCounts());
     }
 
     private void recordNewCaptures() {
@@ -2716,11 +2789,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         BoardSlot slot = gameState.getBoard()[position];
         boolean shouldFlip = slot != null && !slot.isFaceUp(); // 👈 solo si está boca abajo
 
-        if (!shouldFlip) {
-            completePlacement(position); // no giro si ya estaba boca arriba
-            return;
-        }
-
         View cardView = binding.gamePanel.boardRecycler.getLayoutManager() != null
                 ? binding.gamePanel.boardRecycler.getLayoutManager().findViewByPosition(position)
                 : null;
@@ -2731,7 +2799,152 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
 
         cardView.setHasTransientState(true);
+        animateDieToSlot(cardView, () -> playPlacementRipple(cardView, () -> {
+            if (shouldFlip) {
+                flipCardWithPlacement(position, cardView);
+            } else {
+                completePlacement(position);
+                cardView.setHasTransientState(false);
+            }
+        }));
+    }
 
+    private void animateDieToSlot(View cardView, Runnable onComplete) {
+        FrameLayout overlay = binding.animationOverlay;
+        ImageView source = binding.gamePanel.selectedDieImage;
+        Die selected = gameState.getSelectedDie();
+        if (overlay == null || source == null || cardView == null || selected == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+        if (overlay.getWidth() == 0 || overlay.getHeight() == 0) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        Bitmap face = diceImageResolver.getFace(selected);
+        if (face == null) {
+            face = diceImageResolver.getTypePreview(selected.getType());
+        }
+        if (face == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        int size = source.getWidth() > 0 ? source.getWidth() : dpToPx(48);
+        size = Math.max(size, dpToPx(44));
+
+        ImageView flying = new ImageView(this);
+        flying.setImageBitmap(face);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(size, size);
+        overlay.addView(flying, params);
+
+        int[] overlayLoc = new int[2];
+        int[] sourceLoc = new int[2];
+        int[] targetLoc = new int[2];
+        overlay.getLocationOnScreen(overlayLoc);
+        source.getLocationOnScreen(sourceLoc);
+        cardView.getLocationOnScreen(targetLoc);
+
+        float startX = sourceLoc[0] - overlayLoc[0] + (source.getWidth() / 2f) - (size / 2f);
+        float startY = sourceLoc[1] - overlayLoc[1] + (source.getHeight() / 2f) - (size / 2f);
+        float endX = targetLoc[0] - overlayLoc[0] + (cardView.getWidth() / 2f) - (size / 2f);
+        float endY = targetLoc[1] - overlayLoc[1] + (cardView.getHeight() / 2f) - (size / 2f);
+
+        flying.setX(startX);
+        flying.setY(startY);
+        floatingDieTravel(source, flying, endX, endY, onComplete);
+    }
+
+    private void floatingDieTravel(ImageView source, ImageView flying, float endX, float endY,
+                                   Runnable onComplete) {
+        float originalAlpha = source.getAlpha();
+        source.setAlpha(0f);
+        flying.animate()
+                .x(endX)
+                .y(endY)
+                .rotationBy(120f)
+                .setDuration(320L)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.2f))
+                .withEndAction(() -> {
+                    try {
+                        ((ViewGroup) flying.getParent()).removeView(flying);
+                    } catch (Exception ignore) {
+                    }
+                    source.setAlpha(originalAlpha);
+                    if (onComplete != null) {
+                        onComplete.run();
+                    }
+                })
+                .start();
+    }
+
+    private void playPlacementRipple(View cardView, Runnable onComplete) {
+        FrameLayout overlay = binding.animationOverlay;
+        if (overlay == null || cardView == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+        int[] overlayLoc = new int[2];
+        int[] cardLoc = new int[2];
+        overlay.getLocationOnScreen(overlayLoc);
+        cardView.getLocationOnScreen(cardLoc);
+
+        float centerX = cardLoc[0] - overlayLoc[0] + (cardView.getWidth() / 2f);
+        float centerY = cardLoc[1] - overlayLoc[1] + (cardView.getHeight() / 2f);
+
+        int baseSize = dpToPx(18);
+        int stroke = dpToPx(2);
+        long[] delays = new long[] {0L, 220L, 440L};
+        long duration = 1200L;
+        int lastIndex = delays.length - 1;
+
+        for (int i = 0; i < delays.length; i++) {
+            int index = i;
+            View ring = new View(this);
+            android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
+            shape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            shape.setColor(android.graphics.Color.TRANSPARENT);
+            shape.setStroke(stroke, 0x66B3E5FC);
+            ring.setBackground(shape);
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(baseSize, baseSize);
+            ring.setLayoutParams(params);
+            ring.setX(centerX - baseSize / 2f);
+            ring.setY(centerY - baseSize / 2f);
+            ring.setScaleX(0.2f);
+            ring.setScaleY(0.2f);
+            ring.setAlpha(0.6f);
+            overlay.addView(ring);
+
+            ring.animate()
+                    .scaleX(2.6f)
+                    .scaleY(2.6f)
+                    .alpha(0f)
+                    .setStartDelay(delays[i])
+                    .setDuration(duration)
+                    .setInterpolator(new android.view.animation.DecelerateInterpolator(1.1f))
+                    .withEndAction(() -> {
+                        try {
+                            overlay.removeView(ring);
+                        } catch (Exception ignore) {
+                        }
+                        if (index == lastIndex && onComplete != null) {
+                            onComplete.run();
+                        }
+                    })
+                    .start();
+        }
+    }
+
+    private void flipCardWithPlacement(int position, View cardView) {
         ObjectAnimator firstHalf = ObjectAnimator.ofFloat(cardView, View.ROTATION_Y, 0f, 90f);
         firstHalf.setDuration(150);
 
@@ -2761,6 +2974,86 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         });
 
         firstHalf.start();
+    }
+
+    private void runReturnDiceAnimationQueue(List<ReturnDiceAnimationRequest> queue, Runnable onComplete) {
+        if (queue == null || queue.isEmpty()) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+        ReturnDiceAnimationRequest next = queue.remove(0);
+        animateReturnDie(next, () -> runReturnDiceAnimationQueue(queue, onComplete));
+    }
+
+    private void animateReturnDie(ReturnDiceAnimationRequest request, Runnable onComplete) {
+        FrameLayout overlay = binding.animationOverlay;
+        View reserveView = binding.gamePanel.reserveDiceContainer;
+        RecyclerView.LayoutManager lm = binding.gamePanel.boardRecycler.getLayoutManager();
+
+        if (overlay == null || reserveView == null || lm == null || request == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        View source = lm.findViewByPosition(request.slotIndex);
+        if (source == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        Bitmap face = diceImageResolver.getFace(request.die);
+        if (face == null) {
+            face = diceImageResolver.getTypePreview(request.die.getType());
+        }
+        if (face == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        int size = dpToPx(40);
+        ImageView floating = new ImageView(this);
+        floating.setImageBitmap(face);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(size, size);
+        overlay.addView(floating, params);
+
+        int[] overlayLoc = new int[2];
+        int[] sourceLoc = new int[2];
+        int[] reserveLoc = new int[2];
+        overlay.getLocationOnScreen(overlayLoc);
+        source.getLocationOnScreen(sourceLoc);
+        reserveView.getLocationOnScreen(reserveLoc);
+
+        float startX = sourceLoc[0] - overlayLoc[0] + (source.getWidth() / 2f) - (size / 2f);
+        float startY = sourceLoc[1] - overlayLoc[1] + (source.getHeight() / 2f) - (size / 2f);
+        float endX = reserveLoc[0] - overlayLoc[0] + (reserveView.getWidth() / 2f) - (size / 2f);
+        float endY = reserveLoc[1] - overlayLoc[1] + (reserveView.getHeight() / 2f) - (size / 2f);
+
+        floating.setX(startX);
+        floating.setY(startY);
+        floating.animate()
+                .x(endX)
+                .y(endY)
+                .rotationBy(180f)
+                .setDuration(420L)
+                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
+                .withEndAction(() -> {
+                    try {
+                        overlay.removeView(floating);
+                    } catch (Exception ignore) {
+                    }
+                    if (onComplete != null) {
+                        onComplete.run();
+                    }
+                })
+                .start();
     }
 
 
