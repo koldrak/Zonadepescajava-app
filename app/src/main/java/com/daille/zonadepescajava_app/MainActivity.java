@@ -101,6 +101,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final String PACK_SMALL_FISH_ASSET = "sobrepecespequeños.png";
     private static final String PACK_BIG_FISH_ASSET = "sobrepecesgrandes.png";
     private static final String PACK_OBJECT_ASSET = "sobreobjetos.png";
+    private static final int DICE_SELECTION_COLUMNS = 4;
+    private static final int MIN_DICE_CAPACITY = 6;
+    private static final int MAX_DICE_CAPACITY = 10;
 
 
     private static class CaptureAnimationRequest {
@@ -264,7 +267,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.diceShopPanel.diceShopBuyD4.setOnClickListener(v -> attemptDicePurchase(DieType.D4, 200));
         binding.diceShopPanel.diceShopBuyD6.setOnClickListener(v -> attemptDicePurchase(DieType.D6, 400));
         binding.diceShopPanel.diceShopBuyD8.setOnClickListener(v -> attemptDicePurchase(DieType.D8, 600));
+        binding.diceShopPanel.diceShopBuyD10.setOnClickListener(v -> attemptDicePurchase(DieType.D10, 800));
         binding.diceShopPanel.diceShopBuyD12.setOnClickListener(v -> attemptDicePurchase(DieType.D12, 1000));
+        binding.diceShopPanel.diceShopBuyD20.setOnClickListener(v -> attemptDicePurchase(DieType.D20, 2000));
+        binding.diceShopPanel.diceCapacityBuy.setOnClickListener(v -> attemptDiceCapacityUpgrade());
         updateDiceShopDicePreviews();
         updateCardPackPreviews();
         binding.diceShopPanel.cardPackRandomBuy.setOnClickListener(v ->
@@ -286,8 +292,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 diceImageResolver.getTypePreview(DieType.D6));
         binding.diceShopPanel.diceShopD8Image.setImageBitmap(
                 diceImageResolver.getTypePreview(DieType.D8));
+        binding.diceShopPanel.diceShopD10Image.setImageBitmap(
+                diceImageResolver.getTypePreview(DieType.D10));
         binding.diceShopPanel.diceShopD12Image.setImageBitmap(
                 diceImageResolver.getTypePreview(DieType.D12));
+        binding.diceShopPanel.diceShopD20Image.setImageBitmap(
+                diceImageResolver.getTypePreview(DieType.D20));
     }
 
     private void refreshCollections() {
@@ -466,15 +476,22 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         int ownedD4 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D4.name());
         int ownedD6 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D6.name());
         int ownedD8 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D8.name());
+        int ownedD10 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D10.name());
         int ownedD12 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D12.name());
+        int ownedD20 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D20.name());
         binding.diceShopPanel.diceShopD4Owned.setText(
                 getString(R.string.dice_shop_owned_format, ownedD4));
         binding.diceShopPanel.diceShopD6Owned.setText(
                 getString(R.string.dice_shop_owned_format, ownedD6));
         binding.diceShopPanel.diceShopD8Owned.setText(
                 getString(R.string.dice_shop_owned_format, ownedD8));
+        binding.diceShopPanel.diceShopD10Owned.setText(
+                getString(R.string.dice_shop_owned_format, ownedD10));
         binding.diceShopPanel.diceShopD12Owned.setText(
                 getString(R.string.dice_shop_owned_format, ownedD12));
+        binding.diceShopPanel.diceShopD20Owned.setText(
+                getString(R.string.dice_shop_owned_format, ownedD20));
+        updateDiceCapacityShopUi();
     }
 
     private void attemptDicePurchase(DieType type, int cost) {
@@ -486,6 +503,56 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         scoreDatabaseHelper.addPurchasedDice(type.name(), 1);
         scoreDatabaseHelper.addSpentPoints(cost);
         refreshDiceShopUi();
+    }
+
+    private void attemptDiceCapacityUpgrade() {
+        int currentCapacity = getDiceSelectionCapacity();
+        if (currentCapacity >= MAX_DICE_CAPACITY) {
+            Toast.makeText(this, getString(R.string.dice_capacity_maxed), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        int nextCapacity = currentCapacity + 1;
+        int cost = getDiceCapacityUpgradeCost(nextCapacity);
+        int available = scoreDatabaseHelper.getAvailablePoints();
+        if (available < cost) {
+            Toast.makeText(this, "No tienes suficientes puntos para ampliar la capacidad.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        scoreDatabaseHelper.setDiceCapacity(nextCapacity);
+        scoreDatabaseHelper.addSpentPoints(cost);
+        refreshDiceShopUi();
+        updateDiceSelectionCapacityText();
+    }
+
+    private void updateDiceCapacityShopUi() {
+        int currentCapacity = getDiceSelectionCapacity();
+        binding.diceShopPanel.diceCapacityCurrent.setText(
+                getString(R.string.dice_capacity_current_format, currentCapacity));
+        if (currentCapacity >= MAX_DICE_CAPACITY) {
+            binding.diceShopPanel.diceCapacityNext.setText(R.string.dice_capacity_maxed);
+            binding.diceShopPanel.diceCapacityBuy.setEnabled(false);
+            return;
+        }
+        int nextCapacity = currentCapacity + 1;
+        int cost = getDiceCapacityUpgradeCost(nextCapacity);
+        binding.diceShopPanel.diceCapacityNext.setText(
+                getString(R.string.dice_capacity_next_format, nextCapacity, cost));
+        binding.diceShopPanel.diceCapacityBuy.setEnabled(true);
+    }
+
+    private int getDiceCapacityUpgradeCost(int targetCapacity) {
+        switch (targetCapacity) {
+            case 7:
+                return 300;
+            case 8:
+                return 500;
+            case 9:
+                return 1000;
+            case 10:
+                return 2000;
+            default:
+                return Integer.MAX_VALUE;
+        }
     }
 
     private void attemptCardPackPurchase(int cost, CardType filterType, String packAsset) {
@@ -699,6 +766,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void setupDiceSelectionUi() {
+        updateDiceSelectionCapacityText();
         refreshDiceTokens();
         updateDiceGridColumns();
         binding.diceSelectionPanel.getRoot().post(this::updateDiceGridColumns);
@@ -746,16 +814,16 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void updateDiceGridColumns() {
-        int columnCount = calculateDiceColumns();
-        resetDiceGridLayoutParams(binding.diceSelectionPanel.diceSelectionGrid);
-        resetDiceGridLayoutParams(binding.diceSelectionPanel.diceWarehouseGrid);
-        binding.diceSelectionPanel.diceSelectionGrid.setColumnCount(columnCount);
-        binding.diceSelectionPanel.diceWarehouseGrid.setColumnCount(columnCount);
+        applyDiceGridSizing(binding.diceSelectionPanel.diceSelectionGrid,
+                binding.diceSelectionPanel.diceSelectionZone);
+        applyDiceGridSizing(binding.diceSelectionPanel.diceWarehouseGrid,
+                binding.diceSelectionPanel.diceWarehouseZone);
     }
 
-    private void resetDiceGridLayoutParams(GridLayout grid) {
-        int size = dpToPx(70);
+    private void applyDiceGridSizing(GridLayout grid, View container) {
+        int size = calculateDieSize(container);
         int spacing = dpToPx(8);
+        grid.setColumnCount(DICE_SELECTION_COLUMNS);
         for (int i = 0; i < grid.getChildCount(); i++) {
             View child = grid.getChildAt(i);
             if (!(child instanceof ImageView)) {
@@ -769,11 +837,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
     }
 
-    private int calculateDiceColumns() {
-        int availableWidth = binding.diceSelectionPanel.diceWarehouseZone.getWidth();
-        int selectionWidth = binding.diceSelectionPanel.diceSelectionZone.getWidth();
-        if (availableWidth == 0) {
-            availableWidth = selectionWidth;
+    private int calculateDieSize(View container) {
+        int availableWidth = container.getWidth();
+        if (availableWidth == 0 && container instanceof ViewGroup) {
+            availableWidth = ((ViewGroup) container).getWidth();
         }
         if (availableWidth == 0) {
             availableWidth = binding.diceSelectionPanel.diceWarehouseGrid.getWidth();
@@ -782,15 +849,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             availableWidth = binding.diceSelectionPanel.diceSelectionGrid.getWidth();
         }
         if (availableWidth == 0) {
-            return 4;
+            return dpToPx(70);
         }
         availableWidth = Math.max(0,
-                availableWidth - binding.diceSelectionPanel.diceWarehouseZone.getPaddingLeft()
-                        - binding.diceSelectionPanel.diceWarehouseZone.getPaddingRight());
-        int dieSize = dpToPx(70);
+                availableWidth - container.getPaddingLeft() - container.getPaddingRight());
         int spacing = dpToPx(8);
-        int cellSize = dieSize + spacing * 2;
-        return Math.max(2, availableWidth / cellSize);
+        int spacingTotal = spacing * 2 * DICE_SELECTION_COLUMNS;
+        int calculated = (availableWidth - spacingTotal) / DICE_SELECTION_COLUMNS;
+        return Math.max(dpToPx(32), calculated);
     }
 
     private void clearDiceTokensFromContainer(ViewGroup container) {
@@ -812,8 +878,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             return;
         }
         boolean inSelection = parent == binding.diceSelectionPanel.diceSelectionGrid;
-        if (!inSelection && countDiceInContainer(binding.diceSelectionPanel.diceSelectionGrid) >= 7) {
-            Toast.makeText(this, "La zona de selección solo admite 7 dados.", Toast.LENGTH_SHORT).show();
+        int maxDice = getDiceSelectionCapacity();
+        if (!inSelection && countDiceInContainer(binding.diceSelectionPanel.diceSelectionGrid) >= maxDice) {
+            Toast.makeText(this, getString(R.string.dice_selection_limit_warning, maxDice), Toast.LENGTH_SHORT).show();
             return;
         }
         ViewGroup target = inSelection
@@ -866,6 +933,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void resetDiceSelection() {
+        updateDiceSelectionCapacityText();
         refreshDiceTokens();
     }
 
@@ -895,10 +963,28 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void updateSelectionCounter() {
         int selected = countDiceInContainer(binding.diceSelectionPanel.diceSelectionGrid);
+        int maxDice = getDiceSelectionCapacity();
         binding.diceSelectionPanel.diceSelectionCounter.setText(
-                getString(R.string.dice_selection_counter_format, selected));
+                getString(R.string.dice_selection_counter_format, selected, maxDice));
         binding.diceSelectionPanel.diceSelectionLabel.setVisibility(
                 selected == 0 ? View.VISIBLE : View.INVISIBLE);
+    }
+
+    private void updateDiceSelectionCapacityText() {
+        int maxDice = getDiceSelectionCapacity();
+        binding.diceSelectionPanel.diceSelectionInstruction.setText(
+                getString(R.string.dice_selection_instruction_format, maxDice));
+        binding.diceSelectionPanel.diceSelectionCounter.setText(
+                getString(R.string.dice_selection_counter_format, 0, maxDice));
+    }
+
+    private int getDiceSelectionCapacity() {
+        int storedCapacity = scoreDatabaseHelper.getDiceCapacity();
+        int clamped = Math.max(MIN_DICE_CAPACITY, Math.min(MAX_DICE_CAPACITY, storedCapacity));
+        if (clamped != storedCapacity) {
+            scoreDatabaseHelper.setDiceCapacity(clamped);
+        }
+        return clamped;
     }
 
     private Map<DieType, Integer> buildDiceInventory() {
@@ -906,11 +992,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         int purchasedD4 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D4.name());
         int purchasedD6 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D6.name());
         int purchasedD8 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D8.name());
+        int purchasedD10 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D10.name());
         int purchasedD12 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D12.name());
+        int purchasedD20 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D20.name());
         inventory.put(DieType.D4, purchasedD4);
         inventory.put(DieType.D6, 6 + purchasedD6);
         inventory.put(DieType.D8, purchasedD8);
+        inventory.put(DieType.D10, purchasedD10);
         inventory.put(DieType.D12, purchasedD12);
+        inventory.put(DieType.D20, purchasedD20);
         return inventory;
     }
 
@@ -920,16 +1010,20 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private String buildReserveText() {
-        int d4 = 0, d6 = 0, d8 = 0, d12 = 0;
+        int d4 = 0, d6 = 0, d8 = 0, d10 = 0, d12 = 0, d20 = 0;
         for (DieType t : gameState.getReserve()) {
             switch (t) {
                 case D4: d4++; break;
                 case D6: d6++; break;
                 case D8: d8++; break;
+                case D10: d10++; break;
                 case D12: d12++; break;
+                case D20: d20++; break;
             }
         }
-        return String.format(Locale.getDefault(), "D4 x%d • D6 x%d • D8 x%d • D12 x%d", d4, d6, d8, d12);
+        return String.format(Locale.getDefault(),
+                "D4 x%d • D6 x%d • D8 x%d • D10 x%d • D12 x%d • D20 x%d",
+                d4, d6, d8, d10, d12, d20);
     }
 
     @Override
