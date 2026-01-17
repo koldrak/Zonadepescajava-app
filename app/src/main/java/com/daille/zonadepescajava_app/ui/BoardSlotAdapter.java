@@ -63,8 +63,10 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
 
     @Override
     public void onBindViewHolder(@NonNull SlotViewHolder holder, int position) {
-        holder.itemView.setRotationY(0f);
-        holder.itemView.setHasTransientState(false);
+        if (!holder.itemView.hasTransientState()) {
+            holder.itemView.setRotationY(0f);
+            holder.itemView.setHasTransientState(false);
+        }
         holder.bind(
                 slots.get(position),
                 highlighted.contains(position),

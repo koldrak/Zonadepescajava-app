@@ -2799,14 +2799,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
 
         cardView.setHasTransientState(true);
-        animateDieToSlot(cardView, () -> playPlacementRipple(cardView, () -> {
+        animateDieToSlot(cardView, () -> {
+            playPlacementRipple(cardView, null);
             if (shouldFlip) {
-                flipCardWithPlacement(position, cardView);
+                cardView.postDelayed(() -> flipCardWithPlacement(position, cardView), 520L);
             } else {
                 completePlacement(position);
-                cardView.setHasTransientState(false);
+                cardView.postDelayed(() -> cardView.setHasTransientState(false), 240L);
             }
-        }));
+        });
     }
 
     private void animateDieToSlot(View cardView, Runnable onComplete) {
@@ -2901,10 +2902,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         float centerX = cardLoc[0] - overlayLoc[0] + (cardView.getWidth() / 2f);
         float centerY = cardLoc[1] - overlayLoc[1] + (cardView.getHeight() / 2f);
 
-        int baseSize = dpToPx(18);
-        int stroke = dpToPx(2);
-        long[] delays = new long[] {0L, 220L, 440L};
-        long duration = 1200L;
+        int baseSize = dpToPx(32);
+        int stroke = dpToPx(3);
+        long[] delays = new long[] {0L, 300L, 600L};
+        long duration = 1600L;
         int lastIndex = delays.length - 1;
 
         for (int i = 0; i < delays.length; i++) {
@@ -2925,8 +2926,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             overlay.addView(ring);
 
             ring.animate()
-                    .scaleX(2.6f)
-                    .scaleY(2.6f)
+                    .scaleX(4.2f)
+                    .scaleY(4.2f)
                     .alpha(0f)
                     .setStartDelay(delays[i])
                     .setDuration(duration)
