@@ -4060,8 +4060,10 @@ public class GameState {
                     kept.add(d);
                 }
             }
-            slot.getDice().clear();
-            slot.getDice().addAll(kept);
+            slot.clearDice();
+            for (Die d : kept) {
+                slot.addDie(d);
+            }
         }
         return returned == 0 ? "Pez Dragón azul: no había dados ≥ 6." : "Pez Dragón azul devolvió " + returned + " dado(s) a la reserva.";
     }
