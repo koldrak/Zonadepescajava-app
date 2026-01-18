@@ -28,6 +28,7 @@
     <string name="dice_shop_d10_description">D10 en venta</string>
     <string name="dice_shop_d12_description">D12 en venta</string>
     <string name="dice_shop_d20_description">D20 en venta</string>
+    <string name="dice_shop_price_format">%1$d puntos</string>
     <string name="dice_shop_price_200">200 puntos</string>
     <string name="dice_shop_price_400">400 puntos</string>
     <string name="dice_shop_price_600">600 puntos</string>
@@ -47,6 +48,7 @@
     <string name="card_pack_big_fish">Paquete verde (Peces grandes) • 2500 puntos</string>
     <string name="card_pack_object">Paquete negro (Objetos) • 2500 puntos</string>
     <string name="card_pack_random_label">Paquete sorpresa</string>
+    <string name="card_pack_price_format">%1$d puntos</string>
     <string name="card_pack_random_price">2000 puntos</string>
     <string name="card_pack_crustaceo_label">Paquete naranjo</string>
     <string name="card_pack_crustaceo_price">2500 puntos</string>
