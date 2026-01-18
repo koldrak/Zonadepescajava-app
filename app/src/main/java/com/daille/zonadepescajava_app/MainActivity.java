@@ -300,7 +300,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         Map<CardId, Integer> counts = scoreDatabaseHelper.getCaptureCounts();
         Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
         List<CollectionCardAdapter.CollectionEntry> entries = new ArrayList<>();
-        for (Card card : GameUtils.createAllCards()) {
+        List<Card> cards = new ArrayList<>(GameUtils.createAllCards());
+        cards.sort((left, right) -> {
+            int compare = Integer.compare(right.getPoints(), left.getPoints());
+            if (compare != 0) {
+                return compare;
+            }
+            return left.getName().compareToIgnoreCase(right.getName());
+        });
+        for (Card card : cards) {
             int count = 0;
             if (counts.containsKey(card.getId())) {
                 count = counts.get(card.getId());
@@ -440,6 +448,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void refreshDeckSelectionList() {
         Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
         List<Card> selectable = GameUtils.getSelectableCards(ownedCounts);
+        selectable.sort((left, right) -> {
+            int compare = Integer.compare(right.getPoints(), left.getPoints());
+            if (compare != 0) {
+                return compare;
+            }
+            return left.getName().compareToIgnoreCase(right.getName());
+        });
         deckSelectionCounts.clear();
         selectedDeck = new ArrayList<>();
         deckSelectionPoints = 0;
@@ -571,7 +586,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<Card> awarded = new ArrayList<>();
         java.util.Random rng = new java.util.Random();
         for (int i = 0; i < 3; i++) {
-            Card card = pool.get(rng.nextInt(pool.size()));
+            Card card = GameUtils.drawWeightedCardByPoints(rng, pool);
+            if (card == null) {
+                continue;
+            }
             awarded.add(card);
             scoreDatabaseHelper.addCardCopies(card.getId(), 1);
         }

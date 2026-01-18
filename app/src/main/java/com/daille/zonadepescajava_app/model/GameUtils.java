@@ -418,14 +418,23 @@ public final class GameUtils {
         if (pool.isEmpty()) {
             return new ArrayList<>();
         }
-        Collections.shuffle(pool, rng);
         int clampedMax = Math.min(maxCards, pool.size());
         int clampedMin = Math.min(minCards, clampedMax);
         int targetSize = clampedMin;
         if (clampedMax > clampedMin) {
             targetSize = clampedMin + rng.nextInt(clampedMax - clampedMin + 1);
         }
-        return new ArrayList<>(pool.subList(0, targetSize));
+        List<Card> selection = new ArrayList<>();
+        List<Card> mutablePool = new ArrayList<>(pool);
+        while (!mutablePool.isEmpty() && selection.size() < targetSize) {
+            Card card = drawWeightedCardByPoints(rng, mutablePool);
+            if (card == null) {
+                break;
+            }
+            selection.add(card);
+            mutablePool.remove(card);
+        }
+        return selection;
     }
 
     public static List<Card> buildDeck(Random rng) {
@@ -439,7 +448,10 @@ public final class GameUtils {
         }
         List<Card> starters = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            starters.add(allCards.get(rng.nextInt(allCards.size())));
+            Card card = drawWeightedCardByPoints(rng, allCards);
+            if (card != null) {
+                starters.add(card);
+            }
         }
         return starters;
     }
@@ -466,9 +478,18 @@ public final class GameUtils {
         if (pool.isEmpty()) {
             return new ArrayList<>();
         }
-        Collections.shuffle(pool, rng);
         int take = Math.min(count, pool.size());
-        return new ArrayList<>(pool.subList(0, take));
+        List<Card> selection = new ArrayList<>();
+        List<Card> mutablePool = new ArrayList<>(pool);
+        while (!mutablePool.isEmpty() && selection.size() < take) {
+            Card card = drawWeightedCardByPoints(rng, mutablePool);
+            if (card == null) {
+                break;
+            }
+            selection.add(card);
+            mutablePool.remove(card);
+        }
+        return selection;
     }
 
     private static List<Card> buildOwnedPool(List<Card> availableCards, Map<CardId, Integer> ownedCounts) {
@@ -487,6 +508,28 @@ public final class GameUtils {
             }
         }
         return pool;
+    }
+
+    public static Card drawWeightedCardByPoints(Random rng, List<Card> pool) {
+        if (rng == null || pool == null || pool.isEmpty()) {
+            return null;
+        }
+        int maxPoints = 0;
+        for (Card card : pool) {
+            maxPoints = Math.max(maxPoints, card.getPoints());
+        }
+        int totalWeight = 0;
+        for (Card card : pool) {
+            totalWeight += Math.max(1, (maxPoints + 1) - card.getPoints());
+        }
+        int roll = rng.nextInt(totalWeight);
+        for (Card card : pool) {
+            roll -= Math.max(1, (maxPoints + 1) - card.getPoints());
+            if (roll < 0) {
+                return card;
+            }
+        }
+        return pool.get(pool.size() - 1);
     }
 
     public static List<Card> getCardsByType(CardType type) {
