@@ -471,8 +471,8 @@ public final class CardPackOpenDialog {
             int startY,
             int endY
     ) {
-        AnimatorSet cards = buildCardsReveal(cards, cardViews, container, starBurstView, startY, endY);
-        cards.addListener(new AnimatorListenerAdapter() {
+        AnimatorSet cardsReveal = buildCardsReveal(cards, cardViews, container, starBurstView, startY, endY);
+        cardsReveal.addListener(new AnimatorListenerAdapter() {
             @Override public void onAnimationEnd(Animator animation) {
                 for (ImageView v : cardViews) {
                     v.setEnabled(true);
@@ -480,7 +480,7 @@ public final class CardPackOpenDialog {
                 }
             }
         });
-        return cards;
+        return cardsReveal;
     }
 
     // =========================================================
