@@ -247,8 +247,8 @@ public final class CardPackOpenDialog {
         tear.playTogether(edgeIn, topUp, topRight, bottomDown, topRot, bottomRot);
 
         // --- Stage 3: cartas "aparecen desde el interior" (peek -> pull out)
-        AnimatorSet cards = buildCardsReveal(cards, cardViews, cardsContainer, starBurstView, startY, endY);
-        cards.setStartDelay(140); // deja que se note el rasgado antes de que asomen
+        AnimatorSet cardsReveal = buildCardsReveal(cards, cardViews, cardsContainer, starBurstView, startY, endY);
+        cardsReveal.setStartDelay(140); // deja que se note el rasgado antes de que asomen
 
         // --- Stage 4: pack desaparece hacia la zona inferior
         // El pack cae DESPUÉS de que las cartas ya estén visibles.
@@ -279,7 +279,7 @@ public final class CardPackOpenDialog {
 
         // cards + packDrop van en paralelo tras el rasgado
         AnimatorSet afterTear = new AnimatorSet();
-        afterTear.playTogether(cards, packDrop);
+        afterTear.playTogether(cardsReveal, packDrop);
 
         AnimatorSet wrapper = new AnimatorSet();
         wrapper.playSequentially(full, afterTear);
