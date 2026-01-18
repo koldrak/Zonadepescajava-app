@@ -50,6 +50,12 @@ public final class CardPackOpenDialog {
         ImageView packImageView = dialog.findViewById(R.id.cardPackImage);
         FrameLayout cardsContainer = dialog.findViewById(R.id.cardPackCards);
 
+        StarBurstView starBurstView = new StarBurstView(context);
+        cardsContainer.addView(starBurstView, 0, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+
         Bitmap packBitmap = packImage != null ? packImage : resolver.getCardBack();
         packImageView.setImageBitmap(packBitmap);
 
@@ -113,7 +119,7 @@ public final class CardPackOpenDialog {
 
                 // Si por alguna razón no se pudo rasgar, cae al fallback (solo cartas)
                 if (torn == null) {
-                    AnimatorSet fallback = playCardsOnly(cardViews, cardsContainer, startY, endY);
+                    AnimatorSet fallback = playCardsOnly(cards, cardViews, cardsContainer, starBurstView, startY, endY);
                     running.add(fallback);
                     fallback.start();
                     return;
@@ -121,8 +127,10 @@ public final class CardPackOpenDialog {
 
                 AnimatorSet full = playTearOpenAndReveal(
                         torn,
+                        cards,
                         cardViews,
                         cardsContainer,
+                        starBurstView,
                         startY,
                         endY
                 );
@@ -159,8 +167,10 @@ public final class CardPackOpenDialog {
 
     private static AnimatorSet playTearOpenAndReveal(
             PackTearViews torn,
+            List<Card> cards,
             List<ImageView> cardViews,
             FrameLayout cardsContainer,
+            StarBurstView starBurstView,
             int startY,
             int endY
     ) {
@@ -237,7 +247,7 @@ public final class CardPackOpenDialog {
         tear.playTogether(edgeIn, topUp, topRight, bottomDown, topRot, bottomRot);
 
         // --- Stage 3: cartas "aparecen desde el interior" (peek -> pull out)
-        AnimatorSet cards = buildCardsReveal(cardViews, cardsContainer, startY, endY);
+        AnimatorSet cards = buildCardsReveal(cards, cardViews, cardsContainer, starBurstView, startY, endY);
         cards.setStartDelay(140); // deja que se note el rasgado antes de que asomen
 
         // --- Stage 4: pack desaparece hacia la zona inferior
@@ -298,7 +308,14 @@ public final class CardPackOpenDialog {
         return wrapper;
     }
 
-    private static AnimatorSet buildCardsReveal(List<ImageView> cardViews, FrameLayout container, int startY, int endY) {
+    private static AnimatorSet buildCardsReveal(
+            List<Card> cards,
+            List<ImageView> cardViews,
+            FrameLayout container,
+            StarBurstView starBurstView,
+            int startY,
+            int endY
+    ) {
         final float density = container.getResources().getDisplayMetrics().density;
 
         int n = cardViews.size();
@@ -355,6 +372,8 @@ public final class CardPackOpenDialog {
         // Stage B: pull out (sale con arco/overshoot + abanico)
         for (int i = 0; i < n; i++) {
             ImageView v = cardViews.get(i);
+            Card card = cards.get(i);
+            boolean isRare = card.getPoints() >= 7 && card.getPoints() <= 9;
 
             float targetX = (i - mid) * baseOffsetX;
             float targetY = endY;
@@ -405,6 +424,18 @@ public final class CardPackOpenDialog {
             pull.setInterpolator(pullInterp);
             pull.setStartDelay(320L + i * 120L);
 
+            if (isRare && starBurstView != null) {
+                final boolean[] spawned = {false};
+                pull.addUpdateListener(anim -> {
+                    if (!spawned[0] && anim.getAnimatedFraction() >= 0.35f) {
+                        float centerX = v.getX() + v.getWidth() * 0.5f;
+                        float centerY = v.getY() + v.getHeight() * 0.5f;
+                        starBurstView.burst(centerX, centerY, 18);
+                        spawned[0] = true;
+                    }
+                });
+            }
+
             int elev = dpToPx(container.getContext(), 3 + i * 2);
             pull.addUpdateListener(anim -> v.setElevation(elev));
 
@@ -432,8 +463,15 @@ public final class CardPackOpenDialog {
     }
 
     // Fallback simple si no se pudo crear el rasgado (no debería ocurrir)
-    private static AnimatorSet playCardsOnly(List<ImageView> cardViews, FrameLayout container, int startY, int endY) {
-        AnimatorSet cards = buildCardsReveal(cardViews, container, startY, endY);
+    private static AnimatorSet playCardsOnly(
+            List<Card> cards,
+            List<ImageView> cardViews,
+            FrameLayout container,
+            StarBurstView starBurstView,
+            int startY,
+            int endY
+    ) {
+        AnimatorSet cards = buildCardsReveal(cards, cardViews, container, starBurstView, startY, endY);
         cards.addListener(new AnimatorListenerAdapter() {
             @Override public void onAnimationEnd(Animator animation) {
                 for (ImageView v : cardViews) {
