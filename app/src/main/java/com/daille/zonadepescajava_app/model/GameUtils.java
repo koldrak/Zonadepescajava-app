@@ -439,9 +439,35 @@ public final class GameUtils {
         }
         List<Card> starters = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            starters.add(allCards.get(rng.nextInt(allCards.size())));
+            Card card = drawWeightedByPoints(rng, allCards);
+            if (card != null) {
+                starters.add(card);
+            }
         }
         return starters;
+    }
+
+    public static Card drawWeightedByPoints(Random rng, List<Card> cards) {
+        if (cards == null || cards.isEmpty()) {
+            return null;
+        }
+        double totalWeight = 0.0;
+        for (Card card : cards) {
+            int points = Math.max(1, card.getPoints());
+            totalWeight += 1.0 / points;
+        }
+        if (totalWeight <= 0.0) {
+            return cards.get(rng.nextInt(cards.size()));
+        }
+        double roll = rng.nextDouble() * totalWeight;
+        for (Card card : cards) {
+            int points = Math.max(1, card.getPoints());
+            roll -= 1.0 / points;
+            if (roll <= 0.0) {
+                return card;
+            }
+        }
+        return cards.get(cards.size() - 1);
     }
 
     private static List<Card> drawExtraOwnedCards(Random rng, List<Card> selection,
