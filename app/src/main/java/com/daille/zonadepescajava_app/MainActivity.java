@@ -499,6 +499,28 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         int availablePoints = scoreDatabaseHelper.getAvailablePoints();
         binding.diceShopPanel.diceShopPoints.setText(
                 getString(R.string.dice_shop_points_format, availablePoints));
+        binding.diceShopPanel.diceShopD4Price.setText(
+                getString(R.string.dice_shop_price_format, ShopPrices.D4_COST));
+        binding.diceShopPanel.diceShopD6Price.setText(
+                getString(R.string.dice_shop_price_format, ShopPrices.D6_COST));
+        binding.diceShopPanel.diceShopD8Price.setText(
+                getString(R.string.dice_shop_price_format, ShopPrices.D8_COST));
+        binding.diceShopPanel.diceShopD10Price.setText(
+                getString(R.string.dice_shop_price_format, ShopPrices.D10_COST));
+        binding.diceShopPanel.diceShopD12Price.setText(
+                getString(R.string.dice_shop_price_format, ShopPrices.D12_COST));
+        binding.diceShopPanel.diceShopD20Price.setText(
+                getString(R.string.dice_shop_price_format, ShopPrices.D20_COST));
+        binding.diceShopPanel.cardPackRandomPrice.setText(
+                getString(R.string.card_pack_price_format, ShopPrices.PACK_RANDOM_COST));
+        binding.diceShopPanel.cardPackCrustaceoPrice.setText(
+                getString(R.string.card_pack_price_format, ShopPrices.PACK_CRUSTACEO_COST));
+        binding.diceShopPanel.cardPackSmallFishPrice.setText(
+                getString(R.string.card_pack_price_format, ShopPrices.PACK_SMALL_FISH_COST));
+        binding.diceShopPanel.cardPackBigFishPrice.setText(
+                getString(R.string.card_pack_price_format, ShopPrices.PACK_BIG_FISH_COST));
+        binding.diceShopPanel.cardPackObjectPrice.setText(
+                getString(R.string.card_pack_price_format, ShopPrices.PACK_OBJECT_COST));
         int ownedD4 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D4.name());
         int ownedD6 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D6.name());
         int ownedD8 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D8.name());
@@ -602,7 +624,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             return;
         }
         Bitmap packImage = loadPackAsset(packAsset);
-        CardPackOpenDialog.show(this, packImage, cards, cardImageResolver);
+        CardPackOpenDialog.show(this, packImage, cards, cardImageResolver, this::showDiceShopPanel);
     }
 
     private Bitmap loadPackAsset(String assetName) {

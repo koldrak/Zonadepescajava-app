@@ -40,7 +40,13 @@ public final class CardPackOpenDialog {
     private CardPackOpenDialog() {
     }
 
-    public static void show(Context context, Bitmap packImage, List<Card> cards, CardImageResolver resolver) {
+    public static void show(
+            Context context,
+            Bitmap packImage,
+            List<Card> cards,
+            CardImageResolver resolver,
+            Runnable onAllCardsViewed
+    ) {
         if (context == null || cards == null || cards.isEmpty() || resolver == null) return;
 
         Dialog dialog = new Dialog(context, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
@@ -68,6 +74,7 @@ public final class CardPackOpenDialog {
         int startY = 0; // centro exacto (quedan debajo del sobre al inicio)
         int endY = dpToPx(context, -190);      // arriba de la pantalla
 
+        final boolean[] completedAll = {false};
         for (int i = 0; i < cards.size(); i++) {
             Card card = cards.get(i);
             Bitmap cardBitmap = resolver.getImageFor(card, true);
@@ -103,7 +110,10 @@ public final class CardPackOpenDialog {
                 Bitmap detailBitmap = cardBitmapFinal != null ? cardBitmapFinal : resolver.getCardBack();
                 CardFullscreenDialog.show(context, detailBitmap, overlay, () -> {
                     cardsContainer.removeView(cardView);
-                    if (cardsContainer.getChildCount() == 0) dialog.dismiss();
+                    if (cardsContainer.getChildCount() == 0) {
+                        completedAll[0] = true;
+                        dialog.dismiss();
+                    }
                 });
             });
         }
@@ -155,6 +165,10 @@ public final class CardPackOpenDialog {
                 if (t.top != null) t.top.animate().cancel();
                 if (t.bottom != null) t.bottom.animate().cancel();
                 if (t.edge != null) t.edge.animate().cancel();
+            }
+
+            if (completedAll[0] && onAllCardsViewed != null) {
+                onAllCardsViewed.run();
             }
         });
 
@@ -373,7 +387,7 @@ public final class CardPackOpenDialog {
         for (int i = 0; i < n; i++) {
             ImageView v = cardViews.get(i);
             Card card = cards.get(i);
-            boolean isRare = card.getPoints() >= 7 && card.getPoints() <= 9;
+            int starColor = getStarBurstColor(card);
 
             float targetX = (i - mid) * baseOffsetX;
             float targetY = endY;
@@ -424,13 +438,13 @@ public final class CardPackOpenDialog {
             pull.setInterpolator(pullInterp);
             pull.setStartDelay(320L + i * 120L);
 
-            if (isRare && starBurstView != null) {
+            if (starColor != 0 && starBurstView != null) {
                 final boolean[] spawned = {false};
                 pull.addUpdateListener(anim -> {
                     if (!spawned[0] && anim.getAnimatedFraction() >= 0.35f) {
                         float centerX = v.getX() + v.getWidth() * 0.5f;
                         float centerY = v.getY() + v.getHeight() * 0.5f;
-                        starBurstView.burst(centerX, centerY, 18);
+                        starBurstView.burst(centerX, centerY, 18, starColor);
                         spawned[0] = true;
                     }
                 });
@@ -481,6 +495,21 @@ public final class CardPackOpenDialog {
             }
         });
         return cardsReveal;
+    }
+
+    private static int getStarBurstColor(Card card) {
+        if (card == null) return 0;
+        int points = card.getPoints();
+        if (points == 7) {
+            return 0xFFFF9A4D;
+        }
+        if (points == 8 || points == 9) {
+            return 0xFFFFFFFF;
+        }
+        if (points == 10) {
+            return 0xFFFFF07A;
+        }
+        return 0;
     }
 
     // =========================================================

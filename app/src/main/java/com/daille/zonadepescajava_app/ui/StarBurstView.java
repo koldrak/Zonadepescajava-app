@@ -48,9 +48,13 @@ public class StarBurstView extends View {
     }
 
     public void burst(float centerX, float centerY, int count) {
+        burst(centerX, centerY, count, COLOR_STAR);
+    }
+
+    public void burst(float centerX, float centerY, int count, int color) {
         if (count <= 0) return;
         for (int i = 0; i < count; i++) {
-            particles.add(createParticle(centerX, centerY));
+            particles.add(createParticle(centerX, centerY, color));
         }
         startAnimator();
     }
@@ -76,6 +80,7 @@ public class StarBurstView extends View {
                 continue;
             }
             float alpha = (1f - particle.progress);
+            paint.setColor(particle.color);
             paint.setAlpha((int) (alpha * 255));
 
             float x = particle.startX + particle.velocityX * particle.progress;
@@ -124,14 +129,14 @@ public class StarBurstView extends View {
         animator.start();
     }
 
-    private StarParticle createParticle(float centerX, float centerY) {
+    private StarParticle createParticle(float centerX, float centerY, int color) {
         float angle = (float) (random.nextFloat() * Math.PI * 2f);
         float distance = dpToPx(80f) + random.nextFloat() * dpToPx(40f);
         float velocityX = (float) Math.cos(angle) * distance;
         float velocityY = (float) Math.sin(angle) * distance;
         float radius = baseRadius + random.nextFloat() * dpToPx(2.5f);
         float rotation = random.nextFloat() * 360f;
-        return new StarParticle(centerX, centerY, velocityX, velocityY, radius, rotation);
+        return new StarParticle(centerX, centerY, velocityX, velocityY, radius, rotation, color);
     }
 
     private float dpToPx(float dp) {
@@ -149,15 +154,17 @@ public class StarBurstView extends View {
         final float velocityY;
         final float radius;
         final float rotation;
+        final int color;
         float progress;
 
-        private StarParticle(float startX, float startY, float velocityX, float velocityY, float radius, float rotation) {
+        private StarParticle(float startX, float startY, float velocityX, float velocityY, float radius, float rotation, int color) {
             this.startX = startX;
             this.startY = startY;
             this.velocityX = velocityX;
             this.velocityY = velocityY;
             this.radius = radius;
             this.rotation = rotation;
+            this.color = color;
         }
     }
 }
