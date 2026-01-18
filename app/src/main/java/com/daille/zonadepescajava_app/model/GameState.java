@@ -301,7 +301,7 @@ public class GameState {
         }
 
         List<Card> allCards = selectedDeck != null
-                ? GameUtils.buildDeckFromSelection(rng, selectedDeck)
+                ? GameUtils.buildDeckFromSelection(rng, selectedDeck, captureCounts)
                 : GameUtils.buildDeck(rng, captureCounts);
         for (Card c : allCards) {
             deck.push(c);

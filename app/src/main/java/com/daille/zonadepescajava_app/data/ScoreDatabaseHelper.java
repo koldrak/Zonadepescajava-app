@@ -433,15 +433,31 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                 values.put(COLUMN_OWNED_COUNT, 0);
                 db.insertWithOnConflict(TABLE_CARD_INVENTORY, null, values, SQLiteDatabase.CONFLICT_IGNORE);
             }
-            for (Card card : GameUtils.getStarterCards()) {
+            if (hasAnyOwnedCards(db)) {
+                db.setTransactionSuccessful();
+                return;
+            }
+            for (Card card : GameUtils.getRandomStarterCards(new java.util.Random(), 30)) {
                 ContentValues values = new ContentValues();
                 values.put(COLUMN_CARD_ID, card.getId().name());
-                values.put(COLUMN_OWNED_COUNT, 1);
-                db.insertWithOnConflict(TABLE_CARD_INVENTORY, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+                values.put(COLUMN_OWNED_COUNT, 0);
+                db.insertWithOnConflict(TABLE_CARD_INVENTORY, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+                db.execSQL("UPDATE " + TABLE_CARD_INVENTORY + " SET " + COLUMN_OWNED_COUNT + " = "
+                        + COLUMN_OWNED_COUNT + " + 1 WHERE " + COLUMN_CARD_ID + " = ?",
+                        new Object[]{card.getId().name()});
             }
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
+        }
+    }
+
+    private boolean hasAnyOwnedCards(SQLiteDatabase db) {
+        try (Cursor cursor = db.rawQuery(
+                "SELECT 1 FROM " + TABLE_CARD_INVENTORY +
+                        " WHERE " + COLUMN_OWNED_COUNT + " > 0 LIMIT 1",
+                null)) {
+            return cursor.moveToFirst();
         }
     }
 

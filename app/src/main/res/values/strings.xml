@@ -11,10 +11,12 @@
     <string name="collection_copy_progress">%1$d/%2$d para nueva copia</string>
     <string name="deck_selection_title">Selección de mazo</string>
     <string name="deck_selection_button">Armado de mazo</string>
-    <string name="deck_selection_score_placeholder">Puntaje seleccionado: 0 (150–200)</string>
+    <string name="deck_selection_score_placeholder">Puntaje seleccionado: 0</string>
     <string name="deck_selection_confirm">Confirmar mazo</string>
     <string name="deck_selection_badge">x%1$d</string>
-    <string name="deck_selection_score_format">Puntaje seleccionado: %1$d (150–200)</string>
+    <string name="deck_selection_score_format">Puntaje seleccionado: %1$d</string>
+    <string name="deck_selection_count_placeholder">Cartas seleccionadas: 0 (30–40)</string>
+    <string name="deck_selection_count_format">Cartas seleccionadas: %1$d (30–40)</string>
     <string name="dice_shop_title">Tienda de dados</string>
     <string name="dice_shop_points_placeholder">Puntos disponibles: 0</string>
     <string name="dice_shop_owned_placeholder">0 comprados</string>

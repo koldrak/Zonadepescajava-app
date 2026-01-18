@@ -104,6 +104,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final int DICE_SELECTION_COLUMNS = 4;
     private static final int MIN_DICE_CAPACITY = 6;
     private static final int MAX_DICE_CAPACITY = 10;
+    private static final int MIN_DECK_CARDS = 30;
+    private static final int MAX_DECK_CARDS = 40;
 
 
     private static class CaptureAnimationRequest {
@@ -201,14 +203,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 return;
             }
             Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
-            if (selectedDeck == null || selectedDeck.size() < 9 || deckSelectionPoints < 150 || deckSelectionPoints > 200) {
+            if (selectedDeck == null || selectedDeck.size() < MIN_DECK_CARDS || selectedDeck.size() > MAX_DECK_CARDS) {
                 List<Card> autoDeck = GameUtils.buildRandomDeckSelection(
                         new java.util.Random(),
                         GameUtils.getSelectableCards(ownedCounts),
                         ownedCounts,
-                        150,
-                        200,
-                        9
+                        MIN_DECK_CARDS,
+                        MAX_DECK_CARDS
                 );
                 selectedDeck = autoDeck;
             }
@@ -248,13 +249,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 return;
             }
             List<Card> selected = deckSelectionAdapter.getSelectedDeck();
-            int totalPoints = deckSelectionPoints;
-            if (selected.size() < 9) {
-                Toast.makeText(this, "Selecciona al menos 9 cartas para el mazo.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (totalPoints < 150 || totalPoints > 200) {
-                Toast.makeText(this, "El puntaje del mazo debe estar entre 150 y 200.", Toast.LENGTH_SHORT).show();
+            if (selected.size() < MIN_DECK_CARDS || selected.size() > MAX_DECK_CARDS) {
+                Toast.makeText(this, "Selecciona entre 30 y 40 cartas para el mazo.", Toast.LENGTH_SHORT).show();
                 return;
             }
             selectedDeck = new ArrayList<>(selected);
@@ -456,17 +452,21 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void updateDeckSelectionScore() {
         int totalPoints = 0;
+        int totalCards = 0;
         if (deckSelectionAdapter != null) {
             List<Card> selected = deckSelectionAdapter.getSelectedDeck();
             for (Card card : selected) {
                 totalPoints += card.getPoints();
             }
+            totalCards = selected.size();
             deckSelectionCounts.clear();
             deckSelectionCounts.putAll(deckSelectionAdapter.getSelectionCounts());
         }
         deckSelectionPoints = totalPoints;
         binding.deckSelectionPanel.deckSelectionScore.setText(
                 getString(R.string.deck_selection_score_format, deckSelectionPoints));
+        binding.deckSelectionPanel.deckSelectionCount.setText(
+                getString(R.string.deck_selection_count_format, totalCards));
     }
 
     private void refreshDiceShopUi() {
@@ -995,11 +995,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         int purchasedD10 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D10.name());
         int purchasedD12 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D12.name());
         int purchasedD20 = scoreDatabaseHelper.getPurchasedDiceCount(DieType.D20.name());
-        inventory.put(DieType.D4, purchasedD4);
-        inventory.put(DieType.D6, 6 + purchasedD6);
-        inventory.put(DieType.D8, purchasedD8);
-        inventory.put(DieType.D10, purchasedD10);
-        inventory.put(DieType.D12, purchasedD12);
+        inventory.put(DieType.D4, 1 + purchasedD4);
+        inventory.put(DieType.D6, 2 + purchasedD6);
+        inventory.put(DieType.D8, 1 + purchasedD8);
+        inventory.put(DieType.D10, 1 + purchasedD10);
+        inventory.put(DieType.D12, 1 + purchasedD12);
         inventory.put(DieType.D20, purchasedD20);
         return inventory;
     }
