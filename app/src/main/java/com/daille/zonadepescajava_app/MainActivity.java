@@ -40,6 +40,7 @@ import com.daille.zonadepescajava_app.model.Die;
 import com.daille.zonadepescajava_app.model.DieType;
 import com.daille.zonadepescajava_app.model.GameState;
 import com.daille.zonadepescajava_app.model.GameUtils;
+import com.daille.zonadepescajava_app.model.ShopPrices;
 import com.daille.zonadepescajava_app.ui.BoardLinksDecoration;
 import com.daille.zonadepescajava_app.ui.BoardSlotAdapter;
 import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
@@ -260,25 +261,35 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void setupDiceShopPanel() {
         binding.diceShopPanel.diceShopBack.setOnClickListener(v -> showStartMenu());
-        binding.diceShopPanel.diceShopBuyD4.setOnClickListener(v -> attemptDicePurchase(DieType.D4, 200));
-        binding.diceShopPanel.diceShopBuyD6.setOnClickListener(v -> attemptDicePurchase(DieType.D6, 400));
-        binding.diceShopPanel.diceShopBuyD8.setOnClickListener(v -> attemptDicePurchase(DieType.D8, 600));
-        binding.diceShopPanel.diceShopBuyD10.setOnClickListener(v -> attemptDicePurchase(DieType.D10, 800));
-        binding.diceShopPanel.diceShopBuyD12.setOnClickListener(v -> attemptDicePurchase(DieType.D12, 1000));
-        binding.diceShopPanel.diceShopBuyD20.setOnClickListener(v -> attemptDicePurchase(DieType.D20, 2000));
+        binding.diceShopPanel.diceShopBuyD4.setOnClickListener(
+                v -> attemptDicePurchase(DieType.D4, ShopPrices.D4_COST));
+        binding.diceShopPanel.diceShopBuyD6.setOnClickListener(
+                v -> attemptDicePurchase(DieType.D6, ShopPrices.D6_COST));
+        binding.diceShopPanel.diceShopBuyD8.setOnClickListener(
+                v -> attemptDicePurchase(DieType.D8, ShopPrices.D8_COST));
+        binding.diceShopPanel.diceShopBuyD10.setOnClickListener(
+                v -> attemptDicePurchase(DieType.D10, ShopPrices.D10_COST));
+        binding.diceShopPanel.diceShopBuyD12.setOnClickListener(
+                v -> attemptDicePurchase(DieType.D12, ShopPrices.D12_COST));
+        binding.diceShopPanel.diceShopBuyD20.setOnClickListener(
+                v -> attemptDicePurchase(DieType.D20, ShopPrices.D20_COST));
         binding.diceShopPanel.diceCapacityBuy.setOnClickListener(v -> attemptDiceCapacityUpgrade());
         updateDiceShopDicePreviews();
         updateCardPackPreviews();
         binding.diceShopPanel.cardPackRandomBuy.setOnClickListener(v ->
-                attemptCardPackPurchase(2000, null, PACK_RANDOM_ASSET));
+                attemptCardPackPurchase(ShopPrices.PACK_RANDOM_COST, null, PACK_RANDOM_ASSET));
         binding.diceShopPanel.cardPackCrustaceoBuy.setOnClickListener(v ->
-                attemptCardPackPurchase(2500, CardType.CRUSTACEO, PACK_CRUSTACEO_ASSET));
+                attemptCardPackPurchase(
+                        ShopPrices.PACK_CRUSTACEO_COST, CardType.CRUSTACEO, PACK_CRUSTACEO_ASSET));
         binding.diceShopPanel.cardPackSmallFishBuy.setOnClickListener(v ->
-                attemptCardPackPurchase(2500, CardType.PEZ, PACK_SMALL_FISH_ASSET));
+                attemptCardPackPurchase(
+                        ShopPrices.PACK_SMALL_FISH_COST, CardType.PEZ, PACK_SMALL_FISH_ASSET));
         binding.diceShopPanel.cardPackBigFishBuy.setOnClickListener(v ->
-                attemptCardPackPurchase(2500, CardType.PEZ_GRANDE, PACK_BIG_FISH_ASSET));
+                attemptCardPackPurchase(
+                        ShopPrices.PACK_BIG_FISH_COST, CardType.PEZ_GRANDE, PACK_BIG_FISH_ASSET));
         binding.diceShopPanel.cardPackObjectBuy.setOnClickListener(v ->
-                attemptCardPackPurchase(2500, CardType.OBJETO, PACK_OBJECT_ASSET));
+                attemptCardPackPurchase(
+                        ShopPrices.PACK_OBJECT_COST, CardType.OBJETO, PACK_OBJECT_ASSET));
     }
 
     private void updateDiceShopDicePreviews() {
@@ -527,7 +538,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             return;
         }
         int nextCapacity = currentCapacity + 1;
-        int cost = getDiceCapacityUpgradeCost(nextCapacity);
+        int cost = ShopPrices.getDiceCapacityUpgradeCost(nextCapacity);
         int available = scoreDatabaseHelper.getAvailablePoints();
         if (available < cost) {
             Toast.makeText(this, "No tienes suficientes puntos para ampliar la capacidad.", Toast.LENGTH_SHORT).show();
@@ -549,25 +560,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             return;
         }
         int nextCapacity = currentCapacity + 1;
-        int cost = getDiceCapacityUpgradeCost(nextCapacity);
+        int cost = ShopPrices.getDiceCapacityUpgradeCost(nextCapacity);
         binding.diceShopPanel.diceCapacityNext.setText(
                 getString(R.string.dice_capacity_next_format, nextCapacity, cost));
         binding.diceShopPanel.diceCapacityBuy.setEnabled(true);
-    }
-
-    private int getDiceCapacityUpgradeCost(int targetCapacity) {
-        switch (targetCapacity) {
-            case 7:
-                return 300;
-            case 8:
-                return 500;
-            case 9:
-                return 1000;
-            case 10:
-                return 2000;
-            default:
-                return Integer.MAX_VALUE;
-        }
     }
 
     private void attemptCardPackPurchase(int cost, CardType filterType, String packAsset) {
@@ -2098,6 +2094,76 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .show();
     }
 
+    private void promptLangostaRecoveryChoice() {
+        if (!gameState.isAwaitingLangostaRecovery()) return;
+        List<Die> options = new ArrayList<>(gameState.getLostDice());
+        if (options.isEmpty()) {
+            handleGameResult("Langosta espinosa: no hay dados perdidos para recuperar.");
+            return;
+        }
+
+        ArrayAdapter<Die> adapter = new ArrayAdapter<>(this, android.R.layout.select_dialog_item, options) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                LinearLayout row;
+                ImageView img;
+                TextView fallbackText;
+
+                if (convertView == null) {
+                    row = new LinearLayout(MainActivity.this);
+                    row.setOrientation(LinearLayout.HORIZONTAL);
+                    row.setPadding(dpToPx(8), dpToPx(4), dpToPx(8), dpToPx(4));
+                    row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+
+                    img = new ImageView(MainActivity.this);
+                    LinearLayout.LayoutParams imgParams =
+                            new LinearLayout.LayoutParams(dpToPx(40), dpToPx(40));
+                    img.setLayoutParams(imgParams);
+                    img.setScaleType(ImageView.ScaleType.FIT_CENTER);
+
+                    fallbackText = new TextView(MainActivity.this);
+                    LinearLayout.LayoutParams textParams =
+                            new LinearLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                                    ViewGroup.LayoutParams.WRAP_CONTENT
+                            );
+                    textParams.leftMargin = dpToPx(12);
+                    fallbackText.setLayoutParams(textParams);
+
+                    row.addView(img);
+                    row.addView(fallbackText);
+                } else {
+                    row = (LinearLayout) convertView;
+                    img = (ImageView) row.getChildAt(0);
+                    fallbackText = (TextView) row.getChildAt(1);
+                }
+
+                Die die = options.get(position);
+                Bitmap face = diceImageResolver.getFace(die);
+
+                if (face != null) {
+                    img.setImageBitmap(face);
+                    fallbackText.setVisibility(View.GONE);
+                } else {
+                    img.setImageBitmap(null);
+                    fallbackText.setVisibility(View.VISIBLE);
+                    fallbackText.setText(die.getLabel());
+                }
+
+                return row;
+            }
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Langosta espinosa")
+                .setAdapter(adapter, (dialog, which) -> {
+                    String msg = gameState.chooseLangostaRecoveredDie(which);
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .show();
+    }
+
     private void promptValueAdjustmentChoice() {
         if (!gameState.isAwaitingValueAdjustment()) return;
         int amount = gameState.getPendingAdjustmentAmount();
@@ -2707,6 +2773,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (gameState.isAwaitingPezLoboDecision()) { promptPezLoboDecision(); return; }
         if (gameState.isAwaitingMantisDecision()) { promptMantisDecision(); return; }
         if (gameState.isAwaitingMantisLostDieChoice()) { promptMantisLostDieChoice(); return; }
+        if (gameState.isAwaitingLangostaRecovery()) { promptLangostaRecoveryChoice(); return; }
         if (gameState.isAwaitingPezVelaDecision()) { promptPezVelaDecision(); return; }
         if (gameState.isAwaitingPezVelaResultChoice()) { promptPezVelaResultChoice(); return; }
         if (gameState.isAwaitingGhostShrimpDecision()) { promptGhostShrimpDecision(); return; }
