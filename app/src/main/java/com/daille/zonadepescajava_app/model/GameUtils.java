@@ -2,6 +2,7 @@ package com.daille.zonadepescajava_app.model;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -387,11 +388,14 @@ public final class GameUtils {
         return deck;
     }
 
-    public static List<Card> buildDeckFromSelection(Random rng, List<Card> selection) {
+    public static List<Card> buildDeckFromSelection(Random rng, List<Card> selection,
+                                                    Map<CardId, Integer> ownedCounts) {
         List<Card> deck = new ArrayList<>();
         if (selection != null) {
             deck.addAll(selection);
         }
+        List<Card> extra = drawExtraOwnedCards(rng, selection, ownedCounts, 5);
+        deck.addAll(extra);
         Collections.shuffle(deck, rng);
         return deck;
     }
@@ -406,63 +410,83 @@ public final class GameUtils {
 
     public static List<Card> buildRandomDeckSelection(Random rng, List<Card> availableCards,
                                                      Map<CardId, Integer> ownedCounts,
-                                                     int minPoints, int maxPoints, int minCards) {
+                                                     int minCards, int maxCards) {
         if (availableCards == null || availableCards.isEmpty()) {
             return new ArrayList<>();
         }
-        List<Card> cards = new ArrayList<>(availableCards);
-        for (int attempt = 0; attempt < 2000; attempt++) {
-            Collections.shuffle(cards, rng);
-            List<Card> selection = new ArrayList<>();
-            int total = 0;
-            for (Card card : cards) {
-                int maxCopies = ownedCounts != null ? ownedCounts.getOrDefault(card.getId(), 0) : 2;
-                if (maxCopies <= 0) {
-                    continue;
-                }
-                int copies = rng.nextInt(maxCopies + 1);
-                for (int i = 0; i < copies; i++) {
-                    int nextTotal = total + card.getPoints();
-                    if (nextTotal > maxPoints) {
-                        break;
-                    }
-                    selection.add(card);
-                    total = nextTotal;
-                }
-            }
-            if (selection.size() >= minCards && total >= minPoints && total <= maxPoints) {
-                return selection;
-            }
+        List<Card> pool = buildOwnedPool(availableCards, ownedCounts);
+        if (pool.isEmpty()) {
+            return new ArrayList<>();
         }
-        List<Card> fallback = new ArrayList<>();
-        int total = 0;
-        Collections.shuffle(cards, rng);
-        for (Card card : cards) {
-            int maxCopies = ownedCounts != null ? ownedCounts.getOrDefault(card.getId(), 0) : 2;
-            for (int i = 0; i < maxCopies; i++) {
-                int nextTotal = total + card.getPoints();
-                if (nextTotal > maxPoints) {
-                    break;
-                }
-                fallback.add(card);
-                total = nextTotal;
-                if (fallback.size() >= minCards && total >= minPoints) {
-                    return fallback;
-                }
-            }
+        Collections.shuffle(pool, rng);
+        int clampedMax = Math.min(maxCards, pool.size());
+        int clampedMin = Math.min(minCards, clampedMax);
+        int targetSize = clampedMin;
+        if (clampedMax > clampedMin) {
+            targetSize = clampedMin + rng.nextInt(clampedMax - clampedMin + 1);
         }
-        return fallback;
+        return new ArrayList<>(pool.subList(0, targetSize));
     }
 
     public static List<Card> buildDeck(Random rng) {
         return buildDeck(rng, null);
     }
 
-    public static List<Card> getStarterCards() {
-        List<Card> starters = new ArrayList<>(createAllCards());
-        List<CardId> locked = getLockedCardIds();
-        starters.removeIf(card -> locked.contains(card.getId()));
+    public static List<Card> getRandomStarterCards(Random rng, int count) {
+        List<Card> allCards = createAllCards();
+        if (allCards.isEmpty() || count <= 0) {
+            return new ArrayList<>();
+        }
+        List<Card> starters = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            starters.add(allCards.get(rng.nextInt(allCards.size())));
+        }
         return starters;
+    }
+
+    private static List<Card> drawExtraOwnedCards(Random rng, List<Card> selection,
+                                                  Map<CardId, Integer> ownedCounts, int count) {
+        if (ownedCounts == null || ownedCounts.isEmpty() || count <= 0) {
+            return new ArrayList<>();
+        }
+        Map<CardId, Integer> remaining = new EnumMap<>(CardId.class);
+        for (CardId id : CardId.values()) {
+            remaining.put(id, Math.max(0, ownedCounts.getOrDefault(id, 0)));
+        }
+        if (selection != null) {
+            for (Card card : selection) {
+                CardId id = card.getId();
+                int current = remaining.getOrDefault(id, 0);
+                if (current > 0) {
+                    remaining.put(id, current - 1);
+                }
+            }
+        }
+        List<Card> pool = buildOwnedPool(createAllCards(), remaining);
+        if (pool.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Collections.shuffle(pool, rng);
+        int take = Math.min(count, pool.size());
+        return new ArrayList<>(pool.subList(0, take));
+    }
+
+    private static List<Card> buildOwnedPool(List<Card> availableCards, Map<CardId, Integer> ownedCounts) {
+        List<Card> pool = new ArrayList<>();
+        if (availableCards == null || availableCards.isEmpty()) {
+            return pool;
+        }
+        if (ownedCounts == null || ownedCounts.isEmpty()) {
+            pool.addAll(availableCards);
+            return pool;
+        }
+        for (Card card : availableCards) {
+            int copies = Math.max(0, ownedCounts.getOrDefault(card.getId(), 0));
+            for (int i = 0; i < copies; i++) {
+                pool.add(card);
+            }
+        }
+        return pool;
     }
 
     public static List<Card> getCardsByType(CardType type) {

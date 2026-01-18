@@ -31,6 +31,14 @@
             android:text="@string/deck_selection_score_placeholder"
             style="@style/App.Text.Title.Ocean.Sub" />
 
+        <TextView
+            android:id="@+id/deckSelectionCount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="@string/deck_selection_count_placeholder"
+            style="@style/App.Text.Title.Ocean.Sub" />
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/deckSelectionRecycler"
             android:layout_width="match_parent"
