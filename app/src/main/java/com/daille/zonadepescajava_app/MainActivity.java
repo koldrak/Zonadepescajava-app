@@ -810,14 +810,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         clearDiceTokensFromContainer(binding.diceSelectionPanel.diceSelectionGrid);
         clearDiceTokensFromContainer(binding.diceSelectionPanel.diceWarehouseGrid);
         Map<DieType, Integer> inventory = buildDiceInventory();
+        int size = calculateDieSize(binding.diceSelectionPanel.diceWarehouseZone);
+        int spacing = dpToPx(8);
         for (Map.Entry<DieType, Integer> entry : inventory.entrySet()) {
             DieType type = entry.getKey();
             int count = entry.getValue();
             for (int i = 0; i < count; i++) {
                 ImageView dieView = new ImageView(this);
                 GridLayout.LayoutParams params = new GridLayout.LayoutParams();
-                int size = dpToPx(70);
-                int spacing = dpToPx(8);
                 params.width = size;
                 params.height = size;
                 params.setMargins(spacing, spacing, spacing, spacing);
@@ -832,6 +832,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
         }
         updateSelectionCounter();
+        updateDiceGridColumns();
     }
 
     private void updateDiceGridColumns() {
@@ -860,11 +861,20 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private int calculateDieSize(View container) {
         int availableWidth = container.getWidth();
+        if (availableWidth == 0) {
+            availableWidth = container.getMeasuredWidth();
+        }
         if (availableWidth == 0 && container instanceof ViewGroup) {
             availableWidth = ((ViewGroup) container).getWidth();
         }
         if (availableWidth == 0) {
+            availableWidth = binding.diceSelectionPanel.diceWarehouseGrid.getMeasuredWidth();
+        }
+        if (availableWidth == 0) {
             availableWidth = binding.diceSelectionPanel.diceWarehouseGrid.getWidth();
+        }
+        if (availableWidth == 0) {
+            availableWidth = binding.diceSelectionPanel.diceSelectionGrid.getMeasuredWidth();
         }
         if (availableWidth == 0) {
             availableWidth = binding.diceSelectionPanel.diceSelectionGrid.getWidth();
