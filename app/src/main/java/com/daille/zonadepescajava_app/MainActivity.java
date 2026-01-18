@@ -300,7 +300,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         Map<CardId, Integer> counts = scoreDatabaseHelper.getCaptureCounts();
         Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
         List<CollectionCardAdapter.CollectionEntry> entries = new ArrayList<>();
-        for (Card card : GameUtils.createAllCards()) {
+        List<Card> cards = new ArrayList<>(GameUtils.createAllCards());
+        cards.sort((first, second) -> {
+            int byPoints = Integer.compare(second.getPoints(), first.getPoints());
+            if (byPoints != 0) {
+                return byPoints;
+            }
+            return first.getName().compareToIgnoreCase(second.getName());
+        });
+        for (Card card : cards) {
             int count = 0;
             if (counts.containsKey(card.getId())) {
                 count = counts.get(card.getId());
@@ -440,6 +448,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void refreshDeckSelectionList() {
         Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
         List<Card> selectable = GameUtils.getSelectableCards(ownedCounts);
+        selectable.sort((first, second) -> {
+            int byPoints = Integer.compare(second.getPoints(), first.getPoints());
+            if (byPoints != 0) {
+                return byPoints;
+            }
+            return first.getName().compareToIgnoreCase(second.getName());
+        });
         deckSelectionCounts.clear();
         selectedDeck = new ArrayList<>();
         deckSelectionPoints = 0;
@@ -571,9 +586,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<Card> awarded = new ArrayList<>();
         java.util.Random rng = new java.util.Random();
         for (int i = 0; i < 3; i++) {
-            Card card = pool.get(rng.nextInt(pool.size()));
-            awarded.add(card);
-            scoreDatabaseHelper.addCardCopies(card.getId(), 1);
+            Card card = GameUtils.drawWeightedByPoints(rng, pool);
+            if (card != null) {
+                awarded.add(card);
+                scoreDatabaseHelper.addCardCopies(card.getId(), 1);
+            }
+        }
+        if (awarded.isEmpty()) {
+            Toast.makeText(this, "No hay cartas disponibles en este paquete.", Toast.LENGTH_SHORT).show();
+            return;
         }
         scoreDatabaseHelper.addSpentPoints(cost);
         refreshDiceShopUi();
