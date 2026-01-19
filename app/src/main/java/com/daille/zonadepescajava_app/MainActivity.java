@@ -5,10 +5,14 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.AudioAttributes;
+import android.media.MediaPlayer;
+import android.media.SoundPool;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -96,6 +100,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private List<Card> selectedDeck = new ArrayList<>();
     private int deckSelectionPoints = 0;
     private final Map<String, Bitmap> packImageCache = new java.util.HashMap<>();
+    private MediaPlayer ambientPlayer;
+    private int ambientResId = 0;
+    private SoundPool soundPool;
+    private int buttonSoundId;
+    private int rollSoundId;
+    private int splashSoundId;
+    private int captureSoundId;
+    private int packOpenSoundId;
 
     private static final String PACK_RANDOM_ASSET = "sobresorpresa.png";
     private static final String PACK_CRUSTACEO_ASSET = "sobrecrustaceos.png";
@@ -150,6 +162,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setupTideAnimationOverlay();
         setupCollectionsPanel();
         setupSettingsPanel();
+        setupAudio();
 
         if (viewModel.isInitialized()) {
             setupBoard();
@@ -192,12 +205,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
 
     private void setupMenuButtons() {
-        binding.startMenu.startNewGame.setOnClickListener(v -> {
-            showDiceSelectionPanel();
-        });
-        binding.startMenu.openDiceShop.setOnClickListener(v -> showDiceShopPanel());
-        binding.diceSelectionPanel.openDeckSelection.setOnClickListener(v -> showDeckSelectionPanel());
-        binding.diceSelectionPanel.confirmDiceSelection.setOnClickListener(v -> {
+        setButtonClickListener(binding.startMenu.startNewGame, this::showDiceSelectionPanel);
+        setButtonClickListener(binding.startMenu.openDiceShop, this::showDiceShopPanel);
+        setButtonClickListener(binding.diceSelectionPanel.openDeckSelection, this::showDeckSelectionPanel);
+        setButtonClickListener(binding.diceSelectionPanel.confirmDiceSelection, () -> {
             List<DieType> startingReserve = extractSelectedDice();
             if (startingReserve.isEmpty()) {
                 Toast.makeText(this, "Selecciona al menos 1 dado para iniciar.", Toast.LENGTH_SHORT).show();
@@ -222,8 +233,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             showGameLayout();
             refreshUi("Juego iniciado. Lanza un dado y toca una carta.");
         });
-        binding.startMenu.openSettings.setOnClickListener(v -> showSettingsPanel());
-        binding.startMenu.openCollections.setOnClickListener(v -> showCollectionsPanel());
+        setButtonClickListener(binding.startMenu.openSettings, this::showSettingsPanel);
+        setButtonClickListener(binding.startMenu.openCollections, this::showCollectionsPanel);
     }
 
     private void setupScoreRecordsList() {
@@ -237,15 +248,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         collectionCardAdapter = new CollectionCardAdapter(this);
         binding.collectionsPanel.collectionsRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.collectionsPanel.collectionsRecycler.setAdapter(collectionCardAdapter);
-        binding.collectionsPanel.closeCollections.setOnClickListener(v -> showStartMenu());
+        setButtonClickListener(binding.collectionsPanel.closeCollections, this::showStartMenu);
     }
 
     private void setupDeckSelectionPanel() {
         deckSelectionAdapter = new DeckSelectionAdapter(this, this::updateDeckSelectionScore);
         binding.deckSelectionPanel.deckSelectionRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.deckSelectionPanel.deckSelectionRecycler.setAdapter(deckSelectionAdapter);
-        binding.deckSelectionPanel.deckSelectionBack.setOnClickListener(v -> showDiceSelectionPanel());
-        binding.deckSelectionPanel.deckSelectionConfirm.setOnClickListener(v -> {
+        setButtonClickListener(binding.deckSelectionPanel.deckSelectionBack, this::showDiceSelectionPanel);
+        setButtonClickListener(binding.deckSelectionPanel.deckSelectionConfirm, () -> {
             if (deckSelectionAdapter == null) {
                 return;
             }
@@ -260,34 +271,34 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void setupDiceShopPanel() {
-        binding.diceShopPanel.diceShopBack.setOnClickListener(v -> showStartMenu());
-        binding.diceShopPanel.diceShopBuyD4.setOnClickListener(
-                v -> attemptDicePurchase(DieType.D4, ShopPrices.D4_COST));
-        binding.diceShopPanel.diceShopBuyD6.setOnClickListener(
-                v -> attemptDicePurchase(DieType.D6, ShopPrices.D6_COST));
-        binding.diceShopPanel.diceShopBuyD8.setOnClickListener(
-                v -> attemptDicePurchase(DieType.D8, ShopPrices.D8_COST));
-        binding.diceShopPanel.diceShopBuyD10.setOnClickListener(
-                v -> attemptDicePurchase(DieType.D10, ShopPrices.D10_COST));
-        binding.diceShopPanel.diceShopBuyD12.setOnClickListener(
-                v -> attemptDicePurchase(DieType.D12, ShopPrices.D12_COST));
-        binding.diceShopPanel.diceShopBuyD20.setOnClickListener(
-                v -> attemptDicePurchase(DieType.D20, ShopPrices.D20_COST));
-        binding.diceShopPanel.diceCapacityBuy.setOnClickListener(v -> attemptDiceCapacityUpgrade());
+        setButtonClickListener(binding.diceShopPanel.diceShopBack, this::showStartMenu);
+        setButtonClickListener(binding.diceShopPanel.diceShopBuyD4,
+                () -> attemptDicePurchase(DieType.D4, ShopPrices.D4_COST));
+        setButtonClickListener(binding.diceShopPanel.diceShopBuyD6,
+                () -> attemptDicePurchase(DieType.D6, ShopPrices.D6_COST));
+        setButtonClickListener(binding.diceShopPanel.diceShopBuyD8,
+                () -> attemptDicePurchase(DieType.D8, ShopPrices.D8_COST));
+        setButtonClickListener(binding.diceShopPanel.diceShopBuyD10,
+                () -> attemptDicePurchase(DieType.D10, ShopPrices.D10_COST));
+        setButtonClickListener(binding.diceShopPanel.diceShopBuyD12,
+                () -> attemptDicePurchase(DieType.D12, ShopPrices.D12_COST));
+        setButtonClickListener(binding.diceShopPanel.diceShopBuyD20,
+                () -> attemptDicePurchase(DieType.D20, ShopPrices.D20_COST));
+        setButtonClickListener(binding.diceShopPanel.diceCapacityBuy, this::attemptDiceCapacityUpgrade);
         updateDiceShopDicePreviews();
         updateCardPackPreviews();
-        binding.diceShopPanel.cardPackRandomBuy.setOnClickListener(v ->
+        setButtonClickListener(binding.diceShopPanel.cardPackRandomBuy, () ->
                 attemptCardPackPurchase(ShopPrices.PACK_RANDOM_COST, null, PACK_RANDOM_ASSET));
-        binding.diceShopPanel.cardPackCrustaceoBuy.setOnClickListener(v ->
+        setButtonClickListener(binding.diceShopPanel.cardPackCrustaceoBuy, () ->
                 attemptCardPackPurchase(
                         ShopPrices.PACK_CRUSTACEO_COST, CardType.CRUSTACEO, PACK_CRUSTACEO_ASSET));
-        binding.diceShopPanel.cardPackSmallFishBuy.setOnClickListener(v ->
+        setButtonClickListener(binding.diceShopPanel.cardPackSmallFishBuy, () ->
                 attemptCardPackPurchase(
                         ShopPrices.PACK_SMALL_FISH_COST, CardType.PEZ, PACK_SMALL_FISH_ASSET));
-        binding.diceShopPanel.cardPackBigFishBuy.setOnClickListener(v ->
+        setButtonClickListener(binding.diceShopPanel.cardPackBigFishBuy, () ->
                 attemptCardPackPurchase(
                         ShopPrices.PACK_BIG_FISH_COST, CardType.PEZ_GRANDE, PACK_BIG_FISH_ASSET));
-        binding.diceShopPanel.cardPackObjectBuy.setOnClickListener(v ->
+        setButtonClickListener(binding.diceShopPanel.cardPackObjectBuy, () ->
                 attemptCardPackPurchase(
                         ShopPrices.PACK_OBJECT_COST, CardType.OBJETO, PACK_OBJECT_ASSET));
     }
@@ -389,6 +400,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        updateAmbientMusic("ambientalplaya");
         refreshScoreRecords(); // ✅ asegura recarga al mostrar menú
     }
 
@@ -401,6 +413,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        updateAmbientMusic("ambientalplaya");
     }
 
     private void showDiceSelectionPanel() {
@@ -412,6 +425,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        updateAmbientMusic("ambientalplaya");
     }
 
     private void showDiceShopPanel() {
@@ -423,6 +437,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        updateAmbientMusic("market");
     }
 
     private void showGameLayout() {
@@ -433,6 +448,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.VISIBLE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        updateAmbientMusic("ambientalplaya");
     }
 
     private void showCollectionsPanel() {
@@ -443,6 +459,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.VISIBLE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        updateAmbientMusic("ambientalplaya");
         refreshCollections();
     }
 
@@ -454,6 +471,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.VISIBLE);
+        updateAmbientMusic("ambientalplaya");
     }
 
     private void refreshDeckSelectionList() {
@@ -623,6 +641,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (cards == null || cards.isEmpty()) {
             return;
         }
+        playPackOpenSound();
         Bitmap packImage = loadPackAsset(packAsset);
         CardPackOpenDialog.show(this, packImage, cards, cardImageResolver, this::showDiceShopPanel);
     }
@@ -652,8 +671,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void setupSettingsPanel() {
-        binding.settingsPanel.settingsBack.setOnClickListener(v -> showStartMenu());
-        binding.settingsPanel.settingsResetData.setOnClickListener(v -> {
+        setButtonClickListener(binding.settingsPanel.settingsBack, this::showStartMenu);
+        setButtonClickListener(binding.settingsPanel.settingsResetData, () -> {
             scoreDatabaseHelper.resetAllData();
             viewModel.resetProgress();
             selectedDeck = new ArrayList<>();
@@ -662,9 +681,149 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             showStartMenu();
             Toast.makeText(this, "Datos borrados.", Toast.LENGTH_SHORT).show();
         });
-        binding.settingsPanel.settingsAddPoints.setOnClickListener(v -> {
+        setButtonClickListener(binding.settingsPanel.settingsAddPoints, () -> {
             scoreDatabaseHelper.addBonusPoints(1000);
             Toast.makeText(this, "Se agregaron 1000 puntos.", Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void setupAudio() {
+        AudioAttributes attributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_GAME)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
+        soundPool = new SoundPool.Builder()
+                .setMaxStreams(6)
+                .setAudioAttributes(attributes)
+                .build();
+        buttonSoundId = loadSound("boton");
+        rollSoundId = loadSound("caña");
+        splashSoundId = loadSound("splash");
+        captureSoundId = loadSound("capturar");
+        packOpenSoundId = loadSound("sobre");
+    }
+
+    private int loadSound(String name) {
+        int resId = getRawSoundId(name);
+        if (resId == 0 || soundPool == null) {
+            return 0;
+        }
+        return soundPool.load(this, resId, 1);
+    }
+
+    private int getRawSoundId(String name) {
+        return getResources().getIdentifier(name, "raw", getPackageName());
+    }
+
+    private void playButtonSound() {
+        playSound(buttonSoundId);
+    }
+
+    private void playRollSound() {
+        playSound(rollSoundId);
+    }
+
+    private void playSplashSound() {
+        playSound(splashSoundId);
+    }
+
+    private void playCaptureSound() {
+        playSound(captureSoundId);
+    }
+
+    private void playPackOpenSound() {
+        playSound(packOpenSoundId);
+    }
+
+    private void playSound(int soundId) {
+        if (soundPool == null || soundId == 0) {
+            return;
+        }
+        soundPool.play(soundId, 1f, 1f, 1, 0, 1f);
+    }
+
+    private void updateAmbientMusic(String trackName) {
+        int resId = getRawSoundId(trackName);
+        if (resId == 0) {
+            stopAmbientMusic();
+            return;
+        }
+        if (ambientResId == resId && ambientPlayer != null) {
+            if (!ambientPlayer.isPlaying()) {
+                ambientPlayer.start();
+            }
+            return;
+        }
+        stopAmbientMusic();
+        ambientResId = resId;
+        ambientPlayer = MediaPlayer.create(this, resId);
+        if (ambientPlayer != null) {
+            ambientPlayer.setLooping(true);
+            ambientPlayer.start();
+        }
+    }
+
+    private void stopAmbientMusic() {
+        if (ambientPlayer != null) {
+            ambientPlayer.stop();
+            ambientPlayer.release();
+            ambientPlayer = null;
+        }
+        ambientResId = 0;
+    }
+
+    private void pauseAmbientMusic() {
+        if (ambientPlayer != null && ambientPlayer.isPlaying()) {
+            ambientPlayer.pause();
+        }
+    }
+
+    private void resumeAmbientMusic() {
+        if (ambientPlayer != null && ambientResId != 0 && !ambientPlayer.isPlaying()) {
+            ambientPlayer.start();
+        }
+    }
+
+    private void releaseAudio() {
+        stopAmbientMusic();
+        if (soundPool != null) {
+            soundPool.release();
+            soundPool = null;
+        }
+    }
+
+    private void setButtonClickListener(View view, Runnable action) {
+        if (view == null) {
+            return;
+        }
+        view.setOnClickListener(v -> {
+            playButtonSound();
+            if (action != null) {
+                action.run();
+            }
+        });
+    }
+
+    private void attachDialogButtonSounds(AlertDialog dialog) {
+        if (dialog == null) {
+            return;
+        }
+        dialog.setOnShowListener(dlg -> {
+            attachButtonSound(dialog.getButton(AlertDialog.BUTTON_POSITIVE));
+            attachButtonSound(dialog.getButton(AlertDialog.BUTTON_NEGATIVE));
+            attachButtonSound(dialog.getButton(AlertDialog.BUTTON_NEUTRAL));
+        });
+    }
+
+    private void attachButtonSound(View button) {
+        if (button == null) {
+            return;
+        }
+        button.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_UP) {
+                playButtonSound();
+            }
+            return false;
         });
     }
 
@@ -1582,13 +1741,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void recordNewCaptures() {
         List<Card> currentCaptures = gameState.getCaptures();
+        boolean hasNewCapture = false;
         for (Card card : currentCaptures) {
             if (!lastCaptures.contains(card)) {
+                hasNewCapture = true;
                 int totalCaptures = scoreDatabaseHelper.incrementCaptureCount(card.getId());
                 if (totalCaptures > 0 && totalCaptures % 3 == 0) {
                     scoreDatabaseHelper.addCardCopies(card.getId(), 1);
                 }
             }
+        }
+        if (hasNewCapture) {
+            playCaptureSound();
         }
     }
 
@@ -1638,15 +1802,17 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                         return;
                     }
 
-                    new AlertDialog.Builder(this)
+                    AlertDialog dialog = new AlertDialog.Builder(this)
                             .setTitle("Liberar pez")
                             .setMessage("¿Quieres liberar este pez?")
-                            .setPositiveButton("Sí", (dialog, which) -> {
+                            .setPositiveButton("Sí", (dialogInterface, which) -> {
                                 String msg = gameState.startReleaseFromCapture(card);
                                 handleGameResult(msg); // refresca UI + toast + prompts
                             })
                             .setNegativeButton("No", null)
-                            .show();
+                            .create();
+                    attachDialogButtonSounds(dialog);
+                    dialog.show();
                 });
 
                 // 👇 CLICK LARGO = CARTA EN GRANDE
@@ -1912,136 +2078,152 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
         };
 
-        new android.app.AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Elige qué dado perder")
-                .setAdapter(adapter, (dialog, which) -> {
+                .setAdapter(adapter, (dialogInterface, which) -> {
                     String msg = gameState.chooseDieToLose(which);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
 
     private void promptCancelAbility() {
         if (!gameState.isAwaitingCancelConfirmation()) return;
 
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Cancelar habilidad")
                 .setMessage(gameState.getPendingCancelMessage() +
                         "\n¿Deseas cancelar la habilidad?")
-                .setPositiveButton("Cancelar", (d, w) -> {
+                .setPositiveButton("Cancelar", (dialogInterface, which) -> {
                     String msg = gameState.resolveCancelConfirmation(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Seguir intentando", (d, w) -> {
+                .setNegativeButton("Seguir intentando", (dialogInterface, which) -> {
                     String msg = gameState.resolveCancelConfirmation(false);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private void promptAtunDecision() {
         if (!gameState.isAwaitingAtunDecision()) return;
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Habilidad del Atún")
                 .setMessage("¿Quieres relanzar el dado recién lanzado?")
-                .setPositiveButton("Relanzar", (dialog, which) -> {
+                .setPositiveButton("Relanzar", (dialogInterface, which) -> {
                     String msg = gameState.chooseAtunReroll(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Conservar", (dialog, which) -> {
+                .setNegativeButton("Conservar", (dialogInterface, which) -> {
                     String msg = gameState.chooseAtunReroll(false);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private void promptBlueCrabDecision() {
         if (!gameState.isAwaitingBlueCrabDecision()) return;
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Jaiba azul")
                 .setMessage("¿Quieres activar la habilidad para ajustar un dado ±1?")
-                .setPositiveButton("Usar", (dialog, which) -> {
+                .setPositiveButton("Usar", (dialogInterface, which) -> {
                     String msg = gameState.chooseBlueCrabUse(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Omitir", (dialog, which) -> {
+                .setNegativeButton("Omitir", (dialogInterface, which) -> {
                     String msg = gameState.chooseBlueCrabUse(false);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private void promptBlowfishDecision() {
         if (!gameState.isAwaitingBlowfishDecision()) return;
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Pez globo")
                 .setMessage("¿Quieres inflar un dado al máximo?")
-                .setPositiveButton("Usar", (dialog, which) -> {
+                .setPositiveButton("Usar", (dialogInterface, which) -> {
                     String msg = gameState.chooseBlowfishUse(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Omitir", (dialog, which) -> {
+                .setNegativeButton("Omitir", (dialogInterface, which) -> {
                     String msg = gameState.chooseBlowfishUse(false);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private void promptPezLoboDecision() {
         if (!gameState.isAwaitingPezLoboDecision()) return;
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Pez Lobo")
                 .setMessage("¿Quieres descartar una carta adyacente boca arriba?")
-                .setPositiveButton("Usar", (dialog, which) -> {
+                .setPositiveButton("Usar", (dialogInterface, which) -> {
                     String msg = gameState.choosePezLoboUse(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Omitir", (dialog, which) -> {
+                .setNegativeButton("Omitir", (dialogInterface, which) -> {
                     String msg = gameState.choosePezLoboUse(false);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private void promptMantisDecision() {
         if (!gameState.isAwaitingMantisDecision()) return;
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Langostino mantis")
                 .setMessage("¿Quieres relanzar un dado perdido?")
-                .setPositiveButton("Usar", (dialog, which) -> {
+                .setPositiveButton("Usar", (dialogInterface, which) -> {
                     String msg = gameState.chooseMantisReroll(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Omitir", (dialog, which) -> {
+                .setNegativeButton("Omitir", (dialogInterface, which) -> {
                     String msg = gameState.chooseMantisReroll(false);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private void promptBoxerDecision() {
         if (!gameState.isAwaitingBoxerDecision()) return;
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Cangrejo boxeador")
                 .setMessage("¿Quieres mover otro dado adyacente?")
-                .setPositiveButton("Mover", (dialog, which) -> {
+                .setPositiveButton("Mover", (dialogInterface, which) -> {
                     String msg = gameState.chooseBoxerContinue(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Omitir", (dialog, which) -> {
+                .setNegativeButton("Omitir", (dialogInterface, which) -> {
                     String msg = gameState.chooseBoxerContinue(false);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private void promptMantisLostDieChoice() {
@@ -2104,16 +2286,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
         };
 
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Langostino mantis")
-                .setAdapter(adapter, (dialog, which) -> {
+                .setAdapter(adapter, (dialogInterface, which) -> {
                     Die chosen = options.get(which);
                     startRollingAnimation(chosen.getType());
                     String msg = gameState.chooseMantisLostDie(which);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private void promptLangostaRecoveryChoice() {
@@ -2176,14 +2360,16 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
         };
 
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Langosta espinosa")
-                .setAdapter(adapter, (dialog, which) -> {
+                .setAdapter(adapter, (dialogInterface, which) -> {
                     String msg = gameState.chooseLangostaRecoveredDie(which);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private void promptValueAdjustmentChoice() {
@@ -2197,37 +2383,41 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         } else {
             creature = "Jaiba azul";
         }
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Ajuste de " + creature)
                 .setMessage("¿Quieres sumar o restar " + amount + " al dado seleccionado?")
-                .setPositiveButton("Sumar", (dialog, which) -> {
+                .setPositiveButton("Sumar", (dialogInterface, which) -> {
                     String msg = gameState.chooseValueAdjustment(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Restar", (dialog, which) -> {
+                .setNegativeButton("Restar", (dialogInterface, which) -> {
                     String msg = gameState.chooseValueAdjustment(false);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private void promptGhostShrimpDecision() {
         if (!gameState.isAwaitingGhostShrimpDecision()) return;
         String seen = gameState.getGhostShrimpPeekNames();
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Camarón fantasma")
                 .setMessage("Viste: " + seen + ". ¿Intercambiar sus posiciones?")
-                .setPositiveButton("Intercambiar", (dialog, which) -> {
+                .setPositiveButton("Intercambiar", (dialogInterface, which) -> {
                     String msg = gameState.resolveGhostShrimpSwap(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Conservar", (dialog, which) -> {
+                .setNegativeButton("Conservar", (dialogInterface, which) -> {
                     String msg = gameState.resolveGhostShrimpSwap(false);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private interface CardSelectionHandler {
@@ -2327,6 +2517,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
 
         AlertDialog dialog = builder.create();
+        attachDialogButtonSounds(dialog);
 
         gridView.setOnItemClickListener((parent, view, position, id) -> {
             String msg = onSelect.onSelect(position);
@@ -2371,6 +2562,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
 
         gridView.setOnItemClickListener((parent, view, position, id) -> {
             if (selected.contains(position)) {
@@ -2417,19 +2609,21 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         String current = gameState.getPezVelaOriginalDie() != null
                 ? gameState.getPezVelaOriginalDie().getLabel()
                 : "actual";
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Habilidad del Pez Vela")
                 .setMessage("Resultado actual: " + current + ". ¿Relanzar?")
-                .setPositiveButton("Relanzar", (dialog, which) -> {
+                .setPositiveButton("Relanzar", (dialogInterface, which) -> {
                     String msg = gameState.choosePezVelaReroll(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Conservar", (dialog, which) -> {
+                .setNegativeButton("Conservar", (dialogInterface, which) -> {
                     String msg = gameState.choosePezVelaReroll(false);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private void promptPezVelaResultChoice() {
@@ -2440,19 +2634,21 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         String rerolled = gameState.getPezVelaRerolledDie() != null
                 ? gameState.getPezVelaRerolledDie().getLabel()
                 : "nuevo";
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Habilidad del Pez Vela")
                 .setMessage("Elige qué resultado conservar")
-                .setPositiveButton("Nuevo (" + rerolled + ")", (dialog, which) -> {
+                .setPositiveButton("Nuevo (" + rerolled + ")", (dialogInterface, which) -> {
                     String msg = gameState.choosePezVelaResult(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Anterior (" + previous + ")", (dialog, which) -> {
+                .setNegativeButton("Anterior (" + previous + ")", (dialogInterface, which) -> {
                     String msg = gameState.choosePezVelaResult(false);
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
-                .show();
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private void promptArenqueChoice() {
@@ -2555,6 +2751,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void startRollingAnimation(DieType type) {
         if (animationHandler == null) return;
+        playRollSound();
 
         // Cancela runnable anterior (si estaba en cola)
         if (rollingRunnable != null) {
@@ -2984,6 +3181,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setView(gridView)
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
 
         gridView.setOnItemClickListener((parent, view, position, id) -> {
             String msg = gameState.chooseHorseshoeValue(values.get(position));
@@ -2999,6 +3197,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             completePlacement(position);
             return;
         }
+        playSplashSound();
 
         BoardSlot slot = gameState.getBoard()[position];
         boolean shouldFlip = slot != null && !slot.isFaceUp(); // 👈 solo si está boca abajo
@@ -3277,10 +3476,23 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        pauseAmbientMusic();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        resumeAmbientMusic();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         if (scoreDatabaseHelper != null) {
             scoreDatabaseHelper.close();
         }
+        releaseAudio();
     }
 }
