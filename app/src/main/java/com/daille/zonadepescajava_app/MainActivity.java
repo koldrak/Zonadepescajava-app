@@ -108,6 +108,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private int splashSoundId;
     private int captureSoundId;
     private int packOpenSoundId;
+    private final Set<Integer> loadedSoundIds = new java.util.HashSet<>();
+    private final Set<Integer> pendingSoundIds = new java.util.HashSet<>();
 
     private static final String PACK_RANDOM_ASSET = "sobresorpresa.png";
     private static final String PACK_CRUSTACEO_ASSET = "sobrecrustaceos.png";
@@ -696,6 +698,16 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setMaxStreams(6)
                 .setAudioAttributes(attributes)
                 .build();
+        loadedSoundIds.clear();
+        pendingSoundIds.clear();
+        soundPool.setOnLoadCompleteListener((pool, sampleId, status) -> {
+            if (status == 0) {
+                loadedSoundIds.add(sampleId);
+                if (pendingSoundIds.remove(sampleId)) {
+                    playSound(sampleId);
+                }
+            }
+        });
         buttonSoundId = loadSound("boton");
         rollSoundId = loadSound("cana");
         splashSoundId = loadSound("splash");
@@ -741,6 +753,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void playSound(int soundId) {
         if (soundPool == null || soundId == 0) {
+            return;
+        }
+        if (!loadedSoundIds.contains(soundId)) {
+            pendingSoundIds.add(soundId);
             return;
         }
         soundPool.play(soundId, 1f, 1f, 1, 0, 1f);
@@ -794,6 +810,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             soundPool.release();
             soundPool = null;
         }
+        loadedSoundIds.clear();
+        pendingSoundIds.clear();
     }
 
     private void setButtonClickListener(View view, Runnable action) {
@@ -3201,7 +3219,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             completePlacement(position);
             return;
         }
-        playSplashSound();
 
         BoardSlot slot = gameState.getBoard()[position];
         boolean shouldFlip = slot != null && !slot.isFaceUp(); // 👈 solo si está boca abajo
@@ -3475,7 +3492,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
 
     private void completePlacement(int position) {
+        boolean hadSelectedDie = gameState.getSelectedDie() != null;
         String result = gameState.placeSelectedDie(position);
+        if (hadSelectedDie) {
+            playSplashSound();
+        }
         handleGameResult(result);
     }
 
