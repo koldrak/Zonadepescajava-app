@@ -127,25 +127,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final String PACK_SMALL_FISH_ASSET = "sobrepecespequeños.png";
     private static final String PACK_BIG_FISH_ASSET = "sobrepecesgrandes.png";
     private static final String PACK_OBJECT_ASSET = "sobreobjetos.png";
-    private static final Set<Integer> SOUND_BUTTON_IDS = new HashSet<>(Arrays.asList(
-            R.id.startNewGame,
-            R.id.openDiceShop,
-            R.id.openSettings,
-            R.id.openCollections,
-            R.id.diceShopBack,
-            R.id.diceShopBuyD4,
-            R.id.diceShopBuyD6,
-            R.id.diceShopBuyD8,
-            R.id.diceShopBuyD10,
-            R.id.diceShopBuyD12,
-            R.id.diceShopBuyD20,
-            R.id.diceCapacityBuy,
-            R.id.cardPackRandomBuy,
-            R.id.cardPackCrustaceoBuy,
-            R.id.cardPackSmallFishBuy,
-            R.id.cardPackBigFishBuy,
-            R.id.cardPackObjectBuy
-    ));
+    private final Set<View> soundButtons = new HashSet<>();
     private static final int DICE_SELECTION_COLUMNS = 4;
     private static final int MIN_DICE_CAPACITY = 6;
     private static final int MAX_DICE_CAPACITY = 10;
@@ -241,7 +223,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setSoundButtonClickListener(binding.startMenu.startNewGame, this::showDiceSelectionPanel);
         setSoundButtonClickListener(binding.startMenu.openDiceShop, this::showDiceShopPanel);
         setButtonClickListener(binding.diceSelectionPanel.openDeckSelection, this::showDeckSelectionPanel);
-        setButtonClickListener(binding.diceSelectionPanel.confirmDiceSelection, () -> {
+        setSoundButtonClickListener(binding.diceSelectionPanel.confirmDiceSelection, () -> {
             List<DieType> startingReserve = extractSelectedDice();
             if (startingReserve.isEmpty()) {
                 Toast.makeText(this, "Selecciona al menos 1 dado para iniciar.", Toast.LENGTH_SHORT).show();
@@ -281,7 +263,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         collectionCardAdapter = new CollectionCardAdapter(this);
         binding.collectionsPanel.collectionsRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.collectionsPanel.collectionsRecycler.setAdapter(collectionCardAdapter);
-        setButtonClickListener(binding.collectionsPanel.closeCollections, this::showStartMenu);
+        setSoundButtonClickListener(binding.collectionsPanel.closeCollections, this::showStartMenu);
     }
 
     private void setupDeckSelectionPanel() {
@@ -291,7 +273,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         deckPresetsAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
         deckPresetsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         binding.deckSelectionPanel.deckSelectionSavedSpinner.setAdapter(deckPresetsAdapter);
-        setButtonClickListener(binding.deckSelectionPanel.deckSelectionBack, this::showDiceSelectionPanel);
+        setSoundButtonClickListener(binding.deckSelectionPanel.deckSelectionBack, this::showDiceSelectionPanel);
         setButtonClickListener(binding.deckSelectionPanel.deckSelectionConfirm, () -> {
             if (deckSelectionAdapter == null) {
                 return;
@@ -759,7 +741,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void setupSettingsPanel() {
-        setButtonClickListener(binding.settingsPanel.settingsBack, this::showStartMenu);
+        setSoundButtonClickListener(binding.settingsPanel.settingsBack, this::showStartMenu);
         setButtonClickListener(binding.settingsPanel.settingsResetData, () -> {
             scoreDatabaseHelper.resetAllData();
             viewModel.resetProgress();
@@ -889,7 +871,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (view == null || view.getId() == View.NO_ID) {
             return;
         }
-        if (!SOUND_BUTTON_IDS.contains(view.getId())) {
+        if (!view.isShown() || !view.isEnabled()) {
+            return;
+        }
+        if (!soundButtons.contains(view)) {
             return;
         }
         playSound(buttonSoundId);
@@ -994,6 +979,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (view == null) {
             return;
         }
+        soundButtons.add(view);
         view.setOnClickListener(v -> {
             if (isButtonView(v)) {
                 playButtonSound(v);
