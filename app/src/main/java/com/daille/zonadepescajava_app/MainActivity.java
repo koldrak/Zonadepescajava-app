@@ -137,6 +137,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private TutorialType activeTutorial;
     private final List<TutorialStep> tutorialSteps = new ArrayList<>();
     private int tutorialStepIndex = -1;
+    private final List<View> tutorialHighlightedViews = new ArrayList<>();
+    private final List<ObjectAnimator> tutorialHighlightAnimators = new ArrayList<>();
 
     private static final String PACK_RANDOM_ASSET = "sobresorpresa.png";
     private static final String PACK_CRUSTACEO_ASSET = "sobrecrustaceos.png";
@@ -922,7 +924,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void setupTutorialOverlay() {
         binding.tutorialOverlay.getRoot().setVisibility(View.GONE);
-        binding.tutorialOverlay.tutorialNextButton.setOnClickListener(v -> advanceTutorialStep());
         binding.tutorialOverlay.getRoot().setOnTouchListener((view, event) -> {
             if (activeTutorial == null) {
                 return false;
@@ -1005,9 +1006,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 getString(R.string.tutorial_step_format, tutorialStepIndex + 1, tutorialSteps.size()));
         binding.tutorialOverlay.tutorialTitle.setText(step.titleResId);
         binding.tutorialOverlay.tutorialMessage.setText(step.messageResId);
-        boolean isLast = tutorialStepIndex == tutorialSteps.size() - 1;
-        binding.tutorialOverlay.tutorialNextButton.setText(isLast ? R.string.close : R.string.tutorial_next);
+        binding.tutorialOverlay.tutorialNextButton.setVisibility(View.GONE);
+        binding.tutorialOverlay.tutorialNextButton.setEnabled(false);
         binding.tutorialOverlay.getRoot().setVisibility(View.VISIBLE);
+        highlightTutorialTargets();
     }
 
     private void advanceTutorialStep() {
@@ -1032,6 +1034,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         tutorialSteps.clear();
         tutorialStepIndex = -1;
         binding.tutorialOverlay.getRoot().setVisibility(View.GONE);
+        clearTutorialHighlights();
     }
 
     private boolean isTutorialCompleted(TutorialType type) {
@@ -1086,6 +1089,51 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         allowed.add(binding.tutorialOverlay.tutorialCard);
         return allowed;
+    }
+
+    private void highlightTutorialTargets() {
+        clearTutorialHighlights();
+        if (activeTutorial == null || tutorialStepIndex < 0 || tutorialStepIndex >= tutorialSteps.size()) {
+            return;
+        }
+        TutorialStep step = tutorialSteps.get(tutorialStepIndex);
+        if (step.allowedViews == null) {
+            return;
+        }
+        for (View view : step.allowedViews) {
+            if (view == null) {
+                continue;
+            }
+            view.setScaleX(1f);
+            view.setScaleY(1f);
+            ObjectAnimator scaleX = ObjectAnimator.ofFloat(view, View.SCALE_X, 1f, 1.03f);
+            scaleX.setDuration(600);
+            scaleX.setRepeatCount(ObjectAnimator.INFINITE);
+            scaleX.setRepeatMode(ObjectAnimator.REVERSE);
+            ObjectAnimator scaleY = ObjectAnimator.ofFloat(view, View.SCALE_Y, 1f, 1.03f);
+            scaleY.setDuration(600);
+            scaleY.setRepeatCount(ObjectAnimator.INFINITE);
+            scaleY.setRepeatMode(ObjectAnimator.REVERSE);
+            scaleX.start();
+            scaleY.start();
+            tutorialHighlightAnimators.add(scaleX);
+            tutorialHighlightAnimators.add(scaleY);
+            tutorialHighlightedViews.add(view);
+        }
+    }
+
+    private void clearTutorialHighlights() {
+        for (ObjectAnimator animator : tutorialHighlightAnimators) {
+            animator.cancel();
+        }
+        tutorialHighlightAnimators.clear();
+        for (View view : tutorialHighlightedViews) {
+            if (view != null) {
+                view.setScaleX(1f);
+                view.setScaleY(1f);
+            }
+        }
+        tutorialHighlightedViews.clear();
     }
 
     private void updateTutorialSwitches() {
