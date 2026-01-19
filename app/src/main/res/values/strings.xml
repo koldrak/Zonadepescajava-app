@@ -96,7 +96,7 @@
     <string name="tutorial_dice_step3_title">Iniciar partida</string>
     <string name="tutorial_dice_step3_message">Cuando estés listo, toca “Iniciar partida” para comenzar.</string>
     <string name="tutorial_deck_step1_title">Selecciona cartas</string>
-    <string name="tutorial_deck_step1_message">Toca cartas para armar tu mazo (30–40). Puedes ver el puntaje y el conteo arriba.</string>
+    <string name="tutorial_deck_step1_message">Toca cartas para armar tu mazo (30–40). Arriba a la izquierda ves cuántas cartas tienes y arriba a la derecha cuántas llevas seleccionadas.</string>
     <string name="tutorial_deck_step2_title">Guarda tu mazo</string>
     <string name="tutorial_deck_step2_message">Escribe un nombre y toca Guardar para crear un mazo reutilizable.</string>
     <string name="tutorial_deck_step3_title">Gestiona mazos</string>

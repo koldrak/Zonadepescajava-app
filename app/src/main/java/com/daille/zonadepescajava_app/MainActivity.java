@@ -1009,7 +1009,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.tutorialOverlay.tutorialNextButton.setVisibility(View.GONE);
         binding.tutorialOverlay.tutorialNextButton.setEnabled(false);
         binding.tutorialOverlay.getRoot().setVisibility(View.VISIBLE);
-        highlightTutorialTargets();
+        resetTutorialCardPosition();
+        binding.tutorialOverlay.getRoot().post(() -> {
+            adjustTutorialCardPosition();
+            highlightTutorialTargets();
+        });
     }
 
     private void advanceTutorialStep() {
@@ -1121,6 +1125,55 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             tutorialHighlightedViews.add(view);
         }
         binding.tutorialOverlay.getRoot().post(this::updateTutorialScrim);
+    }
+
+    private void resetTutorialCardPosition() {
+        FrameLayout.LayoutParams params =
+                (FrameLayout.LayoutParams) binding.tutorialOverlay.tutorialCard.getLayoutParams();
+        params.gravity = Gravity.BOTTOM;
+        int margin = dpToPx(20);
+        params.topMargin = margin;
+        params.bottomMargin = margin;
+        binding.tutorialOverlay.tutorialCard.setLayoutParams(params);
+    }
+
+    private void adjustTutorialCardPosition() {
+        if (activeTutorial == null) {
+            return;
+        }
+        FrameLayout.LayoutParams params =
+                (FrameLayout.LayoutParams) binding.tutorialOverlay.tutorialCard.getLayoutParams();
+        android.graphics.Rect cardRect = getViewRectOnScreen(binding.tutorialOverlay.tutorialCard);
+        boolean overlaps = false;
+        TutorialStep step = tutorialSteps.get(tutorialStepIndex);
+        if (step != null && step.allowedViews != null) {
+            for (View view : step.allowedViews) {
+                if (view == null || view.getVisibility() != View.VISIBLE) {
+                    continue;
+                }
+                android.graphics.Rect targetRect = getViewRectOnScreen(view);
+                if (android.graphics.Rect.intersects(cardRect, targetRect)) {
+                    overlaps = true;
+                    break;
+                }
+            }
+        }
+        params.gravity = overlaps ? Gravity.TOP : Gravity.BOTTOM;
+        int margin = dpToPx(20);
+        params.topMargin = margin;
+        params.bottomMargin = margin;
+        binding.tutorialOverlay.tutorialCard.setLayoutParams(params);
+    }
+
+    private android.graphics.Rect getViewRectOnScreen(View view) {
+        int[] location = new int[2];
+        view.getLocationOnScreen(location);
+        return new android.graphics.Rect(
+                location[0],
+                location[1],
+                location[0] + view.getWidth(),
+                location[1] + view.getHeight()
+        );
     }
 
     private void clearTutorialHighlights() {
