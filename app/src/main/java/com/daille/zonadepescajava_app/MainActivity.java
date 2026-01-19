@@ -200,6 +200,27 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
     }
 
+    @Override
+    public void onBackPressed() {
+        if (isPanelVisible(binding.deckSelectionPanel.getRoot())) {
+            showDiceSelectionPanel();
+            return;
+        }
+        if (isPanelVisible(binding.diceSelectionPanel.getRoot())
+                || isPanelVisible(binding.diceShopPanel.getRoot())
+                || isPanelVisible(binding.collectionsPanel.getRoot())
+                || isPanelVisible(binding.settingsPanel.getRoot())
+                || isPanelVisible(binding.gamePanel.getRoot())) {
+            showStartMenu();
+            return;
+        }
+        super.onBackPressed();
+    }
+
+    private static boolean isPanelVisible(View panel) {
+        return panel.getVisibility() == View.VISIBLE;
+    }
+
     private void setupBoard() {
         adapter = new BoardSlotAdapter(this, Arrays.asList(gameState.getBoard()), this);
         binding.gamePanel.boardRecycler.setLayoutManager(new GridLayoutManager(this, 3));
