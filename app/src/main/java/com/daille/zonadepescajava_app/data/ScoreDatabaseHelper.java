@@ -18,7 +18,7 @@ import java.util.Map;
 public class ScoreDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "scores.db";
-    private static final int DATABASE_VERSION = 7;
+    private static final int DATABASE_VERSION = 8;
     private static final String TABLE_SCORES = "scores";
     private static final String COLUMN_ID = "id";
     private static final String COLUMN_SCORE = "score";
@@ -39,12 +39,15 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
     private static final String TABLE_AUDIO_SETTINGS = "audio_settings";
     private static final String COLUMN_MUSIC_VOLUME = "music_volume";
     private static final String COLUMN_SFX_VOLUME = "sfx_volume";
+    private static final String COLUMN_BUTTON_VOLUME = "button_volume";
     private static final String COLUMN_MUSIC_ENABLED = "music_enabled";
     private static final String COLUMN_SFX_ENABLED = "sfx_enabled";
+    private static final String COLUMN_BUTTON_ENABLED = "button_enabled";
     private static final String TABLE_DECK_PRESETS = "deck_presets";
     private static final String COLUMN_DECK_NAME = "deck_name";
     private static final String COLUMN_DECK_CARDS = "deck_cards";
     private static final int DEFAULT_VOLUME = 100;
+    private static final int DEFAULT_BUTTON_VOLUME = 25;
 
     public ScoreDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -82,8 +85,10 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                 COLUMN_ID + " INTEGER PRIMARY KEY CHECK (" + COLUMN_ID + " = 1), " +
                 COLUMN_MUSIC_VOLUME + " INTEGER NOT NULL DEFAULT " + DEFAULT_VOLUME + ", " +
                 COLUMN_SFX_VOLUME + " INTEGER NOT NULL DEFAULT " + DEFAULT_VOLUME + ", " +
+                COLUMN_BUTTON_VOLUME + " INTEGER NOT NULL DEFAULT " + DEFAULT_BUTTON_VOLUME + ", " +
                 COLUMN_MUSIC_ENABLED + " INTEGER NOT NULL DEFAULT 1, " +
-                COLUMN_SFX_ENABLED + " INTEGER NOT NULL DEFAULT 1"
+                COLUMN_SFX_ENABLED + " INTEGER NOT NULL DEFAULT 1, " +
+                COLUMN_BUTTON_ENABLED + " INTEGER NOT NULL DEFAULT 1"
                 + ")");
         db.execSQL("CREATE TABLE " + TABLE_DECK_PRESETS + " (" +
                 COLUMN_DECK_NAME + " TEXT PRIMARY KEY, " +
@@ -147,6 +152,12 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                     COLUMN_DECK_NAME + " TEXT PRIMARY KEY, " +
                     COLUMN_DECK_CARDS + " TEXT NOT NULL"
                     + ")");
+        }
+        if (oldVersion < 8) {
+            db.execSQL("ALTER TABLE " + TABLE_AUDIO_SETTINGS + " ADD COLUMN " +
+                    COLUMN_BUTTON_VOLUME + " INTEGER NOT NULL DEFAULT " + DEFAULT_BUTTON_VOLUME);
+            db.execSQL("ALTER TABLE " + TABLE_AUDIO_SETTINGS + " ADD COLUMN " +
+                    COLUMN_BUTTON_ENABLED + " INTEGER NOT NULL DEFAULT 1");
         }
     }
 
@@ -471,8 +482,10 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                 COLUMN_ID + " INTEGER PRIMARY KEY CHECK (" + COLUMN_ID + " = 1), " +
                 COLUMN_MUSIC_VOLUME + " INTEGER NOT NULL DEFAULT " + DEFAULT_VOLUME + ", " +
                 COLUMN_SFX_VOLUME + " INTEGER NOT NULL DEFAULT " + DEFAULT_VOLUME + ", " +
+                COLUMN_BUTTON_VOLUME + " INTEGER NOT NULL DEFAULT " + DEFAULT_BUTTON_VOLUME + ", " +
                 COLUMN_MUSIC_ENABLED + " INTEGER NOT NULL DEFAULT 1, " +
-                COLUMN_SFX_ENABLED + " INTEGER NOT NULL DEFAULT 1"
+                COLUMN_SFX_ENABLED + " INTEGER NOT NULL DEFAULT 1, " +
+                COLUMN_BUTTON_ENABLED + " INTEGER NOT NULL DEFAULT 1"
                 + ")");
         seedAudioSettings(db);
     }
@@ -540,8 +553,10 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_ID, 1);
         values.put(COLUMN_MUSIC_VOLUME, DEFAULT_VOLUME);
         values.put(COLUMN_SFX_VOLUME, DEFAULT_VOLUME);
+        values.put(COLUMN_BUTTON_VOLUME, DEFAULT_BUTTON_VOLUME);
         values.put(COLUMN_MUSIC_ENABLED, 1);
         values.put(COLUMN_SFX_ENABLED, 1);
+        values.put(COLUMN_BUTTON_ENABLED, 1);
         db.insertWithOnConflict(TABLE_AUDIO_SETTINGS, null, values, SQLiteDatabase.CONFLICT_IGNORE);
     }
 
@@ -549,19 +564,25 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = getReadableDatabase();
         int musicVolume = DEFAULT_VOLUME;
         int sfxVolume = DEFAULT_VOLUME;
+        int buttonVolume = DEFAULT_BUTTON_VOLUME;
         boolean musicEnabled = true;
         boolean sfxEnabled = true;
+        boolean buttonEnabled = true;
         try (Cursor cursor = db.query(TABLE_AUDIO_SETTINGS,
-                new String[]{COLUMN_MUSIC_VOLUME, COLUMN_SFX_VOLUME, COLUMN_MUSIC_ENABLED, COLUMN_SFX_ENABLED},
+                new String[]{COLUMN_MUSIC_VOLUME, COLUMN_SFX_VOLUME, COLUMN_BUTTON_VOLUME,
+                        COLUMN_MUSIC_ENABLED, COLUMN_SFX_ENABLED, COLUMN_BUTTON_ENABLED},
                 COLUMN_ID + " = 1", null, null, null, null)) {
             if (cursor.moveToFirst()) {
                 musicVolume = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_MUSIC_VOLUME));
                 sfxVolume = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_SFX_VOLUME));
+                buttonVolume = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_BUTTON_VOLUME));
                 musicEnabled = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_MUSIC_ENABLED)) == 1;
                 sfxEnabled = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_SFX_ENABLED)) == 1;
+                buttonEnabled = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_BUTTON_ENABLED)) == 1;
             }
         }
-        return new AudioSettings(musicVolume / 100f, sfxVolume / 100f, musicEnabled, sfxEnabled);
+        return new AudioSettings(musicVolume / 100f, sfxVolume / 100f, buttonVolume / 100f,
+                musicEnabled, sfxEnabled, buttonEnabled);
     }
 
     public void saveAudioSettings(AudioSettings settings) {
@@ -573,8 +594,10 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_ID, 1);
         values.put(COLUMN_MUSIC_VOLUME, Math.round(settings.getMusicVolume() * 100f));
         values.put(COLUMN_SFX_VOLUME, Math.round(settings.getSfxVolume() * 100f));
+        values.put(COLUMN_BUTTON_VOLUME, Math.round(settings.getButtonVolume() * 100f));
         values.put(COLUMN_MUSIC_ENABLED, settings.isMusicEnabled() ? 1 : 0);
         values.put(COLUMN_SFX_ENABLED, settings.isSfxEnabled() ? 1 : 0);
+        values.put(COLUMN_BUTTON_ENABLED, settings.isButtonEnabled() ? 1 : 0);
         db.insertWithOnConflict(TABLE_AUDIO_SETTINGS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 

@@ -119,8 +119,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private final Set<Integer> pendingSoundIds = new java.util.HashSet<>();
     private float musicVolume = 1f;
     private float sfxVolume = 1f;
+    private float buttonVolume = 0.25f;
     private boolean musicEnabled = true;
     private boolean sfxEnabled = true;
+    private boolean buttonEnabled = true;
 
     private static final String PACK_RANDOM_ASSET = "sobresorpresa.png";
     private static final String PACK_CRUSTACEO_ASSET = "sobrecrustaceos.png";
@@ -784,6 +786,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             sfxEnabled = !isChecked;
             saveAudioSettings();
         });
+        binding.settingsPanel.settingsButtonToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            buttonEnabled = !isChecked;
+            saveAudioSettings();
+        });
         binding.settingsPanel.settingsMusicVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -804,6 +810,21 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 sfxVolume = Math.max(0f, Math.min(1f, progress / 100f));
+                saveAudioSettings();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+            }
+        });
+        binding.settingsPanel.settingsButtonVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                buttonVolume = Math.max(0f, Math.min(1f, progress / 100f));
                 saveAudioSettings();
             }
 
@@ -847,8 +868,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         AudioSettings settings = scoreDatabaseHelper.getAudioSettings();
         musicVolume = settings.getMusicVolume();
         sfxVolume = settings.getSfxVolume();
+        buttonVolume = settings.getButtonVolume();
         musicEnabled = settings.isMusicEnabled();
         sfxEnabled = settings.isSfxEnabled();
+        buttonEnabled = settings.isButtonEnabled();
         updateAudioSettingsUi();
         applyAudioSettings();
     }
@@ -856,8 +879,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void updateAudioSettingsUi() {
         binding.settingsPanel.settingsMusicVolume.setProgress(Math.round(musicVolume * 100f));
         binding.settingsPanel.settingsSfxVolume.setProgress(Math.round(sfxVolume * 100f));
+        binding.settingsPanel.settingsButtonVolume.setProgress(Math.round(buttonVolume * 100f));
         binding.settingsPanel.settingsMusicToggle.setChecked(!musicEnabled);
         binding.settingsPanel.settingsSfxToggle.setChecked(!sfxEnabled);
+        binding.settingsPanel.settingsButtonToggle.setChecked(!buttonEnabled);
     }
 
     private void applyAudioSettings() {
@@ -870,7 +895,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void saveAudioSettings() {
         scoreDatabaseHelper.saveAudioSettings(
-                new AudioSettings(musicVolume, sfxVolume, musicEnabled, sfxEnabled));
+                new AudioSettings(musicVolume, sfxVolume, buttonVolume,
+                        musicEnabled, sfxEnabled, buttonEnabled));
     }
 
     private int loadSound(String name) {
@@ -892,7 +918,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (!SOUND_BUTTON_IDS.contains(view.getId())) {
             return;
         }
-        playSound(buttonSoundId);
+        playSound(buttonSoundId, buttonVolume, buttonEnabled);
     }
 
     private void playRollSound() {
@@ -912,14 +938,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void playSound(int soundId) {
-        if (soundPool == null || soundId == 0 || !sfxEnabled) {
+        playSound(soundId, sfxVolume, sfxEnabled);
+    }
+
+    private void playSound(int soundId, float volume, boolean enabled) {
+        if (soundPool == null || soundId == 0 || !enabled) {
             return;
         }
         if (!loadedSoundIds.contains(soundId)) {
             pendingSoundIds.add(soundId);
             return;
         }
-        soundPool.play(soundId, sfxVolume, sfxVolume, 1, 0, 1f);
+        soundPool.play(soundId, volume, volume, 1, 0, 1f);
     }
 
     private void updateAmbientMusic(String trackName) {
