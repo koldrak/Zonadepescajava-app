@@ -243,8 +243,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void setupMenuButtons() {
         setSoundButtonClickListener(binding.startMenu.startNewGame, this::showDiceSelectionPanel);
         setSoundButtonClickListener(binding.startMenu.openDiceShop, this::showDiceShopPanel);
-        setSoundButtonClickListener(binding.diceSelectionPanel.openDeckSelection, this::showDeckSelectionPanel);
-        setSoundButtonClickListener(binding.diceSelectionPanel.confirmDiceSelection, () -> {
+        setButtonClickListener(binding.diceSelectionPanel.openDeckSelection, this::showDeckSelectionPanel);
+        setButtonClickListener(binding.diceSelectionPanel.confirmDiceSelection, () -> {
             List<DieType> startingReserve = extractSelectedDice();
             if (startingReserve.isEmpty()) {
                 Toast.makeText(this, "Selecciona al menos 1 dado para iniciar.", Toast.LENGTH_SHORT).show();
@@ -284,15 +284,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         collectionCardAdapter = new CollectionCardAdapter(this);
         binding.collectionsPanel.collectionsRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.collectionsPanel.collectionsRecycler.setAdapter(collectionCardAdapter);
-        setSoundButtonClickListener(binding.collectionsPanel.closeCollections, this::showStartMenu);
+        setButtonClickListener(binding.collectionsPanel.closeCollections, this::showStartMenu);
     }
 
     private void setupDeckSelectionPanel() {
         deckSelectionAdapter = new DeckSelectionAdapter(this, this::updateDeckSelectionScore);
         binding.deckSelectionPanel.deckSelectionRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.deckSelectionPanel.deckSelectionRecycler.setAdapter(deckSelectionAdapter);
-        setSoundButtonClickListener(binding.deckSelectionPanel.deckSelectionBack, this::showDiceSelectionPanel);
-        setSoundButtonClickListener(binding.deckSelectionPanel.deckSelectionConfirm, () -> {
+        setButtonClickListener(binding.deckSelectionPanel.deckSelectionBack, this::showDiceSelectionPanel);
+        setButtonClickListener(binding.deckSelectionPanel.deckSelectionConfirm, () -> {
             if (deckSelectionAdapter == null) {
                 return;
             }
@@ -707,8 +707,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void setupSettingsPanel() {
-        setSoundButtonClickListener(binding.settingsPanel.settingsBack, this::showStartMenu);
-        setSoundButtonClickListener(binding.settingsPanel.settingsResetData, () -> {
+        setButtonClickListener(binding.settingsPanel.settingsBack, this::showStartMenu);
+        setButtonClickListener(binding.settingsPanel.settingsResetData, () -> {
             scoreDatabaseHelper.resetAllData();
             viewModel.resetProgress();
             selectedDeck = new ArrayList<>();
@@ -717,7 +717,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             showStartMenu();
             Toast.makeText(this, "Datos borrados.", Toast.LENGTH_SHORT).show();
         });
-        setSoundButtonClickListener(binding.settingsPanel.settingsAddPoints, () -> {
+        setButtonClickListener(binding.settingsPanel.settingsAddPoints, () -> {
             scoreDatabaseHelper.addBonusPoints(1000);
             Toast.makeText(this, "Se agregaron 1000 puntos.", Toast.LENGTH_SHORT).show();
         });
