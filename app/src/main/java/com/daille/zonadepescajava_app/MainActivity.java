@@ -1313,6 +1313,27 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                     isChecked ? "Tutorial de mazos reactivado." : "Tutorial de mazos desactivado.",
                     Toast.LENGTH_SHORT).show();
         });
+
+        boolean gameLoopEnabled = !isTutorialCompleted(TutorialType.GAME_LOOP);
+        binding.settingsPanel.settingsTutorialGameLoopToggle.setOnCheckedChangeListener(null);
+        binding.settingsPanel.settingsTutorialGameLoopToggle.setChecked(gameLoopEnabled);
+        binding.settingsPanel.settingsTutorialGameLoopToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            setTutorialCompleted(TutorialType.GAME_LOOP, !isChecked);
+            Toast.makeText(this,
+                    isChecked ? "Tutorial de juego reactivado." : "Tutorial de juego desactivado.",
+                    Toast.LENGTH_SHORT).show();
+        });
+
+        boolean releaseEnabled = !isTutorialCompleted(TutorialType.CARD_RELEASE);
+        binding.settingsPanel.settingsTutorialReleaseToggle.setOnCheckedChangeListener(null);
+        binding.settingsPanel.settingsTutorialReleaseToggle.setChecked(releaseEnabled);
+        binding.settingsPanel.settingsTutorialReleaseToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            setTutorialCompleted(TutorialType.CARD_RELEASE, !isChecked);
+            Toast.makeText(this,
+                    isChecked ? "Tutorial de liberar cartas reactivado."
+                            : "Tutorial de liberar cartas desactivado.",
+                    Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void setupAudio() {

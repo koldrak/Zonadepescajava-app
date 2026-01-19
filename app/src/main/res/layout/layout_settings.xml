@@ -152,6 +152,20 @@
             android:layout_marginTop="8dp"
             android:text="@string/settings_tutorial_deck" />
 
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/settingsTutorialGameLoopToggle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_tutorial_game_loop" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/settingsTutorialReleaseToggle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_tutorial_release" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/settingsResetData"
             style="@style/App.Button.Glass"

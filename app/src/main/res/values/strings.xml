@@ -85,6 +85,8 @@
     <string name="settings_tutorials_title">Tutoriales</string>
     <string name="settings_tutorial_dice">Reactivar tutorial de dados</string>
     <string name="settings_tutorial_deck">Reactivar tutorial de mazos</string>
+    <string name="settings_tutorial_game_loop">Reactivar tutorial de juego</string>
+    <string name="settings_tutorial_release">Reactivar tutorial de liberar cartas</string>
     <string name="settings_reset_data">Borrar datos</string>
     <string name="settings_add_points">1000 pts</string>
     <string name="tutorial_next">Siguiente</string>
