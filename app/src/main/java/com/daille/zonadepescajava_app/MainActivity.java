@@ -17,8 +17,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.widget.AbsListView;
+import android.widget.Button;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
+import android.widget.ImageButton;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.GridView;
@@ -60,6 +62,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -116,6 +119,36 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final String PACK_SMALL_FISH_ASSET = "sobrepecespequeños.png";
     private static final String PACK_BIG_FISH_ASSET = "sobrepecesgrandes.png";
     private static final String PACK_OBJECT_ASSET = "sobreobjetos.png";
+    private static final Set<Integer> SOUND_BUTTON_IDS = new HashSet<>(Arrays.asList(
+            R.id.startNewGame,
+            R.id.openDiceShop,
+            R.id.openSettings,
+            R.id.openCollections,
+            R.id.openDeckSelection,
+            R.id.confirmDiceSelection,
+            R.id.closeCollections,
+            R.id.deckSelectionBack,
+            R.id.deckSelectionConfirm,
+            R.id.diceShopBack,
+            R.id.diceShopBuyD4,
+            R.id.diceShopBuyD6,
+            R.id.diceShopBuyD8,
+            R.id.diceShopBuyD10,
+            R.id.diceShopBuyD12,
+            R.id.diceShopBuyD20,
+            R.id.diceCapacityBuy,
+            R.id.cardPackRandomBuy,
+            R.id.cardPackCrustaceoBuy,
+            R.id.cardPackSmallFishBuy,
+            R.id.cardPackBigFishBuy,
+            R.id.cardPackObjectBuy,
+            R.id.settingsBack,
+            R.id.settingsResetData,
+            R.id.settingsAddPoints,
+            android.R.id.button1,
+            android.R.id.button2,
+            android.R.id.button3
+    ));
     private static final int DICE_SELECTION_COLUMNS = 4;
     private static final int MIN_DICE_CAPACITY = 6;
     private static final int MAX_DICE_CAPACITY = 10;
@@ -819,7 +852,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             return;
         }
         view.setOnClickListener(v -> {
-            playButtonSound();
+            if (shouldPlayButtonSound(v)) {
+                playButtonSound();
+            }
             if (action != null) {
                 action.run();
             }
@@ -841,12 +876,23 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (button == null) {
             return;
         }
+        if (!shouldPlayButtonSound(button)) {
+            return;
+        }
         button.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_UP) {
                 playButtonSound();
             }
             return false;
         });
+    }
+
+    private boolean isButtonView(View view) {
+        return view instanceof Button || view instanceof ImageButton;
+    }
+
+    private boolean shouldPlayButtonSound(View view) {
+        return isButtonView(view) && SOUND_BUTTON_IDS.contains(view.getId());
     }
 
     private void refreshUi(String log) {
