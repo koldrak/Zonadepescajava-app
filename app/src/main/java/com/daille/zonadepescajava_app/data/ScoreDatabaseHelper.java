@@ -48,6 +48,7 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
     private static final String COLUMN_DECK_CARDS = "deck_cards";
     private static final int DEFAULT_VOLUME = 100;
     private static final int DEFAULT_BUTTON_VOLUME = 25;
+    private static final int STARTING_POINTS = 500;
 
     public ScoreDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -94,6 +95,7 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                 COLUMN_DECK_NAME + " TEXT PRIMARY KEY, " +
                 COLUMN_DECK_CARDS + " TEXT NOT NULL"
                 + ")");
+        seedInitialScore(db);
         seedCaptureCounts(db);
         seedDiceInventory(db);
         seedCardInventory(db);
@@ -532,6 +534,13 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                 null)) {
             return cursor.moveToFirst();
         }
+    }
+
+    private void seedInitialScore(SQLiteDatabase db) {
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_SCORE, STARTING_POINTS);
+        values.put(COLUMN_CREATED_AT, System.currentTimeMillis());
+        db.insert(TABLE_SCORES, null, values);
     }
 
     private void seedWallet(SQLiteDatabase db) {
