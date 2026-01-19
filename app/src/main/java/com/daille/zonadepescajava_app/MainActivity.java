@@ -8,9 +8,13 @@ import android.graphics.BitmapFactory;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.media.SoundPool;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -65,7 +69,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -117,6 +120,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private int packOpenSoundId;
     private final Set<Integer> loadedSoundIds = new java.util.HashSet<>();
     private final Set<Integer> pendingSoundIds = new java.util.HashSet<>();
+    private Vibrator vibrator;
     private float musicVolume = 1f;
     private float sfxVolume = 1f;
     private float buttonVolume = 0.25f;
@@ -129,25 +133,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final String PACK_SMALL_FISH_ASSET = "sobrepecespequeños.png";
     private static final String PACK_BIG_FISH_ASSET = "sobrepecesgrandes.png";
     private static final String PACK_OBJECT_ASSET = "sobreobjetos.png";
-    private static final Set<Integer> SOUND_BUTTON_IDS = new HashSet<>(Arrays.asList(
-            R.id.startNewGame,
-            R.id.openDiceShop,
-            R.id.openSettings,
-            R.id.openCollections,
-            R.id.diceShopBack,
-            R.id.diceShopBuyD4,
-            R.id.diceShopBuyD6,
-            R.id.diceShopBuyD8,
-            R.id.diceShopBuyD10,
-            R.id.diceShopBuyD12,
-            R.id.diceShopBuyD20,
-            R.id.diceCapacityBuy,
-            R.id.cardPackRandomBuy,
-            R.id.cardPackCrustaceoBuy,
-            R.id.cardPackSmallFishBuy,
-            R.id.cardPackBigFishBuy,
-            R.id.cardPackObjectBuy
-    ));
     private static final int DICE_SELECTION_COLUMNS = 4;
     private static final int MIN_DICE_CAPACITY = 6;
     private static final int MAX_DICE_CAPACITY = 10;
@@ -197,6 +182,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setupCollectionsPanel();
         setupSettingsPanel();
         setupAudio();
+        setupHaptics();
         loadAudioSettings();
 
         if (viewModel.isInitialized()) {
@@ -864,6 +850,17 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         packOpenSoundId = loadSound("sobre");
     }
 
+    private void setupHaptics() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            VibratorManager vibratorManager = getSystemService(VibratorManager.class);
+            if (vibratorManager != null) {
+                vibrator = vibratorManager.getDefaultVibrator();
+            }
+        } else {
+            vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+        }
+    }
+
     private void loadAudioSettings() {
         AudioSettings settings = scoreDatabaseHelper.getAudioSettings();
         musicVolume = settings.getMusicVolume();
@@ -912,13 +909,22 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void playButtonSound(View view) {
-        if (view == null || view.getId() == View.NO_ID) {
-            return;
-        }
-        if (!SOUND_BUTTON_IDS.contains(view.getId())) {
+        if (view == null || !isButtonView(view)) {
             return;
         }
         playSound(buttonSoundId, buttonVolume, buttonEnabled);
+        vibrateButton();
+    }
+
+    private void vibrateButton() {
+        if (vibrator == null || !vibrator.hasVibrator()) {
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE));
+        } else {
+            vibrator.vibrate(30);
+        }
     }
 
     private void playRollSound() {
@@ -1014,6 +1020,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             return;
         }
         view.setOnClickListener(v -> {
+            if (isButtonView(v)) {
+                playButtonSound(v);
+            }
             if (action != null) {
                 action.run();
             }
