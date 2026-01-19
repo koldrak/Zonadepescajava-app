@@ -17,6 +17,10 @@
     <string name="deck_selection_score_format">Puntaje seleccionado: %1$d</string>
     <string name="deck_selection_count_placeholder">Cartas seleccionadas: 0 (30–40)</string>
     <string name="deck_selection_count_format">Cartas seleccionadas: %1$d (30–40)</string>
+    <string name="deck_selection_saved_title">Mazos guardados</string>
+    <string name="deck_selection_name_hint">Nombre del mazo</string>
+    <string name="deck_selection_save">Guardar</string>
+    <string name="deck_selection_load">Cargar</string>
     <string name="dice_shop_title">Tienda de dados</string>
     <string name="dice_shop_points_placeholder">Puntos disponibles: 0</string>
     <string name="dice_shop_owned_placeholder">0 comprados</string>
@@ -72,6 +76,10 @@
     <string name="dice_selection_counter_format">Dados seleccionados: %1$d (máx. %2$d)</string>
     <string name="dice_selection_limit_warning">La zona de selección solo admite %1$d dados.</string>
     <string name="settings_title">Configuraciones</string>
+    <string name="settings_audio_title">Audio</string>
+    <string name="settings_music_volume">Música de fondo</string>
+    <string name="settings_sfx_volume">Efectos de sonido</string>
+    <string name="settings_audio_toggle">Bloquear</string>
     <string name="settings_reset_data">Borrar datos</string>
     <string name="settings_add_points">1000 pts</string>
 </resources>
