@@ -1004,7 +1004,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         view.setOnClickListener(v -> {
             if (isButtonView(v)) {
-                playButtonSound(v);
+                playButtonSound();
             }
             if (action != null) {
                 action.run();
