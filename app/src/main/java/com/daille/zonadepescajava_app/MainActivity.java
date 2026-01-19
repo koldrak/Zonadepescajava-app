@@ -19,6 +19,7 @@ import android.view.ViewParent;
 import android.widget.AbsListView;
 import android.widget.Button;
 import android.widget.BaseAdapter;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ImageButton;
 import android.widget.FrameLayout;
@@ -240,10 +241,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
 
     private void setupMenuButtons() {
-        setButtonClickListener(binding.startMenu.startNewGame, this::showDiceSelectionPanel);
-        setButtonClickListener(binding.startMenu.openDiceShop, this::showDiceShopPanel);
-        setButtonClickListener(binding.diceSelectionPanel.openDeckSelection, this::showDeckSelectionPanel);
-        setButtonClickListener(binding.diceSelectionPanel.confirmDiceSelection, () -> {
+        setSoundButtonClickListener(binding.startMenu.startNewGame, this::showDiceSelectionPanel);
+        setSoundButtonClickListener(binding.startMenu.openDiceShop, this::showDiceShopPanel);
+        setSoundButtonClickListener(binding.diceSelectionPanel.openDeckSelection, this::showDeckSelectionPanel);
+        setSoundButtonClickListener(binding.diceSelectionPanel.confirmDiceSelection, () -> {
             List<DieType> startingReserve = extractSelectedDice();
             if (startingReserve.isEmpty()) {
                 Toast.makeText(this, "Selecciona al menos 1 dado para iniciar.", Toast.LENGTH_SHORT).show();
@@ -268,8 +269,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             showGameLayout();
             refreshUi("Juego iniciado. Lanza un dado y toca una carta.");
         });
-        setButtonClickListener(binding.startMenu.openSettings, this::showSettingsPanel);
-        setButtonClickListener(binding.startMenu.openCollections, this::showCollectionsPanel);
+        setSoundButtonClickListener(binding.startMenu.openSettings, this::showSettingsPanel);
+        setSoundButtonClickListener(binding.startMenu.openCollections, this::showCollectionsPanel);
     }
 
     private void setupScoreRecordsList() {
@@ -283,15 +284,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         collectionCardAdapter = new CollectionCardAdapter(this);
         binding.collectionsPanel.collectionsRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.collectionsPanel.collectionsRecycler.setAdapter(collectionCardAdapter);
-        setButtonClickListener(binding.collectionsPanel.closeCollections, this::showStartMenu);
+        setSoundButtonClickListener(binding.collectionsPanel.closeCollections, this::showStartMenu);
     }
 
     private void setupDeckSelectionPanel() {
         deckSelectionAdapter = new DeckSelectionAdapter(this, this::updateDeckSelectionScore);
         binding.deckSelectionPanel.deckSelectionRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.deckSelectionPanel.deckSelectionRecycler.setAdapter(deckSelectionAdapter);
-        setButtonClickListener(binding.deckSelectionPanel.deckSelectionBack, this::showDiceSelectionPanel);
-        setButtonClickListener(binding.deckSelectionPanel.deckSelectionConfirm, () -> {
+        setSoundButtonClickListener(binding.deckSelectionPanel.deckSelectionBack, this::showDiceSelectionPanel);
+        setSoundButtonClickListener(binding.deckSelectionPanel.deckSelectionConfirm, () -> {
             if (deckSelectionAdapter == null) {
                 return;
             }
@@ -306,34 +307,34 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void setupDiceShopPanel() {
-        setButtonClickListener(binding.diceShopPanel.diceShopBack, this::showStartMenu);
-        setButtonClickListener(binding.diceShopPanel.diceShopBuyD4,
+        setSoundButtonClickListener(binding.diceShopPanel.diceShopBack, this::showStartMenu);
+        setSoundButtonClickListener(binding.diceShopPanel.diceShopBuyD4,
                 () -> attemptDicePurchase(DieType.D4, ShopPrices.D4_COST));
-        setButtonClickListener(binding.diceShopPanel.diceShopBuyD6,
+        setSoundButtonClickListener(binding.diceShopPanel.diceShopBuyD6,
                 () -> attemptDicePurchase(DieType.D6, ShopPrices.D6_COST));
-        setButtonClickListener(binding.diceShopPanel.diceShopBuyD8,
+        setSoundButtonClickListener(binding.diceShopPanel.diceShopBuyD8,
                 () -> attemptDicePurchase(DieType.D8, ShopPrices.D8_COST));
-        setButtonClickListener(binding.diceShopPanel.diceShopBuyD10,
+        setSoundButtonClickListener(binding.diceShopPanel.diceShopBuyD10,
                 () -> attemptDicePurchase(DieType.D10, ShopPrices.D10_COST));
-        setButtonClickListener(binding.diceShopPanel.diceShopBuyD12,
+        setSoundButtonClickListener(binding.diceShopPanel.diceShopBuyD12,
                 () -> attemptDicePurchase(DieType.D12, ShopPrices.D12_COST));
-        setButtonClickListener(binding.diceShopPanel.diceShopBuyD20,
+        setSoundButtonClickListener(binding.diceShopPanel.diceShopBuyD20,
                 () -> attemptDicePurchase(DieType.D20, ShopPrices.D20_COST));
-        setButtonClickListener(binding.diceShopPanel.diceCapacityBuy, this::attemptDiceCapacityUpgrade);
+        setSoundButtonClickListener(binding.diceShopPanel.diceCapacityBuy, this::attemptDiceCapacityUpgrade);
         updateDiceShopDicePreviews();
         updateCardPackPreviews();
-        setButtonClickListener(binding.diceShopPanel.cardPackRandomBuy, () ->
+        setSoundButtonClickListener(binding.diceShopPanel.cardPackRandomBuy, () ->
                 attemptCardPackPurchase(ShopPrices.PACK_RANDOM_COST, null, PACK_RANDOM_ASSET));
-        setButtonClickListener(binding.diceShopPanel.cardPackCrustaceoBuy, () ->
+        setSoundButtonClickListener(binding.diceShopPanel.cardPackCrustaceoBuy, () ->
                 attemptCardPackPurchase(
                         ShopPrices.PACK_CRUSTACEO_COST, CardType.CRUSTACEO, PACK_CRUSTACEO_ASSET));
-        setButtonClickListener(binding.diceShopPanel.cardPackSmallFishBuy, () ->
+        setSoundButtonClickListener(binding.diceShopPanel.cardPackSmallFishBuy, () ->
                 attemptCardPackPurchase(
                         ShopPrices.PACK_SMALL_FISH_COST, CardType.PEZ, PACK_SMALL_FISH_ASSET));
-        setButtonClickListener(binding.diceShopPanel.cardPackBigFishBuy, () ->
+        setSoundButtonClickListener(binding.diceShopPanel.cardPackBigFishBuy, () ->
                 attemptCardPackPurchase(
                         ShopPrices.PACK_BIG_FISH_COST, CardType.PEZ_GRANDE, PACK_BIG_FISH_ASSET));
-        setButtonClickListener(binding.diceShopPanel.cardPackObjectBuy, () ->
+        setSoundButtonClickListener(binding.diceShopPanel.cardPackObjectBuy, () ->
                 attemptCardPackPurchase(
                         ShopPrices.PACK_OBJECT_COST, CardType.OBJETO, PACK_OBJECT_ASSET));
     }
@@ -706,8 +707,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void setupSettingsPanel() {
-        setButtonClickListener(binding.settingsPanel.settingsBack, this::showStartMenu);
-        setButtonClickListener(binding.settingsPanel.settingsResetData, () -> {
+        setSoundButtonClickListener(binding.settingsPanel.settingsBack, this::showStartMenu);
+        setSoundButtonClickListener(binding.settingsPanel.settingsResetData, () -> {
             scoreDatabaseHelper.resetAllData();
             viewModel.resetProgress();
             selectedDeck = new ArrayList<>();
@@ -716,7 +717,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             showStartMenu();
             Toast.makeText(this, "Datos borrados.", Toast.LENGTH_SHORT).show();
         });
-        setButtonClickListener(binding.settingsPanel.settingsAddPoints, () -> {
+        setSoundButtonClickListener(binding.settingsPanel.settingsAddPoints, () -> {
             scoreDatabaseHelper.addBonusPoints(1000);
             Toast.makeText(this, "Se agregaron 1000 puntos.", Toast.LENGTH_SHORT).show();
         });
@@ -848,6 +849,17 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void setButtonClickListener(View view, Runnable action) {
+        if (view == null) {
+            return;
+        }
+        view.setOnClickListener(v -> {
+            if (action != null) {
+                action.run();
+            }
+        });
+    }
+
+    private void setSoundButtonClickListener(View view, Runnable action) {
         if (view == null) {
             return;
         }
