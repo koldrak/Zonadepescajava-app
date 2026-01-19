@@ -3,6 +3,7 @@ package com.daille.zonadepescajava_app;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioAttributes;
@@ -129,6 +130,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private boolean sfxEnabled = true;
     private boolean buttonEnabled = true;
 
+    private static final String TUTORIAL_PREFS = "tutorial_preferences";
+    private static final String TUTORIAL_DICE_DONE_KEY = "tutorial_dice_done";
+    private static final String TUTORIAL_DECK_DONE_KEY = "tutorial_deck_done";
+    private SharedPreferences tutorialPreferences;
+    private TutorialType activeTutorial;
+    private final List<TutorialStep> tutorialSteps = new ArrayList<>();
+    private int tutorialStepIndex = -1;
+
     private static final String PACK_RANDOM_ASSET = "sobresorpresa.png";
     private static final String PACK_CRUSTACEO_ASSET = "sobrecrustaceos.png";
     private static final String PACK_SMALL_FISH_ASSET = "sobrepecespequeños.png";
@@ -139,6 +148,23 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final int MAX_DICE_CAPACITY = 10;
     private static final int MIN_DECK_CARDS = 30;
     private static final int MAX_DECK_CARDS = 40;
+
+    private enum TutorialType {
+        DICE_SELECTION,
+        DECK_SELECTION
+    }
+
+    private static class TutorialStep {
+        private final int titleResId;
+        private final int messageResId;
+        private final View targetView;
+
+        TutorialStep(int titleResId, int messageResId, View targetView) {
+            this.titleResId = titleResId;
+            this.messageResId = messageResId;
+            this.targetView = targetView;
+        }
+    }
 
 
     private static class CaptureAnimationRequest {
@@ -174,6 +200,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         diceImageResolver = new DiceImageResolver(this);
         animationHandler = new Handler(Looper.getMainLooper());
         scoreDatabaseHelper = new ScoreDatabaseHelper(this);
+        tutorialPreferences = getSharedPreferences(TUTORIAL_PREFS, MODE_PRIVATE);
         setupScoreRecordsList();
         setupMenuButtons();
         setupDiceSelectionUi();
@@ -182,6 +209,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setupTideAnimationOverlay();
         setupCollectionsPanel();
         setupSettingsPanel();
+        setupTutorialOverlay();
         setupAudio();
         setupHaptics();
         loadAudioSettings();
@@ -256,6 +284,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             if (startingReserve.isEmpty()) {
                 Toast.makeText(this, "Selecciona al menos 1 dado para iniciar.", Toast.LENGTH_SHORT).show();
                 return;
+            }
+            if (activeTutorial == TutorialType.DICE_SELECTION && tutorialStepIndex == 2) {
+                advanceTutorialStep();
             }
             Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
             if (selectedDeck == null || selectedDeck.size() < MIN_DECK_CARDS || selectedDeck.size() > MAX_DECK_CARDS) {
@@ -337,6 +368,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 binding.deckSelectionPanel.deckSelectionSavedSpinner.setSelection(position);
             }
             Toast.makeText(this, "Mazo guardado.", Toast.LENGTH_SHORT).show();
+            if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 1) {
+                advanceTutorialStep();
+            }
         });
         setButtonClickListener(binding.deckSelectionPanel.deckSelectionLoad, () -> {
             Object selected = binding.deckSelectionPanel.deckSelectionSavedSpinner.getSelectedItem();
@@ -356,6 +390,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             Toast.makeText(this, "Mazo cargado.", Toast.LENGTH_SHORT).show();
         });
         setButtonClickListener(binding.deckSelectionPanel.deckSelectionDelete, () -> {
+            if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 2) {
+                advanceTutorialStep();
+            }
             Object selected = binding.deckSelectionPanel.deckSelectionSavedSpinner.getSelectedItem();
             if (selected == null) {
                 Toast.makeText(this, "No hay mazos guardados.", Toast.LENGTH_SHORT).show();
@@ -501,6 +538,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void showStartMenu() {
+        cancelTutorialOverlay();
         resetDiceSelection();
         selectedDeck = new ArrayList<>();
         deckSelectionPoints = 0;
@@ -516,6 +554,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void showDeckSelectionPanel() {
+        cancelTutorialOverlay();
         refreshDeckSelectionList();
         refreshDeckPresetList();
         binding.startMenu.getRoot().setVisibility(View.GONE);
@@ -526,9 +565,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
         updateAmbientMusic("ambientalplaya");
+        binding.deckSelectionPanel.getRoot().post(() -> maybeStartTutorial(TutorialType.DECK_SELECTION));
     }
 
     private void showDiceSelectionPanel() {
+        cancelTutorialOverlay();
         resetDiceSelection();
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
@@ -538,9 +579,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
         updateAmbientMusic("ambientalplaya");
+        binding.diceSelectionPanel.getRoot().post(() -> maybeStartTutorial(TutorialType.DICE_SELECTION));
     }
 
     private void showDiceShopPanel() {
+        cancelTutorialOverlay();
         refreshDiceShopUi();
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
@@ -553,6 +596,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void showGameLayout() {
+        cancelTutorialOverlay();
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
@@ -564,6 +608,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void showCollectionsPanel() {
+        cancelTutorialOverlay();
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
@@ -576,6 +621,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void showSettingsPanel() {
+        cancelTutorialOverlay();
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
@@ -633,6 +679,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 getString(R.string.deck_selection_score_format, deckSelectionPoints));
         binding.deckSelectionPanel.deckSelectionCount.setText(
                 getString(R.string.deck_selection_count_format, totalCards));
+        if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 0 && totalCards > 0) {
+            advanceTutorialStep();
+        }
     }
 
     private void refreshDiceShopUi() {
@@ -809,6 +858,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             scoreDatabaseHelper.addBonusPoints(1000);
             Toast.makeText(this, "Se agregaron 1000 puntos.", Toast.LENGTH_SHORT).show();
         });
+        setButtonClickListener(binding.settingsPanel.settingsTutorialDice, () -> {
+            setTutorialCompleted(TutorialType.DICE_SELECTION, false);
+            Toast.makeText(this, "Tutorial de dados reactivado.", Toast.LENGTH_SHORT).show();
+        });
+        setButtonClickListener(binding.settingsPanel.settingsTutorialDeck, () -> {
+            setTutorialCompleted(TutorialType.DECK_SELECTION, false);
+            Toast.makeText(this, "Tutorial de mazos reactivado.", Toast.LENGTH_SHORT).show();
+        });
         binding.settingsPanel.settingsMusicToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
             musicEnabled = !isChecked;
             applyAudioSettings();
@@ -868,6 +925,141 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             public void onStopTrackingTouch(SeekBar seekBar) {
             }
         });
+    }
+
+    private void setupTutorialOverlay() {
+        binding.tutorialOverlay.getRoot().setVisibility(View.GONE);
+        binding.tutorialOverlay.tutorialNextButton.setOnClickListener(v -> advanceTutorialStep());
+        binding.tutorialOverlay.getRoot().setOnTouchListener((view, event) -> {
+            if (activeTutorial == null) {
+                return false;
+            }
+            View target = getActiveTutorialTarget();
+            if (target == null) {
+                return true;
+            }
+            int[] location = new int[2];
+            target.getLocationOnScreen(location);
+            float rawX = event.getRawX();
+            float rawY = event.getRawY();
+            boolean inside =
+                    rawX >= location[0]
+                            && rawX <= location[0] + target.getWidth()
+                            && rawY >= location[1]
+                            && rawY <= location[1] + target.getHeight();
+            if (!inside) {
+                return true;
+            }
+            MotionEvent transformed = MotionEvent.obtain(event);
+            transformed.setLocation(rawX - location[0], rawY - location[1]);
+            boolean handled = target.dispatchTouchEvent(transformed);
+            transformed.recycle();
+            return handled;
+        });
+    }
+
+    private void maybeStartTutorial(TutorialType type) {
+        if (!isTutorialCompleted(type)) {
+            startTutorial(type);
+        }
+    }
+
+    private void startTutorial(TutorialType type) {
+        activeTutorial = type;
+        tutorialSteps.clear();
+        tutorialStepIndex = 0;
+        if (type == TutorialType.DICE_SELECTION) {
+            tutorialSteps.add(new TutorialStep(
+                    R.string.tutorial_dice_step1_title,
+                    R.string.tutorial_dice_step1_message,
+                    binding.diceSelectionPanel.diceWarehouseGrid));
+            tutorialSteps.add(new TutorialStep(
+                    R.string.tutorial_dice_step2_title,
+                    R.string.tutorial_dice_step2_message,
+                    binding.diceSelectionPanel.diceSelectionGrid));
+            tutorialSteps.add(new TutorialStep(
+                    R.string.tutorial_dice_step3_title,
+                    R.string.tutorial_dice_step3_message,
+                    binding.diceSelectionPanel.confirmDiceSelection));
+        } else if (type == TutorialType.DECK_SELECTION) {
+            tutorialSteps.add(new TutorialStep(
+                    R.string.tutorial_deck_step1_title,
+                    R.string.tutorial_deck_step1_message,
+                    binding.deckSelectionPanel.deckSelectionRecycler));
+            tutorialSteps.add(new TutorialStep(
+                    R.string.tutorial_deck_step2_title,
+                    R.string.tutorial_deck_step2_message,
+                    binding.deckSelectionPanel.deckSelectionSave));
+            tutorialSteps.add(new TutorialStep(
+                    R.string.tutorial_deck_step3_title,
+                    R.string.tutorial_deck_step3_message,
+                    binding.deckSelectionPanel.deckSelectionDelete));
+        }
+        updateTutorialStep();
+    }
+
+    private void updateTutorialStep() {
+        if (activeTutorial == null || tutorialStepIndex < 0 || tutorialStepIndex >= tutorialSteps.size()) {
+            cancelTutorialOverlay();
+            return;
+        }
+        TutorialStep step = tutorialSteps.get(tutorialStepIndex);
+        binding.tutorialOverlay.tutorialStepLabel.setText(
+                getString(R.string.tutorial_step_format, tutorialStepIndex + 1, tutorialSteps.size()));
+        binding.tutorialOverlay.tutorialTitle.setText(step.titleResId);
+        binding.tutorialOverlay.tutorialMessage.setText(step.messageResId);
+        boolean isLast = tutorialStepIndex == tutorialSteps.size() - 1;
+        binding.tutorialOverlay.tutorialNextButton.setText(isLast ? R.string.close : R.string.tutorial_next);
+        binding.tutorialOverlay.getRoot().setVisibility(View.VISIBLE);
+    }
+
+    private void advanceTutorialStep() {
+        if (activeTutorial == null) {
+            return;
+        }
+        if (tutorialStepIndex < tutorialSteps.size() - 1) {
+            tutorialStepIndex++;
+            updateTutorialStep();
+        } else {
+            completeTutorial(activeTutorial);
+        }
+    }
+
+    private void completeTutorial(TutorialType type) {
+        setTutorialCompleted(type, true);
+        cancelTutorialOverlay();
+    }
+
+    private void cancelTutorialOverlay() {
+        activeTutorial = null;
+        tutorialSteps.clear();
+        tutorialStepIndex = -1;
+        binding.tutorialOverlay.getRoot().setVisibility(View.GONE);
+    }
+
+    private boolean isTutorialCompleted(TutorialType type) {
+        if (tutorialPreferences == null) {
+            return false;
+        }
+        return tutorialPreferences.getBoolean(getTutorialPreferenceKey(type), false);
+    }
+
+    private void setTutorialCompleted(TutorialType type, boolean completed) {
+        if (tutorialPreferences == null) {
+            return;
+        }
+        tutorialPreferences.edit().putBoolean(getTutorialPreferenceKey(type), completed).apply();
+    }
+
+    private String getTutorialPreferenceKey(TutorialType type) {
+        return type == TutorialType.DICE_SELECTION ? TUTORIAL_DICE_DONE_KEY : TUTORIAL_DECK_DONE_KEY;
+    }
+
+    private View getActiveTutorialTarget() {
+        if (activeTutorial == null || tutorialStepIndex < 0 || tutorialStepIndex >= tutorialSteps.size()) {
+            return null;
+        }
+        return tutorialSteps.get(tutorialStepIndex).targetView;
     }
 
     private void setupAudio() {
@@ -1390,6 +1582,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (!inSelection && countDiceInContainer(binding.diceSelectionPanel.diceSelectionGrid) >= maxDice) {
             Toast.makeText(this, getString(R.string.dice_selection_limit_warning, maxDice), Toast.LENGTH_SHORT).show();
             return;
+        }
+        if (activeTutorial == TutorialType.DICE_SELECTION) {
+            if (tutorialStepIndex == 0 && !inSelection) {
+                advanceTutorialStep();
+            } else if (tutorialStepIndex == 1 && inSelection) {
+                advanceTutorialStep();
+            }
         }
         ViewGroup target = inSelection
                 ? binding.diceSelectionPanel.diceWarehouseGrid

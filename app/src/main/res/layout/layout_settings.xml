@@ -130,6 +130,30 @@
                 android:max="100" />
         </LinearLayout>
 
+        <TextView
+            android:id="@+id/settingsTutorialsTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/settings_tutorials_title"
+            style="@style/App.Text.Title.Ocean.Sub" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/settingsTutorialDice"
+            style="@style/App.Button.Glass"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_tutorial_dice" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/settingsTutorialDeck"
+            style="@style/App.Button.Glass"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_tutorial_deck" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/settingsResetData"
             style="@style/App.Button.Glass"

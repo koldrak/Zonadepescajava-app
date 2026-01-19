@@ -82,6 +82,23 @@
     <string name="settings_sfx_volume">Efectos de sonido</string>
     <string name="settings_button_volume">Sonido de botones</string>
     <string name="settings_audio_toggle">Bloquear</string>
+    <string name="settings_tutorials_title">Tutoriales</string>
+    <string name="settings_tutorial_dice">Reactivar tutorial de dados</string>
+    <string name="settings_tutorial_deck">Reactivar tutorial de mazos</string>
     <string name="settings_reset_data">Borrar datos</string>
     <string name="settings_add_points">1000 pts</string>
+    <string name="tutorial_next">Siguiente</string>
+    <string name="tutorial_step_format">Paso %1$d de %2$d</string>
+    <string name="tutorial_dice_step1_title">Selecciona tus dados</string>
+    <string name="tutorial_dice_step1_message">Toca los dados del almacén para moverlos a la zona de selección.</string>
+    <string name="tutorial_dice_step2_title">Ajusta tu selección</string>
+    <string name="tutorial_dice_step2_message">Si quieres quitar un dado, tócalo en la zona de selección para devolverlo.</string>
+    <string name="tutorial_dice_step3_title">Iniciar partida</string>
+    <string name="tutorial_dice_step3_message">Cuando estés listo, toca “Iniciar partida” para comenzar.</string>
+    <string name="tutorial_deck_step1_title">Selecciona cartas</string>
+    <string name="tutorial_deck_step1_message">Toca cartas para armar tu mazo (30–40). Puedes ver el puntaje y el conteo arriba.</string>
+    <string name="tutorial_deck_step2_title">Guarda tu mazo</string>
+    <string name="tutorial_deck_step2_message">Escribe un nombre y toca Guardar para crear un mazo reutilizable.</string>
+    <string name="tutorial_deck_step3_title">Gestiona mazos</string>
+    <string name="tutorial_deck_step3_message">Desde la lista puedes cargar o eliminar mazos guardados. Usa Eliminar si ya no lo necesitas.</string>
 </resources>
