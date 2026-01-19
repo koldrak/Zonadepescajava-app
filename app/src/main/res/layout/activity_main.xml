@@ -46,6 +46,11 @@
             layout="@layout/layout_settings"
             android:visibility="gone" />
 
+        <include
+            android:id="@+id/tutorialOverlay"
+            layout="@layout/layout_tutorial_overlay"
+            android:visibility="gone" />
+
     </FrameLayout>
 
     <FrameLayout
