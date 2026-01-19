@@ -17,8 +17,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.widget.AbsListView;
+import android.widget.Button;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
+import android.widget.ImageButton;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.GridView;
@@ -819,7 +821,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             return;
         }
         view.setOnClickListener(v -> {
-            playButtonSound();
+            if (isButtonView(v)) {
+                playButtonSound();
+            }
             if (action != null) {
                 action.run();
             }
@@ -841,12 +845,19 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (button == null) {
             return;
         }
+        if (!isButtonView(button)) {
+            return;
+        }
         button.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_UP) {
                 playButtonSound();
             }
             return false;
         });
+    }
+
+    private boolean isButtonView(View view) {
+        return view instanceof Button || view instanceof ImageButton;
     }
 
     private void refreshUi(String log) {
