@@ -969,6 +969,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (view == null) {
             return;
         }
+        soundButtons.add(view);
         view.setOnClickListener(v -> {
             if (isButtonView(v)) {
                 playButtonSound();
