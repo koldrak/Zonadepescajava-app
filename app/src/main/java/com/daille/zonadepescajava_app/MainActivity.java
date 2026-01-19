@@ -127,7 +127,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final String PACK_SMALL_FISH_ASSET = "sobrepecespequeños.png";
     private static final String PACK_BIG_FISH_ASSET = "sobrepecesgrandes.png";
     private static final String PACK_OBJECT_ASSET = "sobreobjetos.png";
-    private final Set<View> soundButtons = new HashSet<>();
     private static final int DICE_SELECTION_COLUMNS = 4;
     private static final int MIN_DICE_CAPACITY = 6;
     private static final int MAX_DICE_CAPACITY = 10;
@@ -867,16 +866,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         return getResources().getIdentifier(name, "raw", getPackageName());
     }
 
-    private void playButtonSound(View view) {
-        if (view == null || view.getId() == View.NO_ID) {
-            return;
-        }
-        if (!view.isShown() || !view.isEnabled()) {
-            return;
-        }
-        if (!soundButtons.contains(view)) {
-            return;
-        }
+    private void playButtonSound() {
         playSound(buttonSoundId);
     }
 
@@ -982,7 +972,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         soundButtons.add(view);
         view.setOnClickListener(v -> {
             if (isButtonView(v)) {
-                playButtonSound(v);
+                playButtonSound();
             }
             if (action != null) {
                 action.run();
@@ -1005,15 +995,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (button == null) {
             return;
         }
-        if (!isButtonView(button)) {
-            return;
-        }
-        button.setOnTouchListener((v, event) -> {
-            if (event.getAction() == MotionEvent.ACTION_UP) {
-                playButtonSound(v);
-            }
-            return false;
-        });
     }
 
     private boolean isButtonView(View view) {
