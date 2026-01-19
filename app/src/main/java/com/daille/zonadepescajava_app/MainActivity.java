@@ -127,6 +127,29 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final String PACK_SMALL_FISH_ASSET = "sobrepecespequeños.png";
     private static final String PACK_BIG_FISH_ASSET = "sobrepecesgrandes.png";
     private static final String PACK_OBJECT_ASSET = "sobreobjetos.png";
+    private static final Set<Integer> ALLOWED_BUTTON_SOUND_IDS = new HashSet<>(Arrays.asList(
+            R.id.startNewGame,
+            R.id.openDiceShop,
+            R.id.openSettings,
+            R.id.openCollections,
+            R.id.confirmDiceSelection,
+            R.id.diceShopBuyD4,
+            R.id.diceShopBuyD6,
+            R.id.diceShopBuyD8,
+            R.id.diceShopBuyD10,
+            R.id.diceShopBuyD12,
+            R.id.diceShopBuyD20,
+            R.id.diceCapacityBuy,
+            R.id.cardPackRandomBuy,
+            R.id.cardPackCrustaceoBuy,
+            R.id.cardPackSmallFishBuy,
+            R.id.cardPackBigFishBuy,
+            R.id.cardPackObjectBuy,
+            R.id.diceShopBack,
+            R.id.deckSelectionBack,
+            R.id.settingsBack,
+            R.id.closeCollections
+    ));
     private static final int DICE_SELECTION_COLUMNS = 4;
     private static final int MIN_DICE_CAPACITY = 6;
     private static final int MAX_DICE_CAPACITY = 10;
@@ -866,7 +889,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         return getResources().getIdentifier(name, "raw", getPackageName());
     }
 
-    private void playButtonSound() {
+    private void playButtonSound(View view) {
+        if (view == null || view.getId() == View.NO_ID) {
+            return;
+        }
+        if (!ALLOWED_BUTTON_SOUND_IDS.contains(view.getId())) {
+            return;
+        }
         playSound(buttonSoundId);
     }
 
