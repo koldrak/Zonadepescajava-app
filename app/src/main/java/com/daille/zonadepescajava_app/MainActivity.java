@@ -1120,6 +1120,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             tutorialHighlightAnimators.add(scaleY);
             tutorialHighlightedViews.add(view);
         }
+        binding.tutorialOverlay.getRoot().post(this::updateTutorialScrim);
     }
 
     private void clearTutorialHighlights() {
@@ -1134,6 +1135,31 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
         }
         tutorialHighlightedViews.clear();
+        binding.tutorialOverlay.tutorialScrim.setHighlightRects(Collections.emptyList());
+    }
+
+    private void updateTutorialScrim() {
+        List<View> allowedViews = getActiveTutorialAllowedViews();
+        if (allowedViews.isEmpty()) {
+            binding.tutorialOverlay.tutorialScrim.setHighlightRects(Collections.emptyList());
+            return;
+        }
+        List<android.graphics.RectF> rects = new ArrayList<>();
+        int[] scrimLocation = new int[2];
+        binding.tutorialOverlay.tutorialScrim.getLocationOnScreen(scrimLocation);
+        for (View view : allowedViews) {
+            if (view == null || view.getVisibility() != View.VISIBLE) {
+                continue;
+            }
+            int[] viewLocation = new int[2];
+            view.getLocationOnScreen(viewLocation);
+            float left = viewLocation[0] - scrimLocation[0];
+            float top = viewLocation[1] - scrimLocation[1];
+            float right = left + view.getWidth();
+            float bottom = top + view.getHeight();
+            rects.add(new android.graphics.RectF(left, top, right, bottom));
+        }
+        binding.tutorialOverlay.tutorialScrim.setHighlightRects(rects);
     }
 
     private void updateTutorialSwitches() {
