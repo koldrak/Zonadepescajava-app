@@ -19,6 +19,18 @@
         app:layout_constraintBottom_toBottomOf="parent" />
 
     <TextView
+        android:id="@+id/deckSelectionOwnedBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="4dp"
+        android:background="@drawable/deck_selection_owned_badge"
+        android:padding="4dp"
+        android:text="x0"
+        android:textAppearance="@style/TextAppearance.Material3.LabelMedium"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
         android:id="@+id/deckSelectionBadge"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

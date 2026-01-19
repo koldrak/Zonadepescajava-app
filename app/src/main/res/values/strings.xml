@@ -79,6 +79,7 @@
     <string name="settings_audio_title">Audio</string>
     <string name="settings_music_volume">Música de fondo</string>
     <string name="settings_sfx_volume">Efectos de sonido</string>
+    <string name="settings_button_volume">Sonido de botones</string>
     <string name="settings_audio_toggle">Bloquear</string>
     <string name="settings_reset_data">Borrar datos</string>
     <string name="settings_add_points">1000 pts</string>

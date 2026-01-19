@@ -112,6 +112,10 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
         holder.cardImage.setContentDescription(card != null ? card.getName()
                 : holder.cardImage.getContext().getString(R.string.card_image_content_description));
 
+        int ownedCount = inventoryCounts.getOrDefault(card.getId(), 0);
+        holder.ownedBadge.setText(holder.ownedBadge.getContext()
+                .getString(R.string.deck_selection_badge, ownedCount));
+
         int count = selectionCounts.getOrDefault(card.getId(), 0);
         if (count > 0) {
             holder.selectionBadge.setVisibility(View.VISIBLE);
@@ -169,11 +173,13 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
 
     static class DeckSelectionViewHolder extends RecyclerView.ViewHolder {
         private final ImageView cardImage;
+        private final TextView ownedBadge;
         private final TextView selectionBadge;
 
         DeckSelectionViewHolder(@NonNull View itemView) {
             super(itemView);
             cardImage = itemView.findViewById(R.id.deckSelectionCardImage);
+            ownedBadge = itemView.findViewById(R.id.deckSelectionOwnedBadge);
             selectionBadge = itemView.findViewById(R.id.deckSelectionBadge);
         }
     }
