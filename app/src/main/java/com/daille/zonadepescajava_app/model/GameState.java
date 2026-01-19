@@ -3670,16 +3670,8 @@ public class GameState {
             return ""; // KOI sin dado: no puede hacer nada
         }
 
-        boolean hasTarget = false;
-        for (Integer idx : adjacentIndices(slotIndex, true)) {
-            BoardSlot t = board[idx];
-            if (t.getCard() != null && t.isFaceUp() && t.getDice().size() == 1) {
-                hasTarget = true;
-                break;
-            }
-        }
+        if (!hasKoiSwapTarget(slotIndex)) {
 
-        if (!hasTarget) {
             return "Koi: no hay cartas adyacentes boca arriba con exactamente 1 dado para intercambiar.";
         }
 
@@ -3688,6 +3680,15 @@ public class GameState {
                 slotIndex,
                 "Koi: elige una carta adyacente boca arriba con 1 dado para intercambiar un dado."
         );
+    }
+    private boolean hasKoiSwapTarget(int slotIndex) {
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot t = board[idx];
+            if (t.getCard() != null && t.isFaceUp() && t.getDice().size() == 1) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String startSpiderCrabRevive(int slotIndex) {
