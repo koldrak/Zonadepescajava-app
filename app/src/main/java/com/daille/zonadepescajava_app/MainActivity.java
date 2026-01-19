@@ -133,6 +133,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final String TUTORIAL_PREFS = "tutorial_preferences";
     private static final String TUTORIAL_DICE_DONE_KEY = "tutorial_dice_done";
     private static final String TUTORIAL_DECK_DONE_KEY = "tutorial_deck_done";
+    private static final String TUTORIAL_GAME_LOOP_DONE_KEY = "tutorial_game_loop_done";
+    private static final String TUTORIAL_RELEASE_DONE_KEY = "tutorial_release_done";
     private SharedPreferences tutorialPreferences;
     private TutorialType activeTutorial;
     private final List<TutorialStep> tutorialSteps = new ArrayList<>();
@@ -153,17 +155,31 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private enum TutorialType {
         DICE_SELECTION,
-        DECK_SELECTION
+        DECK_SELECTION,
+        GAME_LOOP,
+        CARD_RELEASE
     }
 
     private static class TutorialStep {
         private final int titleResId;
         private final int messageResId;
+        private final boolean showNextButton;
+        private final int nextButtonTextResId;
         private final List<View> allowedViews;
 
         TutorialStep(int titleResId, int messageResId, View... allowedViews) {
             this.titleResId = titleResId;
             this.messageResId = messageResId;
+            this.showNextButton = false;
+            this.nextButtonTextResId = 0;
+            this.allowedViews = Arrays.asList(allowedViews);
+        }
+
+        TutorialStep(int titleResId, int messageResId, int nextButtonTextResId, View... allowedViews) {
+            this.titleResId = titleResId;
+            this.messageResId = messageResId;
+            this.showNextButton = true;
+            this.nextButtonTextResId = nextButtonTextResId;
             this.allowedViews = Arrays.asList(allowedViews);
         }
     }
@@ -308,6 +324,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             snapshotBoardState();
             showGameLayout();
             refreshUi("Juego iniciado. Lanza un dado y toca una carta.");
+            binding.gamePanel.getRoot().post(() -> maybeStartTutorial(TutorialType.GAME_LOOP));
         });
         setSoundButtonClickListener(binding.startMenu.openSettings, this::showSettingsPanel);
         setSoundButtonClickListener(binding.startMenu.openCollections, this::showCollectionsPanel);
@@ -924,6 +941,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void setupTutorialOverlay() {
         binding.tutorialOverlay.getRoot().setVisibility(View.GONE);
+        binding.tutorialOverlay.tutorialNextButton.setOnClickListener(v -> {
+            if (activeTutorial == null) {
+                return;
+            }
+            advanceTutorialStep();
+        });
         binding.tutorialOverlay.getRoot().setOnTouchListener((view, event) -> {
             if (activeTutorial == null) {
                 return false;
@@ -994,6 +1017,38 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                     R.string.tutorial_deck_step3_message,
                     binding.deckSelectionPanel.deckSelectionSavedSpinner,
                     binding.deckSelectionPanel.deckSelectionDelete));
+        } else if (type == TutorialType.GAME_LOOP) {
+            tutorialSteps.add(new TutorialStep(
+                    R.string.tutorial_game_loop_step1_title,
+                    R.string.tutorial_game_loop_step1_message,
+                    R.string.tutorial_accept,
+                    binding.tutorialOverlay.tutorialNextButton));
+            tutorialSteps.add(new TutorialStep(
+                    R.string.tutorial_game_loop_step2_title,
+                    R.string.tutorial_game_loop_step2_message,
+                    binding.gamePanel.reserveDiceContainer));
+            tutorialSteps.add(new TutorialStep(
+                    R.string.tutorial_game_loop_step3_title,
+                    R.string.tutorial_game_loop_step3_message,
+                    binding.gamePanel.boardRecycler));
+            tutorialSteps.add(new TutorialStep(
+                    R.string.tutorial_game_loop_step4_title,
+                    R.string.tutorial_game_loop_step4_message,
+                    binding.gamePanel.boardRecycler));
+            tutorialSteps.add(new TutorialStep(
+                    R.string.tutorial_game_loop_step5_title,
+                    R.string.tutorial_game_loop_step5_message,
+                    binding.gamePanel.reserveDiceContainer,
+                    binding.gamePanel.boardRecycler));
+        } else if (type == TutorialType.CARD_RELEASE) {
+            tutorialSteps.add(new TutorialStep(
+                    R.string.tutorial_release_step1_title,
+                    R.string.tutorial_release_step1_message,
+                    binding.gamePanel.captureScroll));
+            tutorialSteps.add(new TutorialStep(
+                    R.string.tutorial_release_step2_title,
+                    R.string.tutorial_release_step2_message,
+                    binding.gamePanel.boardRecycler));
         }
         updateTutorialStep();
     }
@@ -1008,8 +1063,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 getString(R.string.tutorial_step_format, tutorialStepIndex + 1, tutorialSteps.size()));
         binding.tutorialOverlay.tutorialTitle.setText(step.titleResId);
         binding.tutorialOverlay.tutorialMessage.setText(step.messageResId);
-        binding.tutorialOverlay.tutorialNextButton.setVisibility(View.GONE);
-        binding.tutorialOverlay.tutorialNextButton.setEnabled(false);
+        if (step.showNextButton) {
+            binding.tutorialOverlay.tutorialNextButton.setVisibility(View.VISIBLE);
+            binding.tutorialOverlay.tutorialNextButton.setEnabled(true);
+            if (step.nextButtonTextResId != 0) {
+                binding.tutorialOverlay.tutorialNextButton.setText(step.nextButtonTextResId);
+            } else {
+                binding.tutorialOverlay.tutorialNextButton.setText(R.string.tutorial_next);
+            }
+        } else {
+            binding.tutorialOverlay.tutorialNextButton.setVisibility(View.GONE);
+            binding.tutorialOverlay.tutorialNextButton.setEnabled(false);
+        }
         binding.tutorialOverlay.getRoot().setVisibility(View.VISIBLE);
         resetTutorialCardPosition();
         binding.tutorialOverlay.getRoot().post(() -> {
@@ -1058,7 +1123,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private String getTutorialPreferenceKey(TutorialType type) {
-        return type == TutorialType.DICE_SELECTION ? TUTORIAL_DICE_DONE_KEY : TUTORIAL_DECK_DONE_KEY;
+        switch (type) {
+            case DICE_SELECTION:
+                return TUTORIAL_DICE_DONE_KEY;
+            case DECK_SELECTION:
+                return TUTORIAL_DECK_DONE_KEY;
+            case GAME_LOOP:
+                return TUTORIAL_GAME_LOOP_DONE_KEY;
+            case CARD_RELEASE:
+                return TUTORIAL_RELEASE_DONE_KEY;
+            default:
+                return TUTORIAL_DICE_DONE_KEY;
+        }
     }
 
     private View getActiveTutorialTouchTarget(float rawX, float rawY) {
@@ -1967,6 +2043,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
         if (gameState.isAwaitingBoardSelection()) {
             handleGameResult(gameState.handleBoardSelection(position));
+            if (activeTutorial == TutorialType.CARD_RELEASE && tutorialStepIndex == 1) {
+                advanceTutorialStep();
+            }
         } else if (gameState.isAwaitingLanternChoice()) {
             handleGameResult(gameState.chooseLanternTarget(position));
         } else {
@@ -1985,6 +2064,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             image = cardImageResolver.getCardBack();
         }
         CardFullscreenDialog.show(this, image);
+        if (activeTutorial == TutorialType.GAME_LOOP && tutorialStepIndex == 3) {
+            advanceTutorialStep();
+        }
     }
 
     private void updateSelectedDiePreview() {
@@ -2095,6 +2177,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         startRollingAnimation(type);
         String msg = gameState.rollFromReserve(type);
         handleGameResult(msg);
+        if (activeTutorial == TutorialType.GAME_LOOP && tutorialStepIndex == 1
+                && gameState.getSelectedDie() != null) {
+            advanceTutorialStep();
+        }
     }
 
     private void renderDiceCollection(View container, Iterable<?> dice, boolean allowReserveTap) {
@@ -2430,6 +2516,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (hasNewCapture) {
             playCaptureSound();
         }
+        if (activeTutorial == null
+                && !isTutorialCompleted(TutorialType.CARD_RELEASE)
+                && gameState.getCaptures().size() >= 5) {
+            binding.gamePanel.getRoot().post(() -> maybeStartTutorial(TutorialType.CARD_RELEASE));
+        }
     }
 
     private void renderCapturedCards() {
@@ -2484,6 +2575,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                             .setPositiveButton("Sí", (dialogInterface, which) -> {
                                 String msg = gameState.startReleaseFromCapture(card);
                                 handleGameResult(msg); // refresca UI + toast + prompts
+                                if (activeTutorial == TutorialType.CARD_RELEASE && tutorialStepIndex == 0) {
+                                    advanceTutorialStep();
+                                }
                             })
                             .setNegativeButton("No", null)
                             .create();
@@ -4147,11 +4241,21 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void completePlacement(int position) {
         boolean hadSelectedDie = gameState.getSelectedDie() != null;
+        BoardSlot slot = gameState.getBoard()[position];
+        int diceBefore = slot != null ? slot.getDice().size() : 0;
         String result = gameState.placeSelectedDie(position);
-        if (hadSelectedDie && gameState.consumeLastDiePlaced()) {
+        boolean placed = hadSelectedDie && gameState.consumeLastDiePlaced();
+        if (placed) {
             playSplashSound();
         }
         handleGameResult(result);
+        if (activeTutorial == TutorialType.GAME_LOOP) {
+            if (tutorialStepIndex == 2 && placed) {
+                advanceTutorialStep();
+            } else if (tutorialStepIndex == 4 && placed && diceBefore == 1) {
+                advanceTutorialStep();
+            }
+        }
     }
 
     @Override

@@ -101,4 +101,19 @@
     <string name="tutorial_deck_step2_message">Escribe un nombre y toca Guardar para crear un mazo reutilizable.</string>
     <string name="tutorial_deck_step3_title">Gestiona mazos</string>
     <string name="tutorial_deck_step3_message">Desde la lista puedes cargar o eliminar mazos guardados. Usa Eliminar si ya no lo necesitas.</string>
+    <string name="tutorial_accept">Aceptar</string>
+    <string name="tutorial_game_loop_step1_title">Objetivos y bucle de juego</string>
+    <string name="tutorial_game_loop_step1_message">El objetivo del juego es capturar la mayor cantidad de peces mediante la colocación estratégica de dados.</string>
+    <string name="tutorial_game_loop_step2_title">Lanza un dado</string>
+    <string name="tutorial_game_loop_step2_message">Para comenzar la partida debes lanzar un dado. Selecciona un dado para lanzar.</string>
+    <string name="tutorial_game_loop_step3_title">Coloca el dado</string>
+    <string name="tutorial_game_loop_step3_message">Selecciona en qué espacio de la zona de pesca deseas colocar el dado.</string>
+    <string name="tutorial_game_loop_step4_title">Revela la carta</string>
+    <string name="tutorial_game_loop_step4_message">Al colocar un dado sobre una carta esta se gira y puede desencadenar habilidades y mostrar los requisitos para su captura. Para ver los detalles realiza un click largo sobre la carta.</string>
+    <string name="tutorial_game_loop_step5_title">Intento de captura</string>
+    <string name="tutorial_game_loop_step5_message">Intentaremos capturar la carta. Lanza un nuevo dado y colócalo sobre una carta que ya tenga un dado. Si aciertas la condición de captura la carta es tuya; de lo contrario debes seleccionar un dado para descartarlo.</string>
+    <string name="tutorial_release_step1_title">Liberar una carta</string>
+    <string name="tutorial_release_step1_message">Puedes liberar una carta a la zona de pesca para reutilizar sus habilidades. Haz click sobre la carta que quieres liberar.</string>
+    <string name="tutorial_release_step2_title">Elige dónde liberar</string>
+    <string name="tutorial_release_step2_message">Puedes seleccionar en qué parte de la zona de pesca liberar la carta.</string>
 </resources>
