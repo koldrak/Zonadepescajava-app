@@ -1,6 +1,8 @@
 package com.daille.zonadepescajava_app;
 
 import android.os.Bundle;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -26,6 +28,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         super.onCreate(savedInstanceState);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        disableSoundEffects(binding.getRoot());
 
         setSupportActionBar(binding.toolbar);
         gameState = new GameState();
@@ -39,6 +42,16 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         adapter = new BoardSlotAdapter(Arrays.asList(gameState.getBoard()), this);
         binding.boardRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.boardRecycler.setAdapter(adapter);
+    }
+
+    private void disableSoundEffects(View view) {
+        view.setSoundEffectsEnabled(false);
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                disableSoundEffects(group.getChildAt(i));
+            }
+        }
     }
 
     private void setupButtons() {
