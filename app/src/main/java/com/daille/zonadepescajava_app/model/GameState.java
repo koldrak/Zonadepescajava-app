@@ -18,6 +18,7 @@ public class GameState {
     private final List<DieType> reserve = new ArrayList<>();
     private final List<Card> failedDiscards = new ArrayList<>();
     private Die selectedDie;
+    private boolean lastDiePlaced = false;
     private boolean gameOver = false;
     private Integer pendingDieLossSlot = null;
     private int pendingLossTriggerValue = 0;
@@ -1949,6 +1950,7 @@ public class GameState {
     }
 
     public String placeSelectedDie(int slotIndex) {
+        lastDiePlaced = false;
         if (selectedDie == null) {
             return "No has lanzado ningún dado.";
         }
@@ -2049,6 +2051,7 @@ public class GameState {
             return "Una carta no puede tener más de 2 dados.";
         }
         slot.addDie(selectedDie);
+        lastDiePlaced = true;
         int placedValue = selectedDie.getValue();
         String cocoLoss = applyCoconutCrabLoss(slotIndex, placedValue);
         selectedDie = null;
@@ -2092,6 +2095,12 @@ public class GameState {
         }
 
         return resolveFishingOutcome(slotIndex, placedValue, extraLog.toString(), true);
+    }
+
+    public boolean consumeLastDiePlaced() {
+        boolean placed = lastDiePlaced;
+        lastDiePlaced = false;
+        return placed;
     }
 
     private String addDieToSlot(int slotIndex, Die die) {

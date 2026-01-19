@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="24dp"
-    android:background="#F2F5FA"
+    android:background="@drawable/menu_background_start"
     tools:context=".MainActivity">
 
     <LinearLayout
@@ -132,7 +132,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/settingsResetData"
-            style="@style/Widget.Material3.Button.TonalButton"
+            style="@style/App.Button.Glass"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
@@ -140,7 +140,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/settingsAddPoints"
-            style="@style/Widget.Material3.Button.TonalButton"
+            style="@style/App.Button.Glass"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
@@ -148,7 +148,7 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/settingsBack"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/App.Button.Glass"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"

@@ -649,6 +649,14 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         return selection;
     }
 
+    public boolean deleteDeckPreset(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            return false;
+        }
+        SQLiteDatabase db = getWritableDatabase();
+        return db.delete(TABLE_DECK_PRESETS, COLUMN_DECK_NAME + " = ?", new String[]{name.trim()}) > 0;
+    }
+
     private String serializeDeckSelection(Map<CardId, Integer> selectionCounts) {
         StringBuilder builder = new StringBuilder();
         for (CardId id : CardId.values()) {
