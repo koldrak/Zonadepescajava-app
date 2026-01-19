@@ -35,6 +35,7 @@ import com.daille.zonadepescajava_app.model.Card;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import android.os.SystemClock;
 
 public final class CardPackOpenDialog {
     private CardPackOpenDialog() {
@@ -106,11 +107,13 @@ public final class CardPackOpenDialog {
 
             cardView.setOnClickListener(v -> {
                 v.setEnabled(false);
+                stopTrailEmitter(cardView); // corta el emisor cuando entra al detalle
                 String overlay = context.getString(R.string.card_pack_reward_detail, cardFinal.getName());
                 Bitmap detailBitmap = cardBitmapFinal != null ? cardBitmapFinal : resolver.getCardBack();
                 CardFullscreenDialog.show(context, detailBitmap, overlay, () -> {
                     cardsContainer.removeView(cardView);
-                    if (cardsContainer.getChildCount() == 0) {
+                    if (cardsContainer.getChildCount() <= 1) { // 1 = StarBurstView
+
                         completedAll[0] = true;
                         dialog.dismiss();
                     }
@@ -158,8 +161,12 @@ public final class CardPackOpenDialog {
 
             // Cancela animaciones por ViewPropertyAnimator, por si existieran
             for (ImageView cv : cardViews) {
-                if (cv != null) cv.animate().cancel();
+                if (cv != null) {
+                    cv.animate().cancel();
+                    stopTrailEmitter(cv);
+                }
             }
+
             PackTearViews t = tornHolder[0];
             if (t != null) {
                 if (t.top != null) t.top.animate().cancel();
@@ -178,6 +185,52 @@ public final class CardPackOpenDialog {
     // =========================================================
     // ANIMACION COMPLETA: rasgar -> cartas desde interior -> pack cae abajo
     // =========================================================
+    private static void startTrailEmitter(ImageView cardView, StarBurstView starBurstView, int color, float density) {
+        if (cardView == null || starBurstView == null || color == 0) return;
+
+        // Evita duplicados
+        Object prev = cardView.getTag();
+        if (prev instanceof ValueAnimator) {
+            ((ValueAnimator) prev).cancel();
+        }
+
+
+        final long[] lastEmit = {0L};
+
+        ValueAnimator emitter = ValueAnimator.ofFloat(0f, 1f);
+        emitter.setDuration(1000L);
+        emitter.setRepeatCount(ValueAnimator.INFINITE);
+        emitter.setRepeatMode(ValueAnimator.RESTART);
+        emitter.setInterpolator(new DecelerateInterpolator());
+
+        emitter.addUpdateListener(a -> {
+            // Solo si la carta sigue en pantalla y visible
+            if (cardView.getParent() == null || cardView.getAlpha() <= 0.01f) return;
+
+            long now = SystemClock.uptimeMillis();
+            if (now - lastEmit[0] < 45L) return; // densidad (baja a 30ms = más)
+            lastEmit[0] = now;
+
+            float cx = cardView.getX() + cardView.getWidth() * 0.5f;
+            float cy = cardView.getY() + cardView.getHeight() * 0.55f; // punto “detrás” de la carta
+
+            starBurstView.burst(cx, cy, 8, color); // sube count si quieres más densidad
+
+        });
+
+        cardView.setTag(emitter);
+        emitter.start();
+    }
+
+    private static void stopTrailEmitter(ImageView cardView) {
+        if (cardView == null) return;
+        Object tag = cardView.getTag();
+        if (tag instanceof ValueAnimator) {
+            ((ValueAnimator) tag).cancel();
+        }
+        // Limpia el tag por si lo reutilizas
+        cardView.setTag(null);
+    }
 
     private static AnimatorSet playTearOpenAndReveal(
             PackTearViews torn,
@@ -309,6 +362,13 @@ public final class CardPackOpenDialog {
                     v.setRotationX(0f);
                     v.setAlpha(1f);
                 }
+
+                for (int i = 0; i < cardViews.size(); i++) {
+                    Card c = cards.get(i);
+                    int color = getStarBurstColor(c);
+                    startTrailEmitter(cardViews.get(i), starBurstView, color, density);
+                }
+
                 // Opcional: remover views del pack para liberar
                 ViewGroup parent = (ViewGroup) torn.top.getParent();
                 if (parent != null) {
@@ -438,17 +498,8 @@ public final class CardPackOpenDialog {
             pull.setInterpolator(pullInterp);
             pull.setStartDelay(320L + i * 120L);
 
-            if (starColor != 0 && starBurstView != null) {
-                final boolean[] spawned = {false};
-                pull.addUpdateListener(anim -> {
-                    if (!spawned[0] && anim.getAnimatedFraction() >= 0.35f) {
-                        float centerX = v.getX() + v.getWidth() * 0.5f;
-                        float centerY = v.getY() + v.getHeight() * 0.5f;
-                        starBurstView.burst(centerX, centerY, 18, starColor);
-                        spawned[0] = true;
-                    }
-                });
-            }
+
+
 
             int elev = dpToPx(container.getContext(), 3 + i * 2);
             pull.addUpdateListener(anim -> v.setElevation(elev));
