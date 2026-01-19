@@ -852,7 +852,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             return;
         }
         view.setOnClickListener(v -> {
-            if (shouldPlayButtonSound(v)) {
+            if (isButtonView(v)) {
                 playButtonSound();
             }
             if (action != null) {
@@ -876,7 +876,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (button == null) {
             return;
         }
-        if (!shouldPlayButtonSound(button)) {
+        if (!isButtonView(button)) {
             return;
         }
         button.setOnTouchListener((v, event) -> {
@@ -889,10 +889,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private boolean isButtonView(View view) {
         return view instanceof Button || view instanceof ImageButton;
-    }
-
-    private boolean shouldPlayButtonSound(View view) {
-        return isButtonView(view) && SOUND_BUTTON_IDS.contains(view.getId());
     }
 
     private void refreshUi(String log) {
