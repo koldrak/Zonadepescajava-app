@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -108,8 +109,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private int captureSoundId;
     private int packOpenSoundId;
 
-    private static final int AMBIENT_MAIN_RES = R.raw.ambientalplaya;
-    private static final int AMBIENT_MARKET_RES = R.raw.market;
     private static final String PACK_RANDOM_ASSET = "sobresorpresa.png";
     private static final String PACK_CRUSTACEO_ASSET = "sobrecrustaceos.png";
     private static final String PACK_SMALL_FISH_ASSET = "sobrepecespequeños.png";
@@ -401,7 +400,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
-        updateAmbientMusic(AMBIENT_MAIN_RES);
+        updateAmbientMusic("ambientalplaya");
         refreshScoreRecords(); // ✅ asegura recarga al mostrar menú
     }
 
@@ -414,7 +413,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
-        updateAmbientMusic(AMBIENT_MAIN_RES);
+        updateAmbientMusic("ambientalplaya");
     }
 
     private void showDiceSelectionPanel() {
@@ -426,7 +425,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
-        updateAmbientMusic(AMBIENT_MAIN_RES);
+        updateAmbientMusic("ambientalplaya");
     }
 
     private void showDiceShopPanel() {
@@ -438,7 +437,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
-        updateAmbientMusic(AMBIENT_MARKET_RES);
+        updateAmbientMusic("market");
     }
 
     private void showGameLayout() {
@@ -449,7 +448,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.VISIBLE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
-        updateAmbientMusic(AMBIENT_MAIN_RES);
+        updateAmbientMusic("ambientalplaya");
     }
 
     private void showCollectionsPanel() {
@@ -460,7 +459,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.VISIBLE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
-        updateAmbientMusic(AMBIENT_MAIN_RES);
+        updateAmbientMusic("ambientalplaya");
         refreshCollections();
     }
 
@@ -472,7 +471,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.VISIBLE);
-        updateAmbientMusic(AMBIENT_MAIN_RES);
+        updateAmbientMusic("ambientalplaya");
     }
 
     private void refreshDeckSelectionList() {
@@ -697,18 +696,23 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setMaxStreams(6)
                 .setAudioAttributes(attributes)
                 .build();
-        buttonSoundId = loadSound(R.raw.boton);
-        rollSoundId = loadSound(R.raw.cana);
-        splashSoundId = loadSound(R.raw.splash);
-        captureSoundId = loadSound(R.raw.capturar);
-        packOpenSoundId = loadSound(R.raw.sobre);
+        buttonSoundId = loadSound("boton");
+        rollSoundId = loadSound("caña");
+        splashSoundId = loadSound("splash");
+        captureSoundId = loadSound("capturar");
+        packOpenSoundId = loadSound("sobre");
     }
 
-    private int loadSound(int resId) {
+    private int loadSound(String name) {
+        int resId = getRawSoundId(name);
         if (resId == 0 || soundPool == null) {
             return 0;
         }
         return soundPool.load(this, resId, 1);
+    }
+
+    private int getRawSoundId(String name) {
+        return getResources().getIdentifier(name, "raw", getPackageName());
     }
 
     private void playButtonSound() {
@@ -738,7 +742,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         soundPool.play(soundId, 1f, 1f, 1, 0, 1f);
     }
 
-    private void updateAmbientMusic(int resId) {
+    private void updateAmbientMusic(String trackName) {
+        int resId = getRawSoundId(trackName);
+        if (resId == 0) {
+            stopAmbientMusic();
+            return;
+        }
         if (ambientResId == resId && ambientPlayer != null) {
             if (!ambientPlayer.isPlaying()) {
                 ambientPlayer.start();
@@ -792,6 +801,29 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             if (action != null) {
                 action.run();
             }
+        });
+    }
+
+    private void attachDialogButtonSounds(AlertDialog dialog) {
+        if (dialog == null) {
+            return;
+        }
+        dialog.setOnShowListener(dlg -> {
+            attachButtonSound(dialog.getButton(AlertDialog.BUTTON_POSITIVE));
+            attachButtonSound(dialog.getButton(AlertDialog.BUTTON_NEGATIVE));
+            attachButtonSound(dialog.getButton(AlertDialog.BUTTON_NEUTRAL));
+        });
+    }
+
+    private void attachButtonSound(View button) {
+        if (button == null) {
+            return;
+        }
+        button.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_UP) {
+                playButtonSound();
+            }
+            return false;
         });
     }
 
@@ -1779,6 +1811,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                             })
                             .setNegativeButton("No", null)
                             .create();
+                    attachDialogButtonSounds(dialog);
                     dialog.show();
                 });
 
@@ -2053,6 +2086,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 
@@ -2074,6 +2108,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 
@@ -2092,6 +2127,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 
@@ -2110,6 +2146,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 
@@ -2128,6 +2165,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 
@@ -2146,6 +2184,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 
@@ -2164,6 +2203,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 
@@ -2182,6 +2222,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 
@@ -2255,6 +2296,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 
@@ -2326,6 +2368,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 
@@ -2353,6 +2396,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 
@@ -2372,6 +2416,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 
@@ -2472,6 +2517,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
 
         AlertDialog dialog = builder.create();
+        attachDialogButtonSounds(dialog);
 
         gridView.setOnItemClickListener((parent, view, position, id) -> {
             String msg = onSelect.onSelect(position);
@@ -2516,6 +2562,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
 
         gridView.setOnItemClickListener((parent, view, position, id) -> {
             if (selected.contains(position)) {
@@ -2575,6 +2622,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 
@@ -2599,6 +2647,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 })
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 
@@ -3132,6 +3181,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setView(gridView)
                 .setCancelable(false)
                 .create();
+        attachDialogButtonSounds(dialog);
 
         gridView.setOnItemClickListener((parent, view, position, id) -> {
             String msg = gameState.chooseHorseshoeValue(values.get(position));
