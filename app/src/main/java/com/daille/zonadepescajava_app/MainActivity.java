@@ -116,6 +116,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private int buttonSoundId;
     private int rollSoundId;
     private int splashSoundId;
+    private int tideSoundId;
     private int captureSoundId;
     private int packOpenSoundId;
     private final Set<Integer> loadedSoundIds = new java.util.HashSet<>();
@@ -332,6 +333,30 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 deckSelectionAdapter.setSelectionCounts(preset);
             }
             Toast.makeText(this, "Mazo cargado.", Toast.LENGTH_SHORT).show();
+        });
+        setButtonClickListener(binding.deckSelectionPanel.deckSelectionDelete, () -> {
+            Object selected = binding.deckSelectionPanel.deckSelectionSavedSpinner.getSelectedItem();
+            if (selected == null) {
+                Toast.makeText(this, "No hay mazos guardados.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            String name = selected.toString();
+            AlertDialog dialog = new AlertDialog.Builder(this)
+                    .setTitle("Eliminar mazo")
+                    .setMessage("¿Eliminar el mazo guardado \"" + name + "\"?")
+                    .setPositiveButton("Eliminar", (dlg, which) -> {
+                        boolean removed = scoreDatabaseHelper.deleteDeckPreset(name);
+                        refreshDeckPresetList();
+                        if (removed) {
+                            Toast.makeText(this, "Mazo eliminado.", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(this, "No se pudo eliminar el mazo.", Toast.LENGTH_SHORT).show();
+                        }
+                    })
+                    .setNegativeButton("Cancelar", null)
+                    .create();
+            attachDialogButtonSounds(dialog);
+            dialog.show();
         });
     }
 
@@ -846,6 +871,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         buttonSoundId = loadSound("boton");
         rollSoundId = loadSound("cana");
         splashSoundId = loadSound("splash");
+        tideSoundId = loadSound("marea");
         captureSoundId = loadSound("capturar");
         packOpenSoundId = loadSound("sobre");
     }
@@ -933,6 +959,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void playSplashSound() {
         playSound(splashSoundId);
+    }
+
+    private void playTideSound() {
+        playSound(tideSoundId);
     }
 
     private void playCaptureSound() {
@@ -1186,11 +1216,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                     break;
             }
         }
-        binding.gamePanel.fishingAnimationOverlay.post(() -> tideParticlesView.playSequence(directions, () -> {
+        binding.gamePanel.fishingAnimationOverlay.post(() -> {
+            playTideSound();
+            tideParticlesView.playSequence(directions, () -> {
             String currentsLog = gameState.applyPendingCurrentAnimations();
             String combinedLog = combineLogs(baseMessage, currentsLog);
             refreshUi(combinedLog, onComplete);
-        }));
+            });
+        });
     }
 
     private String combineLogs(String base, String extra) {
@@ -3718,7 +3751,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void completePlacement(int position) {
         boolean hadSelectedDie = gameState.getSelectedDie() != null;
         String result = gameState.placeSelectedDie(position);
-        if (hadSelectedDie) {
+        if (hadSelectedDie && gameState.consumeLastDiePlaced()) {
             playSplashSound();
         }
         handleGameResult(result);
