@@ -975,7 +975,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_dice_step3_title,
                     R.string.tutorial_dice_step3_message,
-                    binding.diceSelectionPanel.confirmDiceSelection));
+                    binding.diceSelectionPanel.confirmDiceSelection,
+                    binding.diceSelectionPanel.diceWarehouseGrid,
+                    binding.diceSelectionPanel.diceSelectionGrid));
         } else if (type == TutorialType.DECK_SELECTION) {
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_deck_step1_title,
