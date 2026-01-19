@@ -762,8 +762,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void playButtonSound() {
-        if (binding != null && binding.gamePanel != null
-                && binding.gamePanel.getRoot().getVisibility() == View.VISIBLE) {
+        if (binding == null) {
+            return;
+        }
+        boolean isStartMenuVisible = binding.startMenu != null
+                && binding.startMenu.getRoot().getVisibility() == View.VISIBLE;
+        boolean isDiceShopVisible = binding.diceShopPanel != null
+                && binding.diceShopPanel.getRoot().getVisibility() == View.VISIBLE;
+        if (!isStartMenuVisible && !isDiceShopVisible) {
             return;
         }
         playSound(buttonSoundId);
