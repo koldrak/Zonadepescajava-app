@@ -125,11 +125,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             R.id.openDiceShop,
             R.id.openSettings,
             R.id.openCollections,
-            R.id.openDeckSelection,
-            R.id.confirmDiceSelection,
-            R.id.closeCollections,
-            R.id.deckSelectionBack,
-            R.id.deckSelectionConfirm,
             R.id.diceShopBack,
             R.id.diceShopBuyD4,
             R.id.diceShopBuyD6,
@@ -142,13 +137,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             R.id.cardPackCrustaceoBuy,
             R.id.cardPackSmallFishBuy,
             R.id.cardPackBigFishBuy,
-            R.id.cardPackObjectBuy,
-            R.id.settingsBack,
-            R.id.settingsResetData,
-            R.id.settingsAddPoints,
-            android.R.id.button1,
-            android.R.id.button2,
-            android.R.id.button3
+            R.id.cardPackObjectBuy
     ));
     private static final int DICE_SELECTION_COLUMNS = 4;
     private static final int MIN_DICE_CAPACITY = 6;
@@ -761,15 +750,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         return getResources().getIdentifier(name, "raw", getPackageName());
     }
 
-    private void playButtonSound() {
-        if (binding == null) {
+    private void playButtonSound(View view) {
+        if (view == null || view.getId() == View.NO_ID) {
             return;
         }
-        boolean isStartMenuVisible = binding.startMenu != null
-                && binding.startMenu.getRoot().getVisibility() == View.VISIBLE;
-        boolean isDiceShopVisible = binding.diceShopPanel != null
-                && binding.diceShopPanel.getRoot().getVisibility() == View.VISIBLE;
-        if (!isStartMenuVisible && !isDiceShopVisible) {
+        if (!SOUND_BUTTON_IDS.contains(view.getId())) {
             return;
         }
         playSound(buttonSoundId);
@@ -871,7 +856,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         view.setOnClickListener(v -> {
             if (isButtonView(v)) {
-                playButtonSound();
+                playButtonSound(v);
             }
             if (action != null) {
                 action.run();
@@ -899,7 +884,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         button.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_UP) {
-                playButtonSound();
+                playButtonSound(v);
             }
             return false;
         });
