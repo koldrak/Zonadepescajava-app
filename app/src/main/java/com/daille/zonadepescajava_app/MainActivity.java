@@ -127,29 +127,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final String PACK_SMALL_FISH_ASSET = "sobrepecespequeños.png";
     private static final String PACK_BIG_FISH_ASSET = "sobrepecesgrandes.png";
     private static final String PACK_OBJECT_ASSET = "sobreobjetos.png";
-    private static final Set<Integer> SOUND_BUTTON_IDS = new HashSet<>(Arrays.asList(
-            R.id.startNewGame,
-            R.id.openDiceShop,
-            R.id.openSettings,
-            R.id.openCollections,
-            R.id.confirmDiceSelection,
-            R.id.closeCollections,
-            R.id.deckSelectionBack,
-            R.id.settingsBack,
-            R.id.diceShopBack,
-            R.id.diceShopBuyD4,
-            R.id.diceShopBuyD6,
-            R.id.diceShopBuyD8,
-            R.id.diceShopBuyD10,
-            R.id.diceShopBuyD12,
-            R.id.diceShopBuyD20,
-            R.id.diceCapacityBuy,
-            R.id.cardPackRandomBuy,
-            R.id.cardPackCrustaceoBuy,
-            R.id.cardPackSmallFishBuy,
-            R.id.cardPackBigFishBuy,
-            R.id.cardPackObjectBuy
-    ));
+    private final Set<View> soundButtons = new HashSet<>();
     private static final int DICE_SELECTION_COLUMNS = 4;
     private static final int MIN_DICE_CAPACITY = 6;
     private static final int MAX_DICE_CAPACITY = 10;
@@ -896,7 +874,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (!view.isShown() || !view.isEnabled()) {
             return;
         }
-        if (!SOUND_BUTTON_IDS.contains(view.getId())) {
+        if (!soundButtons.contains(view)) {
             return;
         }
         playSound(buttonSoundId);
@@ -1001,6 +979,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (view == null) {
             return;
         }
+        soundButtons.add(view);
         view.setOnClickListener(v -> {
             if (isButtonView(v)) {
                 playButtonSound(v);
