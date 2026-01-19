@@ -137,6 +137,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private TutorialType activeTutorial;
     private final List<TutorialStep> tutorialSteps = new ArrayList<>();
     private int tutorialStepIndex = -1;
+    private final List<View> tutorialHighlightedViews = new ArrayList<>();
+    private final List<ObjectAnimator> tutorialHighlightAnimators = new ArrayList<>();
 
     private static final String PACK_RANDOM_ASSET = "sobresorpresa.png";
     private static final String PACK_CRUSTACEO_ASSET = "sobrecrustaceos.png";
@@ -157,12 +159,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static class TutorialStep {
         private final int titleResId;
         private final int messageResId;
-        private final View targetView;
+        private final List<View> allowedViews;
 
-        TutorialStep(int titleResId, int messageResId, View targetView) {
+        TutorialStep(int titleResId, int messageResId, View... allowedViews) {
             this.titleResId = titleResId;
             this.messageResId = messageResId;
-            this.targetView = targetView;
+            this.allowedViews = Arrays.asList(allowedViews);
         }
     }
 
@@ -630,6 +632,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.VISIBLE);
         updateAmbientMusic("ambientalplaya");
+        updateTutorialSwitches();
     }
 
     private void refreshDeckSelectionList() {
@@ -858,14 +861,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             scoreDatabaseHelper.addBonusPoints(1000);
             Toast.makeText(this, "Se agregaron 1000 puntos.", Toast.LENGTH_SHORT).show();
         });
-        setButtonClickListener(binding.settingsPanel.settingsTutorialDice, () -> {
-            setTutorialCompleted(TutorialType.DICE_SELECTION, false);
-            Toast.makeText(this, "Tutorial de dados reactivado.", Toast.LENGTH_SHORT).show();
-        });
-        setButtonClickListener(binding.settingsPanel.settingsTutorialDeck, () -> {
-            setTutorialCompleted(TutorialType.DECK_SELECTION, false);
-            Toast.makeText(this, "Tutorial de mazos reactivado.", Toast.LENGTH_SHORT).show();
-        });
         binding.settingsPanel.settingsMusicToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
             musicEnabled = !isChecked;
             applyAudioSettings();
@@ -929,12 +924,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void setupTutorialOverlay() {
         binding.tutorialOverlay.getRoot().setVisibility(View.GONE);
-        binding.tutorialOverlay.tutorialNextButton.setOnClickListener(v -> advanceTutorialStep());
         binding.tutorialOverlay.getRoot().setOnTouchListener((view, event) -> {
             if (activeTutorial == null) {
                 return false;
             }
-            View target = getActiveTutorialTarget();
+            View target = getActiveTutorialTouchTarget(event.getRawX(), event.getRawY());
             if (target == null) {
                 return true;
             }
@@ -972,7 +966,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_dice_step1_title,
                     R.string.tutorial_dice_step1_message,
-                    binding.diceSelectionPanel.diceWarehouseGrid));
+                    binding.diceSelectionPanel.diceWarehouseGrid,
+                    binding.diceSelectionPanel.diceSelectionGrid));
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_dice_step2_title,
                     R.string.tutorial_dice_step2_message,
@@ -989,10 +984,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_deck_step2_title,
                     R.string.tutorial_deck_step2_message,
+                    binding.deckSelectionPanel.deckSelectionRecycler,
+                    binding.deckSelectionPanel.deckSelectionNameInput,
                     binding.deckSelectionPanel.deckSelectionSave));
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_deck_step3_title,
                     R.string.tutorial_deck_step3_message,
+                    binding.deckSelectionPanel.deckSelectionSavedSpinner,
                     binding.deckSelectionPanel.deckSelectionDelete));
         }
         updateTutorialStep();
@@ -1008,9 +1006,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 getString(R.string.tutorial_step_format, tutorialStepIndex + 1, tutorialSteps.size()));
         binding.tutorialOverlay.tutorialTitle.setText(step.titleResId);
         binding.tutorialOverlay.tutorialMessage.setText(step.messageResId);
-        boolean isLast = tutorialStepIndex == tutorialSteps.size() - 1;
-        binding.tutorialOverlay.tutorialNextButton.setText(isLast ? R.string.close : R.string.tutorial_next);
+        binding.tutorialOverlay.tutorialNextButton.setVisibility(View.GONE);
+        binding.tutorialOverlay.tutorialNextButton.setEnabled(false);
         binding.tutorialOverlay.getRoot().setVisibility(View.VISIBLE);
+        highlightTutorialTargets();
     }
 
     private void advanceTutorialStep() {
@@ -1035,6 +1034,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         tutorialSteps.clear();
         tutorialStepIndex = -1;
         binding.tutorialOverlay.getRoot().setVisibility(View.GONE);
+        clearTutorialHighlights();
     }
 
     private boolean isTutorialCompleted(TutorialType type) {
@@ -1055,11 +1055,133 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         return type == TutorialType.DICE_SELECTION ? TUTORIAL_DICE_DONE_KEY : TUTORIAL_DECK_DONE_KEY;
     }
 
-    private View getActiveTutorialTarget() {
-        if (activeTutorial == null || tutorialStepIndex < 0 || tutorialStepIndex >= tutorialSteps.size()) {
+    private View getActiveTutorialTouchTarget(float rawX, float rawY) {
+        List<View> allowedViews = getActiveTutorialAllowedViews();
+        if (allowedViews.isEmpty()) {
             return null;
         }
-        return tutorialSteps.get(tutorialStepIndex).targetView;
+        for (View view : allowedViews) {
+            if (view == null || view.getVisibility() != View.VISIBLE) {
+                continue;
+            }
+            int[] location = new int[2];
+            view.getLocationOnScreen(location);
+            boolean inside =
+                    rawX >= location[0]
+                            && rawX <= location[0] + view.getWidth()
+                            && rawY >= location[1]
+                            && rawY <= location[1] + view.getHeight();
+            if (inside) {
+                return view;
+            }
+        }
+        return null;
+    }
+
+    private List<View> getActiveTutorialAllowedViews() {
+        if (activeTutorial == null || tutorialStepIndex < 0 || tutorialStepIndex >= tutorialSteps.size()) {
+            return Collections.emptyList();
+        }
+        List<View> allowed = new ArrayList<>();
+        TutorialStep step = tutorialSteps.get(tutorialStepIndex);
+        if (step.allowedViews != null) {
+            allowed.addAll(step.allowedViews);
+        }
+        allowed.add(binding.tutorialOverlay.tutorialCard);
+        return allowed;
+    }
+
+    private void highlightTutorialTargets() {
+        clearTutorialHighlights();
+        if (activeTutorial == null || tutorialStepIndex < 0 || tutorialStepIndex >= tutorialSteps.size()) {
+            return;
+        }
+        TutorialStep step = tutorialSteps.get(tutorialStepIndex);
+        if (step.allowedViews == null) {
+            return;
+        }
+        for (View view : step.allowedViews) {
+            if (view == null) {
+                continue;
+            }
+            view.setScaleX(1f);
+            view.setScaleY(1f);
+            ObjectAnimator scaleX = ObjectAnimator.ofFloat(view, View.SCALE_X, 1f, 1.03f);
+            scaleX.setDuration(600);
+            scaleX.setRepeatCount(ObjectAnimator.INFINITE);
+            scaleX.setRepeatMode(ObjectAnimator.REVERSE);
+            ObjectAnimator scaleY = ObjectAnimator.ofFloat(view, View.SCALE_Y, 1f, 1.03f);
+            scaleY.setDuration(600);
+            scaleY.setRepeatCount(ObjectAnimator.INFINITE);
+            scaleY.setRepeatMode(ObjectAnimator.REVERSE);
+            scaleX.start();
+            scaleY.start();
+            tutorialHighlightAnimators.add(scaleX);
+            tutorialHighlightAnimators.add(scaleY);
+            tutorialHighlightedViews.add(view);
+        }
+        binding.tutorialOverlay.getRoot().post(this::updateTutorialScrim);
+    }
+
+    private void clearTutorialHighlights() {
+        for (ObjectAnimator animator : tutorialHighlightAnimators) {
+            animator.cancel();
+        }
+        tutorialHighlightAnimators.clear();
+        for (View view : tutorialHighlightedViews) {
+            if (view != null) {
+                view.setScaleX(1f);
+                view.setScaleY(1f);
+            }
+        }
+        tutorialHighlightedViews.clear();
+        binding.tutorialOverlay.tutorialScrim.setHighlightRects(Collections.emptyList());
+    }
+
+    private void updateTutorialScrim() {
+        List<View> allowedViews = getActiveTutorialAllowedViews();
+        if (allowedViews.isEmpty()) {
+            binding.tutorialOverlay.tutorialScrim.setHighlightRects(Collections.emptyList());
+            return;
+        }
+        List<android.graphics.RectF> rects = new ArrayList<>();
+        int[] scrimLocation = new int[2];
+        binding.tutorialOverlay.tutorialScrim.getLocationOnScreen(scrimLocation);
+        for (View view : allowedViews) {
+            if (view == null || view.getVisibility() != View.VISIBLE) {
+                continue;
+            }
+            int[] viewLocation = new int[2];
+            view.getLocationOnScreen(viewLocation);
+            float left = viewLocation[0] - scrimLocation[0];
+            float top = viewLocation[1] - scrimLocation[1];
+            float right = left + view.getWidth();
+            float bottom = top + view.getHeight();
+            rects.add(new android.graphics.RectF(left, top, right, bottom));
+        }
+        binding.tutorialOverlay.tutorialScrim.setHighlightRects(rects);
+    }
+
+    private void updateTutorialSwitches() {
+        boolean diceEnabled = !isTutorialCompleted(TutorialType.DICE_SELECTION);
+        binding.settingsPanel.settingsTutorialDiceToggle.setOnCheckedChangeListener(null);
+        binding.settingsPanel.settingsTutorialDiceToggle.setChecked(diceEnabled);
+        binding.settingsPanel.settingsTutorialDiceToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            setTutorialCompleted(TutorialType.DICE_SELECTION, !isChecked);
+            Toast.makeText(this,
+                    isChecked ? "Tutorial de dados reactivado." : "Tutorial de dados desactivado.",
+                    Toast.LENGTH_SHORT).show();
+        });
+
+        boolean deckEnabled = !isTutorialCompleted(TutorialType.DECK_SELECTION);
+        binding.settingsPanel.settingsTutorialDeckToggle.setOnCheckedChangeListener(null);
+        binding.settingsPanel.settingsTutorialDeckToggle.setChecked(deckEnabled);
+        binding.settingsPanel.settingsTutorialDeckToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            setTutorialCompleted(TutorialType.DECK_SELECTION, !isChecked);
+            Toast.makeText(this,
+                    isChecked ? "Tutorial de mazos reactivado." : "Tutorial de mazos desactivado.",
+                    Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void setupAudio() {
