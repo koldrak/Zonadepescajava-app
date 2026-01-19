@@ -72,6 +72,27 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
         }
     }
 
+    public void setSelectionCounts(Map<CardId, Integer> counts) {
+        selectionCounts.clear();
+        if (counts != null) {
+            for (Map.Entry<CardId, Integer> entry : counts.entrySet()) {
+                if (entry.getKey() == null) {
+                    continue;
+                }
+                int maxCopies = inventoryCounts.getOrDefault(entry.getKey(), 0);
+                int desired = entry.getValue() == null ? 0 : entry.getValue();
+                int finalCount = Math.min(Math.max(desired, 0), maxCopies);
+                if (finalCount > 0) {
+                    selectionCounts.put(entry.getKey(), finalCount);
+                }
+            }
+        }
+        notifyDataSetChanged();
+        if (selectionListener != null) {
+            selectionListener.onSelectionChanged();
+        }
+    }
+
     @NonNull
     @Override
     public DeckSelectionViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {

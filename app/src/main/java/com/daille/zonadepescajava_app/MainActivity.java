@@ -21,12 +21,13 @@ import android.widget.Button;
 import android.widget.BaseAdapter;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.ImageButton;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.GridView;
 import android.widget.LinearLayout;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -37,6 +38,7 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.daille.zonadepescajava_app.databinding.ActivityMainBinding;
+import com.daille.zonadepescajava_app.data.AudioSettings;
 import com.daille.zonadepescajava_app.data.ScoreDatabaseHelper;
 import com.daille.zonadepescajava_app.data.ScoreRecord;
 import com.daille.zonadepescajava_app.model.BoardSlot;
@@ -90,6 +92,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private ArrayAdapter<String> scoreRecordsAdapter;
     private CollectionCardAdapter collectionCardAdapter;
     private DeckSelectionAdapter deckSelectionAdapter;
+    private ArrayAdapter<String> deckPresetsAdapter;
     private final List<ImageView> diceTokens = new ArrayList<>();
     private final Card[] lastBoardCards = new Card[9];
     private final List<List<Die>> lastBoardDice = new ArrayList<>();
@@ -114,6 +117,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private int packOpenSoundId;
     private final Set<Integer> loadedSoundIds = new java.util.HashSet<>();
     private final Set<Integer> pendingSoundIds = new java.util.HashSet<>();
+    private float musicVolume = 1f;
+    private float sfxVolume = 1f;
+    private boolean musicEnabled = true;
+    private boolean sfxEnabled = true;
 
     private static final String PACK_RANDOM_ASSET = "sobresorpresa.png";
     private static final String PACK_CRUSTACEO_ASSET = "sobrecrustaceos.png";
@@ -188,6 +195,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setupCollectionsPanel();
         setupSettingsPanel();
         setupAudio();
+        loadAudioSettings();
 
         if (viewModel.isInitialized()) {
             setupBoard();
@@ -280,6 +288,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         deckSelectionAdapter = new DeckSelectionAdapter(this, this::updateDeckSelectionScore);
         binding.deckSelectionPanel.deckSelectionRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.deckSelectionPanel.deckSelectionRecycler.setAdapter(deckSelectionAdapter);
+        deckPresetsAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
+        deckPresetsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        binding.deckSelectionPanel.deckSelectionSavedSpinner.setAdapter(deckPresetsAdapter);
         setButtonClickListener(binding.deckSelectionPanel.deckSelectionBack, this::showDiceSelectionPanel);
         setButtonClickListener(binding.deckSelectionPanel.deckSelectionConfirm, () -> {
             if (deckSelectionAdapter == null) {
@@ -292,6 +303,47 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
             selectedDeck = new ArrayList<>(selected);
             showDiceSelectionPanel();
+        });
+        setButtonClickListener(binding.deckSelectionPanel.deckSelectionSave, () -> {
+            if (deckSelectionAdapter == null) {
+                return;
+            }
+            EditText nameInput = binding.deckSelectionPanel.deckSelectionNameInput;
+            String name = nameInput.getText().toString().trim();
+            if (name.isEmpty()) {
+                Toast.makeText(this, "Ingresa un nombre para el mazo.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Map<CardId, Integer> selection = new EnumMap<>(CardId.class);
+            selection.putAll(deckSelectionAdapter.getSelectionCounts());
+            if (selection.isEmpty()) {
+                Toast.makeText(this, "Selecciona cartas antes de guardar el mazo.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            scoreDatabaseHelper.saveDeckPreset(name, selection);
+            refreshDeckPresetList();
+            int position = deckPresetsAdapter.getPosition(name);
+            if (position >= 0) {
+                binding.deckSelectionPanel.deckSelectionSavedSpinner.setSelection(position);
+            }
+            Toast.makeText(this, "Mazo guardado.", Toast.LENGTH_SHORT).show();
+        });
+        setButtonClickListener(binding.deckSelectionPanel.deckSelectionLoad, () -> {
+            Object selected = binding.deckSelectionPanel.deckSelectionSavedSpinner.getSelectedItem();
+            if (selected == null) {
+                Toast.makeText(this, "No hay mazos guardados.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            String name = selected.toString();
+            Map<CardId, Integer> preset = scoreDatabaseHelper.getDeckPreset(name);
+            if (preset.isEmpty()) {
+                Toast.makeText(this, "No se encontró el mazo seleccionado.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (deckSelectionAdapter != null) {
+                deckSelectionAdapter.setSelectionCounts(preset);
+            }
+            Toast.makeText(this, "Mazo cargado.", Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -431,6 +483,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void showDeckSelectionPanel() {
         refreshDeckSelectionList();
+        refreshDeckPresetList();
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.VISIBLE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
@@ -517,6 +570,16 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             deckSelectionAdapter.setInventoryCounts(ownedCounts);
         }
         updateDeckSelectionScore();
+    }
+
+    private void refreshDeckPresetList() {
+        if (deckPresetsAdapter == null) {
+            return;
+        }
+        List<String> presets = scoreDatabaseHelper.getDeckPresetNames();
+        deckPresetsAdapter.clear();
+        deckPresetsAdapter.addAll(presets);
+        deckPresetsAdapter.notifyDataSetChanged();
     }
 
     private void updateDeckSelectionScore() {
@@ -703,12 +766,54 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             selectedDeck = new ArrayList<>();
             deckSelectionPoints = 0;
             refreshScoreRecords();
+            loadAudioSettings();
+            refreshDeckPresetList();
             showStartMenu();
             Toast.makeText(this, "Datos borrados.", Toast.LENGTH_SHORT).show();
         });
         setButtonClickListener(binding.settingsPanel.settingsAddPoints, () -> {
             scoreDatabaseHelper.addBonusPoints(1000);
             Toast.makeText(this, "Se agregaron 1000 puntos.", Toast.LENGTH_SHORT).show();
+        });
+        binding.settingsPanel.settingsMusicToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            musicEnabled = !isChecked;
+            applyAudioSettings();
+            saveAudioSettings();
+        });
+        binding.settingsPanel.settingsSfxToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            sfxEnabled = !isChecked;
+            saveAudioSettings();
+        });
+        binding.settingsPanel.settingsMusicVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                musicVolume = Math.max(0f, Math.min(1f, progress / 100f));
+                applyAudioSettings();
+                saveAudioSettings();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+            }
+        });
+        binding.settingsPanel.settingsSfxVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                sfxVolume = Math.max(0f, Math.min(1f, progress / 100f));
+                saveAudioSettings();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+            }
         });
     }
 
@@ -736,6 +841,36 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         splashSoundId = loadSound("splash");
         captureSoundId = loadSound("capturar");
         packOpenSoundId = loadSound("sobre");
+    }
+
+    private void loadAudioSettings() {
+        AudioSettings settings = scoreDatabaseHelper.getAudioSettings();
+        musicVolume = settings.getMusicVolume();
+        sfxVolume = settings.getSfxVolume();
+        musicEnabled = settings.isMusicEnabled();
+        sfxEnabled = settings.isSfxEnabled();
+        updateAudioSettingsUi();
+        applyAudioSettings();
+    }
+
+    private void updateAudioSettingsUi() {
+        binding.settingsPanel.settingsMusicVolume.setProgress(Math.round(musicVolume * 100f));
+        binding.settingsPanel.settingsSfxVolume.setProgress(Math.round(sfxVolume * 100f));
+        binding.settingsPanel.settingsMusicToggle.setChecked(!musicEnabled);
+        binding.settingsPanel.settingsSfxToggle.setChecked(!sfxEnabled);
+    }
+
+    private void applyAudioSettings() {
+        if (!musicEnabled) {
+            stopAmbientMusic();
+        } else if (ambientPlayer != null) {
+            ambientPlayer.setVolume(musicVolume, musicVolume);
+        }
+    }
+
+    private void saveAudioSettings() {
+        scoreDatabaseHelper.saveAudioSettings(
+                new AudioSettings(musicVolume, sfxVolume, musicEnabled, sfxEnabled));
     }
 
     private int loadSound(String name) {
@@ -777,17 +912,21 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void playSound(int soundId) {
-        if (soundPool == null || soundId == 0) {
+        if (soundPool == null || soundId == 0 || !sfxEnabled) {
             return;
         }
         if (!loadedSoundIds.contains(soundId)) {
             pendingSoundIds.add(soundId);
             return;
         }
-        soundPool.play(soundId, 1f, 1f, 1, 0, 1f);
+        soundPool.play(soundId, sfxVolume, sfxVolume, 1, 0, 1f);
     }
 
     private void updateAmbientMusic(String trackName) {
+        if (!musicEnabled) {
+            stopAmbientMusic();
+            return;
+        }
         int resId = getRawSoundId(trackName);
         if (resId == 0) {
             stopAmbientMusic();
@@ -804,6 +943,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         ambientPlayer = MediaPlayer.create(this, resId);
         if (ambientPlayer != null) {
             ambientPlayer.setLooping(true);
+            ambientPlayer.setVolume(musicVolume, musicVolume);
             ambientPlayer.start();
         }
     }
@@ -824,7 +964,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void resumeAmbientMusic() {
-        if (ambientPlayer != null && ambientResId != 0 && !ambientPlayer.isPlaying()) {
+        if (musicEnabled && ambientPlayer != null && ambientResId != 0 && !ambientPlayer.isPlaying()) {
             ambientPlayer.start();
         }
     }

@@ -18,7 +18,7 @@ import java.util.Map;
 public class ScoreDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "scores.db";
-    private static final int DATABASE_VERSION = 5;
+    private static final int DATABASE_VERSION = 7;
     private static final String TABLE_SCORES = "scores";
     private static final String COLUMN_ID = "id";
     private static final String COLUMN_SCORE = "score";
@@ -36,6 +36,15 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
     private static final String TABLE_DICE_CAPACITY = "dice_capacity";
     private static final String COLUMN_MAX_DICE = "max_dice";
     private static final int BASE_DICE_CAPACITY = 6;
+    private static final String TABLE_AUDIO_SETTINGS = "audio_settings";
+    private static final String COLUMN_MUSIC_VOLUME = "music_volume";
+    private static final String COLUMN_SFX_VOLUME = "sfx_volume";
+    private static final String COLUMN_MUSIC_ENABLED = "music_enabled";
+    private static final String COLUMN_SFX_ENABLED = "sfx_enabled";
+    private static final String TABLE_DECK_PRESETS = "deck_presets";
+    private static final String COLUMN_DECK_NAME = "deck_name";
+    private static final String COLUMN_DECK_CARDS = "deck_cards";
+    private static final int DEFAULT_VOLUME = 100;
 
     public ScoreDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -69,11 +78,23 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                 COLUMN_ID + " INTEGER PRIMARY KEY CHECK (" + COLUMN_ID + " = 1), " +
                 COLUMN_MAX_DICE + " INTEGER NOT NULL DEFAULT " + BASE_DICE_CAPACITY
                 + ")");
+        db.execSQL("CREATE TABLE " + TABLE_AUDIO_SETTINGS + " (" +
+                COLUMN_ID + " INTEGER PRIMARY KEY CHECK (" + COLUMN_ID + " = 1), " +
+                COLUMN_MUSIC_VOLUME + " INTEGER NOT NULL DEFAULT " + DEFAULT_VOLUME + ", " +
+                COLUMN_SFX_VOLUME + " INTEGER NOT NULL DEFAULT " + DEFAULT_VOLUME + ", " +
+                COLUMN_MUSIC_ENABLED + " INTEGER NOT NULL DEFAULT 1, " +
+                COLUMN_SFX_ENABLED + " INTEGER NOT NULL DEFAULT 1"
+                + ")");
+        db.execSQL("CREATE TABLE " + TABLE_DECK_PRESETS + " (" +
+                COLUMN_DECK_NAME + " TEXT PRIMARY KEY, " +
+                COLUMN_DECK_CARDS + " TEXT NOT NULL"
+                + ")");
         seedCaptureCounts(db);
         seedDiceInventory(db);
         seedCardInventory(db);
         seedWallet(db);
         seedDiceCapacity(db);
+        seedAudioSettings(db);
     }
 
     @Override
@@ -110,6 +131,22 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                     COLUMN_MAX_DICE + " INTEGER NOT NULL DEFAULT " + BASE_DICE_CAPACITY
                     + ")");
             seedDiceCapacity(db);
+        }
+        if (oldVersion < 6) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_AUDIO_SETTINGS + " (" +
+                    COLUMN_ID + " INTEGER PRIMARY KEY CHECK (" + COLUMN_ID + " = 1), " +
+                    COLUMN_MUSIC_VOLUME + " INTEGER NOT NULL DEFAULT " + DEFAULT_VOLUME + ", " +
+                    COLUMN_SFX_VOLUME + " INTEGER NOT NULL DEFAULT " + DEFAULT_VOLUME + ", " +
+                    COLUMN_MUSIC_ENABLED + " INTEGER NOT NULL DEFAULT 1, " +
+                    COLUMN_SFX_ENABLED + " INTEGER NOT NULL DEFAULT 1"
+                    + ")");
+            seedAudioSettings(db);
+        }
+        if (oldVersion < 7) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_DECK_PRESETS + " (" +
+                    COLUMN_DECK_NAME + " TEXT PRIMARY KEY, " +
+                    COLUMN_DECK_CARDS + " TEXT NOT NULL"
+                    + ")");
         }
     }
 
@@ -341,11 +378,14 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         db.delete(TABLE_CARD_INVENTORY, null, null);
         db.delete(TABLE_WALLET, null, null);
         db.delete(TABLE_DICE_CAPACITY, null, null);
+        db.delete(TABLE_AUDIO_SETTINGS, null, null);
+        db.delete(TABLE_DECK_PRESETS, null, null);
         seedCaptureCounts(db);
         seedDiceInventory(db);
         seedCardInventory(db);
         seedWallet(db);
         seedDiceCapacity(db);
+        seedAudioSettings(db);
     }
 
     private void ensureCaptureRows() {
@@ -359,6 +399,8 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         ensureWalletRow(db);
         ensureCardInventoryRows(db);
         ensureDiceCapacityRow(db);
+        ensureAudioSettingsRow(db);
+        ensureDeckPresetTable(db);
     }
 
     private void seedCaptureCounts(SQLiteDatabase db) {
@@ -424,6 +466,24 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         seedDiceCapacity(db);
     }
 
+    private void ensureAudioSettingsRow(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_AUDIO_SETTINGS + " (" +
+                COLUMN_ID + " INTEGER PRIMARY KEY CHECK (" + COLUMN_ID + " = 1), " +
+                COLUMN_MUSIC_VOLUME + " INTEGER NOT NULL DEFAULT " + DEFAULT_VOLUME + ", " +
+                COLUMN_SFX_VOLUME + " INTEGER NOT NULL DEFAULT " + DEFAULT_VOLUME + ", " +
+                COLUMN_MUSIC_ENABLED + " INTEGER NOT NULL DEFAULT 1, " +
+                COLUMN_SFX_ENABLED + " INTEGER NOT NULL DEFAULT 1"
+                + ")");
+        seedAudioSettings(db);
+    }
+
+    private void ensureDeckPresetTable(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_DECK_PRESETS + " (" +
+                COLUMN_DECK_NAME + " TEXT PRIMARY KEY, " +
+                COLUMN_DECK_CARDS + " TEXT NOT NULL"
+                + ")");
+    }
+
     private void seedCardInventory(SQLiteDatabase db) {
         db.beginTransaction();
         try {
@@ -473,5 +533,134 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_ID, 1);
         values.put(COLUMN_MAX_DICE, BASE_DICE_CAPACITY);
         db.insertWithOnConflict(TABLE_DICE_CAPACITY, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+    }
+
+    private void seedAudioSettings(SQLiteDatabase db) {
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_ID, 1);
+        values.put(COLUMN_MUSIC_VOLUME, DEFAULT_VOLUME);
+        values.put(COLUMN_SFX_VOLUME, DEFAULT_VOLUME);
+        values.put(COLUMN_MUSIC_ENABLED, 1);
+        values.put(COLUMN_SFX_ENABLED, 1);
+        db.insertWithOnConflict(TABLE_AUDIO_SETTINGS, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+    }
+
+    public AudioSettings getAudioSettings() {
+        SQLiteDatabase db = getReadableDatabase();
+        int musicVolume = DEFAULT_VOLUME;
+        int sfxVolume = DEFAULT_VOLUME;
+        boolean musicEnabled = true;
+        boolean sfxEnabled = true;
+        try (Cursor cursor = db.query(TABLE_AUDIO_SETTINGS,
+                new String[]{COLUMN_MUSIC_VOLUME, COLUMN_SFX_VOLUME, COLUMN_MUSIC_ENABLED, COLUMN_SFX_ENABLED},
+                COLUMN_ID + " = 1", null, null, null, null)) {
+            if (cursor.moveToFirst()) {
+                musicVolume = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_MUSIC_VOLUME));
+                sfxVolume = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_SFX_VOLUME));
+                musicEnabled = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_MUSIC_ENABLED)) == 1;
+                sfxEnabled = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_SFX_ENABLED)) == 1;
+            }
+        }
+        return new AudioSettings(musicVolume / 100f, sfxVolume / 100f, musicEnabled, sfxEnabled);
+    }
+
+    public void saveAudioSettings(AudioSettings settings) {
+        if (settings == null) {
+            return;
+        }
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_ID, 1);
+        values.put(COLUMN_MUSIC_VOLUME, Math.round(settings.getMusicVolume() * 100f));
+        values.put(COLUMN_SFX_VOLUME, Math.round(settings.getSfxVolume() * 100f));
+        values.put(COLUMN_MUSIC_ENABLED, settings.isMusicEnabled() ? 1 : 0);
+        values.put(COLUMN_SFX_ENABLED, settings.isSfxEnabled() ? 1 : 0);
+        db.insertWithOnConflict(TABLE_AUDIO_SETTINGS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    public void saveDeckPreset(String name, Map<CardId, Integer> selectionCounts) {
+        if (name == null || name.trim().isEmpty() || selectionCounts == null) {
+            return;
+        }
+        String trimmed = name.trim();
+        String serialized = serializeDeckSelection(selectionCounts);
+        if (serialized.isEmpty()) {
+            return;
+        }
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_DECK_NAME, trimmed);
+        values.put(COLUMN_DECK_CARDS, serialized);
+        db.insertWithOnConflict(TABLE_DECK_PRESETS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+    }
+
+    public List<String> getDeckPresetNames() {
+        SQLiteDatabase db = getReadableDatabase();
+        List<String> names = new ArrayList<>();
+        try (Cursor cursor = db.query(TABLE_DECK_PRESETS,
+                new String[]{COLUMN_DECK_NAME},
+                null, null, null, null,
+                COLUMN_DECK_NAME + " COLLATE NOCASE ASC")) {
+            while (cursor.moveToNext()) {
+                names.add(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_DECK_NAME)));
+            }
+        }
+        return names;
+    }
+
+    public Map<CardId, Integer> getDeckPreset(String name) {
+        Map<CardId, Integer> selection = new EnumMap<>(CardId.class);
+        if (name == null || name.trim().isEmpty()) {
+            return selection;
+        }
+        SQLiteDatabase db = getReadableDatabase();
+        try (Cursor cursor = db.query(TABLE_DECK_PRESETS,
+                new String[]{COLUMN_DECK_CARDS},
+                COLUMN_DECK_NAME + " = ?",
+                new String[]{name.trim()}, null, null, null)) {
+            if (cursor.moveToFirst()) {
+                String serialized = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_DECK_CARDS));
+                selection.putAll(deserializeDeckSelection(serialized));
+            }
+        }
+        return selection;
+    }
+
+    private String serializeDeckSelection(Map<CardId, Integer> selectionCounts) {
+        StringBuilder builder = new StringBuilder();
+        for (CardId id : CardId.values()) {
+            int count = selectionCounts.getOrDefault(id, 0);
+            if (count <= 0) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(';');
+            }
+            builder.append(id.name()).append(':').append(count);
+        }
+        return builder.toString();
+    }
+
+    private Map<CardId, Integer> deserializeDeckSelection(String serialized) {
+        Map<CardId, Integer> selection = new EnumMap<>(CardId.class);
+        if (serialized == null || serialized.trim().isEmpty()) {
+            return selection;
+        }
+        String[] entries = serialized.split(";");
+        for (String entry : entries) {
+            String[] parts = entry.split(":");
+            if (parts.length != 2) {
+                continue;
+            }
+            try {
+                CardId id = CardId.valueOf(parts[0]);
+                int count = Integer.parseInt(parts[1]);
+                if (count > 0) {
+                    selection.put(id, count);
+                }
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return selection;
     }
 }
