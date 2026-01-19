@@ -157,12 +157,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static class TutorialStep {
         private final int titleResId;
         private final int messageResId;
-        private final View targetView;
+        private final List<View> allowedViews;
 
-        TutorialStep(int titleResId, int messageResId, View targetView) {
+        TutorialStep(int titleResId, int messageResId, View... allowedViews) {
             this.titleResId = titleResId;
             this.messageResId = messageResId;
-            this.targetView = targetView;
+            this.allowedViews = Arrays.asList(allowedViews);
         }
     }
 
@@ -630,6 +630,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.VISIBLE);
         updateAmbientMusic("ambientalplaya");
+        updateTutorialSwitches();
     }
 
     private void refreshDeckSelectionList() {
@@ -858,14 +859,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             scoreDatabaseHelper.addBonusPoints(1000);
             Toast.makeText(this, "Se agregaron 1000 puntos.", Toast.LENGTH_SHORT).show();
         });
-        setButtonClickListener(binding.settingsPanel.settingsTutorialDice, () -> {
-            setTutorialCompleted(TutorialType.DICE_SELECTION, false);
-            Toast.makeText(this, "Tutorial de dados reactivado.", Toast.LENGTH_SHORT).show();
-        });
-        setButtonClickListener(binding.settingsPanel.settingsTutorialDeck, () -> {
-            setTutorialCompleted(TutorialType.DECK_SELECTION, false);
-            Toast.makeText(this, "Tutorial de mazos reactivado.", Toast.LENGTH_SHORT).show();
-        });
         binding.settingsPanel.settingsMusicToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
             musicEnabled = !isChecked;
             applyAudioSettings();
@@ -934,7 +927,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             if (activeTutorial == null) {
                 return false;
             }
-            View target = getActiveTutorialTarget();
+            View target = getActiveTutorialTouchTarget(event.getRawX(), event.getRawY());
             if (target == null) {
                 return true;
             }
@@ -972,7 +965,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_dice_step1_title,
                     R.string.tutorial_dice_step1_message,
-                    binding.diceSelectionPanel.diceWarehouseGrid));
+                    binding.diceSelectionPanel.diceWarehouseGrid,
+                    binding.diceSelectionPanel.diceSelectionGrid));
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_dice_step2_title,
                     R.string.tutorial_dice_step2_message,
@@ -989,10 +983,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_deck_step2_title,
                     R.string.tutorial_deck_step2_message,
+                    binding.deckSelectionPanel.deckSelectionRecycler,
+                    binding.deckSelectionPanel.deckSelectionNameInput,
                     binding.deckSelectionPanel.deckSelectionSave));
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_deck_step3_title,
                     R.string.tutorial_deck_step3_message,
+                    binding.deckSelectionPanel.deckSelectionSavedSpinner,
                     binding.deckSelectionPanel.deckSelectionDelete));
         }
         updateTutorialStep();
@@ -1055,11 +1052,62 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         return type == TutorialType.DICE_SELECTION ? TUTORIAL_DICE_DONE_KEY : TUTORIAL_DECK_DONE_KEY;
     }
 
-    private View getActiveTutorialTarget() {
-        if (activeTutorial == null || tutorialStepIndex < 0 || tutorialStepIndex >= tutorialSteps.size()) {
+    private View getActiveTutorialTouchTarget(float rawX, float rawY) {
+        List<View> allowedViews = getActiveTutorialAllowedViews();
+        if (allowedViews.isEmpty()) {
             return null;
         }
-        return tutorialSteps.get(tutorialStepIndex).targetView;
+        for (View view : allowedViews) {
+            if (view == null || view.getVisibility() != View.VISIBLE) {
+                continue;
+            }
+            int[] location = new int[2];
+            view.getLocationOnScreen(location);
+            boolean inside =
+                    rawX >= location[0]
+                            && rawX <= location[0] + view.getWidth()
+                            && rawY >= location[1]
+                            && rawY <= location[1] + view.getHeight();
+            if (inside) {
+                return view;
+            }
+        }
+        return null;
+    }
+
+    private List<View> getActiveTutorialAllowedViews() {
+        if (activeTutorial == null || tutorialStepIndex < 0 || tutorialStepIndex >= tutorialSteps.size()) {
+            return Collections.emptyList();
+        }
+        List<View> allowed = new ArrayList<>();
+        TutorialStep step = tutorialSteps.get(tutorialStepIndex);
+        if (step.allowedViews != null) {
+            allowed.addAll(step.allowedViews);
+        }
+        allowed.add(binding.tutorialOverlay.tutorialCard);
+        return allowed;
+    }
+
+    private void updateTutorialSwitches() {
+        boolean diceEnabled = !isTutorialCompleted(TutorialType.DICE_SELECTION);
+        binding.settingsPanel.settingsTutorialDiceToggle.setOnCheckedChangeListener(null);
+        binding.settingsPanel.settingsTutorialDiceToggle.setChecked(diceEnabled);
+        binding.settingsPanel.settingsTutorialDiceToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            setTutorialCompleted(TutorialType.DICE_SELECTION, !isChecked);
+            Toast.makeText(this,
+                    isChecked ? "Tutorial de dados reactivado." : "Tutorial de dados desactivado.",
+                    Toast.LENGTH_SHORT).show();
+        });
+
+        boolean deckEnabled = !isTutorialCompleted(TutorialType.DECK_SELECTION);
+        binding.settingsPanel.settingsTutorialDeckToggle.setOnCheckedChangeListener(null);
+        binding.settingsPanel.settingsTutorialDeckToggle.setChecked(deckEnabled);
+        binding.settingsPanel.settingsTutorialDeckToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            setTutorialCompleted(TutorialType.DECK_SELECTION, !isChecked);
+            Toast.makeText(this,
+                    isChecked ? "Tutorial de mazos reactivado." : "Tutorial de mazos desactivado.",
+                    Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void setupAudio() {
