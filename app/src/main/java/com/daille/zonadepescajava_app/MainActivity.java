@@ -697,7 +697,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setAudioAttributes(attributes)
                 .build();
         buttonSoundId = loadSound("boton");
-        rollSoundId = loadSound("caña");
+        rollSoundId = loadSound("cana");
         splashSoundId = loadSound("splash");
         captureSoundId = loadSound("capturar");
         packOpenSoundId = loadSound("sobre");
@@ -716,6 +716,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void playButtonSound() {
+        if (binding != null && binding.gamePanel != null
+                && binding.gamePanel.getRoot().getVisibility() == View.VISIBLE) {
+            return;
+        }
         playSound(buttonSoundId);
     }
 
