@@ -75,6 +75,7 @@
     <string name="card_pack_big_fish_description">Imagen de paquete peces grandes</string>
     <string name="card_pack_object_description">Imagen de paquete objetos</string>
     <string name="card_pack_reward_detail">Carta obtenida: %1$s</string>
+    <string name="record_break_reward_message">felicidades por romper tu record, toma una recompenza</string>
     <string name="buy">Comprar</string>
     <string name="back">Volver</string>
     <string name="dice_selection_instruction">Toca los dados que usarás (máx. 6) para moverlos a la zona de selección</string>

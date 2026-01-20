@@ -203,6 +203,20 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         return records;
     }
 
+    public int getHighestScore() {
+        SQLiteDatabase db = getReadableDatabase();
+        int bestScore = 0;
+        try (Cursor cursor = db.rawQuery(
+                "SELECT MAX(" + COLUMN_SCORE + ") FROM " + TABLE_SCORES +
+                        " WHERE " + COLUMN_IS_SEED + " = 0",
+                null)) {
+            if (cursor.moveToFirst() && !cursor.isNull(0)) {
+                bestScore = cursor.getInt(0);
+            }
+        }
+        return bestScore;
+    }
+
     public int incrementCaptureCount(CardId cardId) {
         if (cardId == null) return 0;
         SQLiteDatabase db = getWritableDatabase();
