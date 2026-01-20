@@ -787,6 +787,19 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             Toast.makeText(this, "Selecciona cartas para vender.", Toast.LENGTH_SHORT).show();
             return;
         }
+        Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
+        int totalOwned = 0;
+        for (Integer count : ownedCounts.values()) {
+            totalOwned += count == null ? 0 : count;
+        }
+        int totalSelected = 0;
+        for (Integer count : selections.values()) {
+            totalSelected += count == null ? 0 : count;
+        }
+        if (totalOwned - totalSelected < MIN_DECK_CARDS) {
+            Toast.makeText(this, getString(R.string.card_sell_minimum_warning), Toast.LENGTH_SHORT).show();
+            return;
+        }
         Map<CardId, Integer> pointsMap = new EnumMap<>(CardId.class);
         for (Card card : GameUtils.createAllCards()) {
             pointsMap.put(card.getId(), card.getPoints());

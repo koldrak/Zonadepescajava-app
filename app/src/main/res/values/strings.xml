@@ -45,6 +45,7 @@
     <string name="card_sell_points_placeholder">Puntos por venta: 0</string>
     <string name="card_sell_points_format">Puntos por venta: %1$d</string>
     <string name="card_sell_confirm">Vender selección</string>
+    <string name="card_sell_minimum_warning">Debes conservar al menos 30 cartas en tu colección.</string>
     <string name="dice_capacity_title">Capacidad de dados</string>
     <string name="dice_capacity_current_placeholder">Máximo actual: 6 dados</string>
     <string name="dice_capacity_next_placeholder">Siguiente mejora: 7 dados • 300 puntos</string>
