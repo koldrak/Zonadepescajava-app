@@ -35,6 +35,14 @@
         android:text="@string/dice_shop_points_placeholder"
             style="@style/App.Text.Title.Ocean.Sub" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/diceShopSellCards"
+            style="@style/App.Button.Glass"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/dice_shop_sell_cards" />
+
     <ScrollView
         android:id="@+id/diceShopScroll"
         android:layout_width="match_parent"
