@@ -18,11 +18,12 @@ import java.util.Map;
 public class ScoreDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "scores.db";
-    private static final int DATABASE_VERSION = 8;
+    private static final int DATABASE_VERSION = 9;
     private static final String TABLE_SCORES = "scores";
     private static final String COLUMN_ID = "id";
     private static final String COLUMN_SCORE = "score";
     private static final String COLUMN_CREATED_AT = "created_at";
+    private static final String COLUMN_IS_SEED = "is_seed";
     private static final String TABLE_CARD_CAPTURES = "card_captures";
     private static final String COLUMN_CARD_ID = "card_id";
     private static final String COLUMN_CAPTURE_COUNT = "capture_count";
@@ -60,7 +61,8 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         db.execSQL("CREATE TABLE " + TABLE_SCORES + " (" +
                 COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 COLUMN_SCORE + " INTEGER NOT NULL, " +
-                COLUMN_CREATED_AT + " INTEGER NOT NULL"
+                COLUMN_CREATED_AT + " INTEGER NOT NULL, " +
+                COLUMN_IS_SEED + " INTEGER NOT NULL DEFAULT 0"
                 + ")");
         db.execSQL("CREATE TABLE " + TABLE_CARD_CAPTURES + " (" +
                 COLUMN_CARD_ID + " TEXT PRIMARY KEY, " +
@@ -161,6 +163,11 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE " + TABLE_AUDIO_SETTINGS + " ADD COLUMN " +
                     COLUMN_BUTTON_ENABLED + " INTEGER NOT NULL DEFAULT 1");
         }
+        if (oldVersion < 9) {
+            db.execSQL("ALTER TABLE " + TABLE_SCORES + " ADD COLUMN " +
+                    COLUMN_IS_SEED + " INTEGER NOT NULL DEFAULT 0");
+            markSeedScore(db);
+        }
     }
 
     public void saveScore(int score) {
@@ -168,6 +175,7 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         values.put(COLUMN_SCORE, score);
         values.put(COLUMN_CREATED_AT, System.currentTimeMillis());
+        values.put(COLUMN_IS_SEED, 0);
         db.insert(TABLE_SCORES, null, values);
     }
 
@@ -178,7 +186,7 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         try (Cursor cursor = db.query(
                 TABLE_SCORES,
                 new String[]{COLUMN_SCORE, COLUMN_CREATED_AT},
-                null,
+                COLUMN_IS_SEED + " = 0",
                 null,
                 null,
                 null,
@@ -566,7 +574,15 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         values.put(COLUMN_SCORE, STARTING_POINTS);
         values.put(COLUMN_CREATED_AT, System.currentTimeMillis());
+        values.put(COLUMN_IS_SEED, 1);
         db.insert(TABLE_SCORES, null, values);
+    }
+
+    private void markSeedScore(SQLiteDatabase db) {
+        db.execSQL("UPDATE " + TABLE_SCORES + " SET " + COLUMN_IS_SEED + " = 1 " +
+                "WHERE " + COLUMN_SCORE + " = ? AND " + COLUMN_CREATED_AT + " = (" +
+                "SELECT MIN(" + COLUMN_CREATED_AT + ") FROM " + TABLE_SCORES + ")",
+                new Object[]{STARTING_POINTS});
     }
 
     private void seedWallet(SQLiteDatabase db) {
