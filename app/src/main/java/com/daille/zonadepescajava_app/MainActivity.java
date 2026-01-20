@@ -565,12 +565,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
 
-    private void persistFinalScore(int finalScore) {
+    private boolean persistFinalScore(int finalScore) {
         if (!viewModel.isFinalScoreRecorded()) {
+            int previousBest = scoreDatabaseHelper.getHighestScore();
             scoreDatabaseHelper.saveScore(finalScore);
             viewModel.markFinalScoreRecorded();
             refreshScoreRecords();
+            return finalScore > previousBest;
         }
+        return false;
     }
 
     private void showStartMenu() {
@@ -922,12 +925,31 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             Toast.makeText(this, "No tienes suficientes puntos para comprar este paquete.", Toast.LENGTH_SHORT).show();
             return;
         }
+        List<Card> awarded = drawPackRewards(filterType);
+        if (awarded.isEmpty()) {
+            Toast.makeText(this, "No hay cartas disponibles en este paquete.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        scoreDatabaseHelper.addSpentPoints(cost);
+        refreshDiceShopUi();
+        showCardPackRewards(awarded, packAsset, this::showDiceShopPanel);
+    }
+
+    private void showCardPackRewards(List<Card> cards, String packAsset, Runnable onClose) {
+        if (cards == null || cards.isEmpty()) {
+            return;
+        }
+        playPackOpenSound();
+        Bitmap packImage = loadPackAsset(packAsset);
+        CardPackOpenDialog.show(this, packImage, cards, cardImageResolver, onClose);
+    }
+
+    private List<Card> drawPackRewards(CardType filterType) {
         List<Card> pool = filterType == null
                 ? GameUtils.createAllCards()
                 : GameUtils.getCardsByType(filterType);
         if (pool.isEmpty()) {
-            Toast.makeText(this, "No hay cartas disponibles en este paquete.", Toast.LENGTH_SHORT).show();
-            return;
+            return new ArrayList<>();
         }
         List<Card> awarded = new ArrayList<>();
         java.util.Random rng = new java.util.Random();
@@ -938,22 +960,42 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 scoreDatabaseHelper.addCardCopies(card.getId(), 1);
             }
         }
-        if (awarded.isEmpty()) {
-            Toast.makeText(this, "No hay cartas disponibles en este paquete.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        scoreDatabaseHelper.addSpentPoints(cost);
-        refreshDiceShopUi();
-        showCardPackRewards(awarded, packAsset);
+        return awarded;
     }
 
-    private void showCardPackRewards(List<Card> cards, String packAsset) {
-        if (cards == null || cards.isEmpty()) {
+    private void awardRecordBreakPack() {
+        Toast.makeText(this, getString(R.string.record_break_reward_message), Toast.LENGTH_LONG).show();
+        int packIndex = new java.util.Random().nextInt(5);
+        CardType filterType;
+        String packAsset;
+        switch (packIndex) {
+            case 0:
+                filterType = null;
+                packAsset = PACK_RANDOM_ASSET;
+                break;
+            case 1:
+                filterType = CardType.CRUSTACEO;
+                packAsset = PACK_CRUSTACEO_ASSET;
+                break;
+            case 2:
+                filterType = CardType.PEZ;
+                packAsset = PACK_SMALL_FISH_ASSET;
+                break;
+            case 3:
+                filterType = CardType.PEZ_GRANDE;
+                packAsset = PACK_BIG_FISH_ASSET;
+                break;
+            default:
+                filterType = CardType.OBJETO;
+                packAsset = PACK_OBJECT_ASSET;
+                break;
+        }
+        List<Card> awarded = drawPackRewards(filterType);
+        if (awarded.isEmpty()) {
+            showStartMenu();
             return;
         }
-        playPackOpenSound();
-        Bitmap packImage = loadPackAsset(packAsset);
-        CardPackOpenDialog.show(this, packImage, cards, cardImageResolver, this::showDiceShopPanel);
+        showCardPackRewards(awarded, packAsset, this::showStartMenu);
     }
 
     private Bitmap loadPackAsset(String assetName) {
@@ -2301,12 +2343,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void showBonusScoreDialog(int baseTotal, int finalScore) {
         int bonus = finalScore - baseTotal;
-        persistFinalScore(finalScore);
+        boolean brokeRecord = persistFinalScore(finalScore);
         String overlay = bonus != 0
                 ? "Bonos: " + (bonus > 0 ? "+" : "") + bonus + "\nTotal: " + finalScore
                 : "Total final: " + finalScore;
         Bitmap image = cardImageResolver.getCardBack();
-        CardFullscreenDialog.show(this, image, overlay, this::showStartMenu);
+        CardFullscreenDialog.show(this, image, overlay, () -> {
+            if (brokeRecord) {
+                awardRecordBreakPack();
+            } else {
+                showStartMenu();
+            }
+        });
     }
 
     private void handleReserveDieTap(DieType type) {
