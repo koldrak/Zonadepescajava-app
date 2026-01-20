@@ -1832,15 +1832,10 @@ public class GameState {
         slot.setStatus(new SlotStatus());
         recomputeBottleAdjustments();
 
-        int placedValue = pendingLossTriggerValue;
         pendingDieLossSlot = null;
         pendingLossTriggerValue = 0;
 
         String result = "La pesca falló y perdiste " + lost.getLabel();
-        String corrientes = buildCurrentsLog(placedValue);
-        if (!corrientes.isEmpty()) {
-            result += " " + corrientes;
-        }
         String msg = checkDefeatOrContinue(result);
 
 // Si se abrió otra resolución pendiente, no seguimos.
