@@ -744,7 +744,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void refreshCardSellPanel() {
         Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
-        List<Card> cards = new ArrayList<>(GameUtils.createAllCards());
+        List<Card> cards = new ArrayList<>();
+        for (Card card : GameUtils.createAllCards()) {
+            if (ownedCounts.getOrDefault(card.getId(), 0) > 0) {
+                cards.add(card);
+            }
+        }
         cards.sort((first, second) -> {
             int byPoints = Integer.compare(second.getPoints(), first.getPoints());
             if (byPoints != 0) {
