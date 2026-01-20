@@ -8,7 +8,7 @@
     <string name="collection_capture_progress">%1$d de %2$d capturas</string>
     <string name="collection_locked">Bloqueado</string>
     <string name="collection_copy_badge">x%1$d</string>
-    <string name="collection_copy_progress">%1$d/%2$d para nueva copia</string>
+    <string name="card_sell_price_format">Venta: %1$d</string>
     <string name="deck_selection_title">Selección de mazo</string>
     <string name="deck_selection_button">Armado de mazo</string>
     <string name="deck_selection_score_placeholder">Puntaje seleccionado: 0</string>

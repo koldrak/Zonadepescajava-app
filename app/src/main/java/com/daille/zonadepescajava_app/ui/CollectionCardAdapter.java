@@ -23,8 +23,6 @@ import java.util.List;
 import java.util.Map;
 
 public class CollectionCardAdapter extends RecyclerView.Adapter<CollectionCardAdapter.CollectionViewHolder> {
-    private static final int UNLOCK_TARGET = 3;
-
     public static class CollectionEntry {
         private final Card card;
         private final int captureCount;
@@ -85,15 +83,8 @@ public class CollectionCardAdapter extends RecyclerView.Adapter<CollectionCardAd
         holder.cardImage.setContentDescription(card != null ? card.getName()
                 : holder.cardImage.getContext().getString(R.string.card_image_content_description));
 
-        int captureCount = entry.getCaptureCount();
         CardId cardId = card != null ? card.getId() : null;
         int ownedCount = getOwnedCount(cardId);
-        int progress = captureCount % UNLOCK_TARGET;
-
-        String label = holder.captureCount.getContext()
-                .getString(R.string.collection_copy_progress, progress, UNLOCK_TARGET);
-        holder.captureCount.setText(label);
-        holder.captureCount.setVisibility(View.VISIBLE);
 
         if (ownedCount > 0) {
             holder.copyCount.setText(holder.copyCount.getContext()
@@ -139,13 +130,11 @@ public class CollectionCardAdapter extends RecyclerView.Adapter<CollectionCardAd
 
     static class CollectionViewHolder extends RecyclerView.ViewHolder {
         private final ImageView cardImage;
-        private final TextView captureCount;
         private final TextView copyCount;
 
         CollectionViewHolder(@NonNull View itemView) {
             super(itemView);
             cardImage = itemView.findViewById(R.id.collectionCardImage);
-            captureCount = itemView.findViewById(R.id.collectionCaptureCount);
             copyCount = itemView.findViewById(R.id.collectionCardCopies);
         }
     }
