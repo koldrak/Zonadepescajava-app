@@ -125,4 +125,7 @@
     <string name="tutorial_release_step1_message">Puedes liberar una carta a la zona de pesca para reutilizar sus habilidades. Haz click sobre la carta que quieres liberar.</string>
     <string name="tutorial_release_step2_title">Elige dónde liberar</string>
     <string name="tutorial_release_step2_message">Puedes seleccionar en qué parte de la zona de pesca liberar la carta.</string>
+
+    <string name="ability_activation_title">Habilidad activada</string>
+    <string name="ability_activation_accept">Aceptar</string>
 </resources>
