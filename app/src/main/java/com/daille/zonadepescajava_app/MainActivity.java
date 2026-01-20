@@ -3944,6 +3944,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void triggerPendingPrompts() {
+        if (gameState.isAwaitingAbilityConfirmation()) { promptAbilityConfirmation(); return; }
         if (gameState.isAwaitingValueAdjustment()) { promptValueAdjustmentChoice(); return; }
         if (gameState.isAwaitingBlueCrabDecision()) { promptBlueCrabDecision(); return; }
         if (gameState.isAwaitingBlowfishDecision()) { promptBlowfishDecision(); return; }
@@ -3972,6 +3973,35 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (gameState.isAwaitingCancelConfirmation()) { promptCancelAbility(); return;
         }
 
+    }
+
+    private void promptAbilityConfirmation() {
+        GameState.AbilityConfirmation confirmation = gameState.getPendingAbilityConfirmation();
+        if (confirmation == null || confirmation.getCard() == null) return;
+
+        View view = getLayoutInflater().inflate(R.layout.dialog_ability_confirmation, null);
+        ImageView cardImage = view.findViewById(R.id.abilityConfirmationImage);
+        TextView cardName = view.findViewById(R.id.abilityConfirmationName);
+        TextView detail = view.findViewById(R.id.abilityConfirmationDetail);
+
+        Bitmap image = cardImageResolver.getImageFor(confirmation.getCard(), true);
+        if (image != null) {
+            cardImage.setImageBitmap(image);
+        }
+        cardName.setText(confirmation.getCard().getName());
+        detail.setText(confirmation.getDetail());
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.ability_activation_title))
+                .setView(view)
+                .setPositiveButton(getString(R.string.ability_activation_accept), (dialogInterface, which) -> {
+                    String msg = gameState.confirmAbilityActivation();
+                    handleGameResult(msg);
+                })
+                .setCancelable(false)
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private void animateRerolledDiceSlots(List<Integer> slots) {
