@@ -394,7 +394,7 @@ public final class GameUtils {
         if (selection != null) {
             deck.addAll(selection);
         }
-        List<Card> extra = drawExtraOwnedCards(rng, selection, ownedCounts, 5);
+        List<Card> extra = drawExtraOwnedCards(rng, selection, ownedCounts, 10);
         deck.addAll(extra);
         Collections.shuffle(deck, rng);
         return deck;
@@ -472,29 +472,18 @@ public final class GameUtils {
 
     private static List<Card> drawExtraOwnedCards(Random rng, List<Card> selection,
                                                   Map<CardId, Integer> ownedCounts, int count) {
-        if (ownedCounts == null || ownedCounts.isEmpty() || count <= 0) {
+        if (count <= 0) {
             return new ArrayList<>();
         }
-        Map<CardId, Integer> remaining = new EnumMap<>(CardId.class);
-        for (CardId id : CardId.values()) {
-            remaining.put(id, Math.max(0, ownedCounts.getOrDefault(id, 0)));
-        }
-        if (selection != null) {
-            for (Card card : selection) {
-                CardId id = card.getId();
-                int current = remaining.getOrDefault(id, 0);
-                if (current > 0) {
-                    remaining.put(id, current - 1);
-                }
-            }
-        }
-        List<Card> pool = buildOwnedPool(createAllCards(), remaining);
-        if (pool.isEmpty()) {
+        List<Card> allCards = createAllCards();
+        if (allCards.isEmpty()) {
             return new ArrayList<>();
         }
-        Collections.shuffle(pool, rng);
-        int take = Math.min(count, pool.size());
-        return new ArrayList<>(pool.subList(0, take));
+        List<Card> extra = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            extra.add(allCards.get(rng.nextInt(allCards.size())));
+        }
+        return extra;
     }
 
     private static List<Card> buildOwnedPool(List<Card> availableCards, Map<CardId, Integer> ownedCounts) {
