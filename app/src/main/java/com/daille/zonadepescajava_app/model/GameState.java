@@ -3266,11 +3266,17 @@ public class GameState {
     }
 
     private void clearPercebesState() {
+        for (Die die : pendingPercebesDice) {
+            reserve.add(die.getType());
+        }
         pendingPercebesDice.clear();
         pendingPercebesTargets.clear();
     }
 
     private void clearBallenaState() {
+        for (Die die : pendingBallenaDice) {
+            reserve.add(die.getType());
+        }
         pendingBallenaDice.clear();
         pendingBallenaTotal = 0;
     }
