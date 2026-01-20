@@ -383,6 +383,32 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                 new Object[]{amount, cardId.name()});
     }
 
+    public void removeCardCopies(CardId cardId, int amount) {
+        if (cardId == null || amount <= 0) return;
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_CARD_ID, cardId.name());
+        values.put(COLUMN_OWNED_COUNT, 0);
+        db.insertWithOnConflict(TABLE_CARD_INVENTORY, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+        int current = 0;
+        try (Cursor cursor = db.query(
+                TABLE_CARD_INVENTORY,
+                new String[]{COLUMN_OWNED_COUNT},
+                COLUMN_CARD_ID + " = ?",
+                new String[]{cardId.name()},
+                null,
+                null,
+                null)) {
+            if (cursor.moveToFirst()) {
+                current = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_OWNED_COUNT));
+            }
+        }
+        int next = Math.max(0, current - amount);
+        ContentValues update = new ContentValues();
+        update.put(COLUMN_OWNED_COUNT, next);
+        db.update(TABLE_CARD_INVENTORY, update, COLUMN_CARD_ID + " = ?", new String[]{cardId.name()});
+    }
+
     public void resetAllData() {
         SQLiteDatabase db = getWritableDatabase();
         db.delete(TABLE_SCORES, null, null);
@@ -512,7 +538,7 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                 db.setTransactionSuccessful();
                 return;
             }
-            for (Card card : GameUtils.getRandomStarterCards(new java.util.Random(), 30)) {
+            for (Card card : GameUtils.getRandomStarterCards(new java.util.Random(), 40)) {
                 ContentValues values = new ContentValues();
                 values.put(COLUMN_CARD_ID, card.getId().name());
                 values.put(COLUMN_OWNED_COUNT, 0);

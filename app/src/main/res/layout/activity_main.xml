@@ -32,6 +32,11 @@
             android:visibility="gone" />
 
         <include
+            android:id="@+id/cardSellPanel"
+            layout="@layout/layout_card_sell"
+            android:visibility="gone" />
+
+        <include
             android:id="@+id/gamePanel"
             layout="@layout/layout_game_panel"
             android:visibility="gone" />
