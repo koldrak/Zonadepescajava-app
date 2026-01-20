@@ -33,11 +33,20 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
     private final Map<CardId, Integer> selectionCounts = new EnumMap<>(CardId.class);
     private final Map<CardId, Integer> inventoryCounts = new EnumMap<>(CardId.class);
     private final OnSelectionChangedListener selectionListener;
+    private final boolean showSellPrice;
+    private final int sellPriceMultiplier;
 
     public DeckSelectionAdapter(Context context, OnSelectionChangedListener selectionListener) {
+        this(context, selectionListener, false, 0);
+    }
+
+    public DeckSelectionAdapter(Context context, OnSelectionChangedListener selectionListener,
+                                boolean showSellPrice, int sellPriceMultiplier) {
         this.inflater = LayoutInflater.from(context);
         this.imageResolver = new CardImageResolver(context);
         this.selectionListener = selectionListener;
+        this.showSellPrice = showSellPrice;
+        this.sellPriceMultiplier = sellPriceMultiplier;
     }
 
     public void submitList(List<Card> items) {
@@ -125,6 +134,15 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
             holder.selectionBadge.setVisibility(View.GONE);
         }
 
+        if (showSellPrice) {
+            int sellPrice = card.getPoints() * sellPriceMultiplier;
+            holder.sellPrice.setText(holder.sellPrice.getContext()
+                    .getString(R.string.card_sell_price_format, sellPrice));
+            holder.sellPrice.setVisibility(View.VISIBLE);
+        } else {
+            holder.sellPrice.setVisibility(View.GONE);
+        }
+
         holder.itemView.setOnClickListener(v -> {
             int current = selectionCounts.getOrDefault(card.getId(), 0);
             int maxCopies = inventoryCounts.getOrDefault(card.getId(), 0);
@@ -175,12 +193,14 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
         private final ImageView cardImage;
         private final TextView ownedBadge;
         private final TextView selectionBadge;
+        private final TextView sellPrice;
 
         DeckSelectionViewHolder(@NonNull View itemView) {
             super(itemView);
             cardImage = itemView.findViewById(R.id.deckSelectionCardImage);
             ownedBadge = itemView.findViewById(R.id.deckSelectionOwnedBadge);
             selectionBadge = itemView.findViewById(R.id.deckSelectionBadge);
+            sellPrice = itemView.findViewById(R.id.deckSelectionSellPrice);
         }
     }
 }

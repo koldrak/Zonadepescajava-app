@@ -153,6 +153,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final int MIN_DICE_CAPACITY = 6;
     private static final int MAX_DICE_CAPACITY = 10;
     private static final int MIN_DECK_CARDS = 30;
+    private static final int CARD_SELL_MULTIPLIER = 6;
     private static final int MAX_DECK_CARDS = 40;
 
     private enum TutorialType {
@@ -445,7 +446,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void setupCardSellPanel() {
-        cardSellAdapter = new DeckSelectionAdapter(this, this::updateCardSellTotals);
+        cardSellAdapter = new DeckSelectionAdapter(this, this::updateCardSellTotals, true, CARD_SELL_MULTIPLIER);
         binding.cardSellPanel.cardSellRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.cardSellPanel.cardSellRecycler.setAdapter(cardSellAdapter);
         setButtonClickListener(binding.cardSellPanel.cardSellBack, this::showDiceShopPanel);
@@ -770,7 +771,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (cardSellAdapter != null) {
             List<Card> selected = cardSellAdapter.getSelectedDeck();
             for (Card card : selected) {
-                totalPoints += card.getPoints() * 10;
+                totalPoints += card.getPoints() * CARD_SELL_MULTIPLIER;
             }
         }
         cardSellPoints = totalPoints;
@@ -812,7 +813,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 continue;
             }
             int cardPoints = pointsMap.getOrDefault(id, 0);
-            totalPoints += cardPoints * 10 * count;
+            totalPoints += cardPoints * CARD_SELL_MULTIPLIER * count;
             scoreDatabaseHelper.removeCardCopies(id, count);
         }
         if (totalPoints > 0) {
