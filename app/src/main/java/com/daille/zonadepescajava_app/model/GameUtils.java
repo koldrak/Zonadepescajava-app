@@ -17,25 +17,37 @@ public final class GameUtils {
 
         // ==== Crustáceos ====
         cards.add(new Card(CardId.CANGREJO_ROJO, "Cangrejo Rojo", CardType.CRUSTACEO, 2,
-                condSumRange(6, 8), "Mueve 1 dado entre peces adyacentes.", "", ""));
+                condSumRange(6, 8),
+                "Mueve 1 dado desde una carta adyacente hacia otra carta adyacente (máx. 2 dados por carta).",
+                "", ""));
 
         cards.add(new Card(CardId.CANGREJO_BOXEADOR, "Cangrejo Boxeador", CardType.CRUSTACEO, 5,
                 condSumExact(5), "Mueve 1 dado entre cartas adyacentes (hasta 2 veces).", "", ""));
 
         cards.add(new Card(CardId.JAIBA_AZUL, "Jaiba Azul", CardType.CRUSTACEO, 2,
-                (slotIndex, g) -> bothDiceEven(slotIndex, g), "Ajusta el último dado ±1.", "", ""));
+                (slotIndex, g) -> bothDiceEven(slotIndex, g),
+                "Puedes ajustar en ±1 uno de los dados en la zona de pesca (mín. 1, máx. su cara).",
+                "", ""));
 
         cards.add(new Card(CardId.LANGOSTINO_MANTIS, "Langostino Mantis", CardType.CRUSTACEO, 3,
-                GameUtils::oneDieIsDouble, "Relanza un dado perdido y reemplaza uno en la zona de pesca.", "", ""));
+                GameUtils::oneDieIsDouble,
+                "Selecciona y relanza un dado perdido para reemplazar un dado de la zona de pesca.",
+                "", ""));
 
         cards.add(new Card(CardId.CAMARON_FANTASMA, "Camarón Fantasma", CardType.CRUSTACEO, 5,
-                (slotIndex, g) -> atLeastOneIs(slotIndex, g, 1, 2), "Mira 2 cartas boca abajo adyacentes.", "", ""));
+                (slotIndex, g) -> atLeastOneIs(slotIndex, g, 1, 2),
+                "Mira 2 cartas boca abajo adyacentes y decide si invertir su posición.",
+                "", ""));
 
         cards.add(new Card(CardId.CAMARON_PISTOLA, "Camarón Pistola", CardType.CRUSTACEO, 7,
-                condSumRange(7, 9), "El dado colocado puede moverse aleatoriamente.", "", ""));
+                condSumRange(7, 9),
+                "Al colocar un dado aquí, tiene 50% de probabilidad de reposicionarse al azar.",
+                "", ""));
 
         cards.add(new Card(CardId.LANGOSTA_ESPINOSA, "Langosta Espinosa", CardType.CRUSTACEO, 4,
-                condSumExact(9), "", "", ""));
+                condSumExact(9),
+                "Si uno de los dados usados fue D8, recupera 1 dado perdido.",
+                "", ""));
 
         cards.add(new Card(CardId.BOGAVANTE, "Bogavante", CardType.CRUSTACEO, 3,
                 condSumExact(10), "Recupera 1 dado perdido.", "", ""));
@@ -55,34 +67,40 @@ public final class GameUtils {
                             values.length == 2 &&
                             values[0] % 2 != 0 &&
                             values[1] % 2 != 0;
-                }, "", "", ""));
+                }, "Si hay un objeto adyacente boca arriba, puedes descartarlo y reemplazarlo.", "", ""));
 
         cards.add(new Card(CardId.CANGREJO_DECORADOR, "Cangrejo Decorador", CardType.CRUSTACEO, 7,
                 (slotIndex, g) -> condSumRange(5, 9).isSatisfied(slotIndex, g) && bothDiceEven(slotIndex, g),
                 "Busca un objeto en el mazo y reemplaza una carta boca abajo sin dados.", "", ""));
 
         cards.add(new Card(CardId.PERCEBES, "Percebes", CardType.CRUSTACEO, 8,
-                GameUtils::bothDiceSameValue, "", "", ""));
+                GameUtils::bothDiceSameValue,
+                "Los dados de esta carta deben moverse a cartas adyacentes conservando su valor.",
+                "", ""));
 
         cards.add(new Card(CardId.LOCO, "Loco", CardType.CRUSTACEO, 7,
                 GameUtils::bothDiceSameValue,
                 "Mueve los dados de esta carta a cartas adyacentes ajustando ±1.", "", ""));
 
         cards.add(new Card(CardId.CENTOLLA, "Centolla", CardType.CRUSTACEO, 7,
-                condSumGreaterThan(10), "", "", ""));
+                condSumGreaterThan(10),
+                "El próximo dado lanzado debe ir obligatoriamente a esta carta.",
+                "", ""));
 
         cards.add(new Card(CardId.JAIBA_GIGANTE_DE_COCO, "Jaiba Gigante de Coco", CardType.CRUSTACEO, 9,
                 (slotIndex, g) -> {
                     int[] values = adjustedDiceValues(slotIndex, g);
                     if (values.length != 2) return false;
                     return values[0] >= 8 && values[1] >= 8;
-                }, "Si el dado es < 7 se pierde automáticamente.", "", ""));
+                }, "Si el dado colocado es < 7 se pierde automáticamente.", "", ""));
 
         cards.add(new Card(CardId.NAUTILUS, "Nautilus", CardType.CRUSTACEO, 2,
-                condSumAtLeast(8), "", "", ""));
+                condSumAtLeast(8),
+                "Puede cambiar el valor de 2 dados sumando o restando 2 puntos.",
+                "", ""));
 
         cards.add(new Card(CardId.CANGREJO_HERRADURA, "Cangrejo herradura", CardType.CRUSTACEO, 3,
-                condSumAtLeast(14), "Puedes cambiar el valor de 1 dado en la zona de pesca.", "", ""));
+                condSumAtLeast(14), "Puedes cambiar el valor de 1 dado al número que elijas.", "", ""));
 
         cards.add(new Card(CardId.ALMEJAS, "Almejas", CardType.CRUSTACEO, 2,
                 condSumAtLeast(8), "Lanza un dado descartado y colócalo aquí si se activó una habilidad adyacente.", "", ""));
@@ -92,7 +110,9 @@ public final class GameUtils {
                 "Relanza y reposiciona aleatoriamente un dado perdido al activarse una habilidad adyacente.", "", ""));
 
         cards.add(new Card(CardId.CANGREJO_ARANA, "Cangrejo araña", CardType.CRUSTACEO, 2,
-                condSumAtLeast(5), "Devuelve una carta descartada por fallo.", "", ""));
+                condSumAtLeast(5),
+                "Elige una carta descartada por fallo y reemplaza una carta boca abajo.",
+                "", ""));
 
         cards.add(new Card(CardId.CANGREJO_VIOLINISTA, "Cangrejo violinista", CardType.CRUSTACEO, 6,
                 condSumRange(13, 15),
@@ -100,10 +120,12 @@ public final class GameUtils {
 
         // ==== Peces pequeños ====
         cards.add(new Card(CardId.SARDINA, "Sardina", CardType.PEZ, 9,
-                condSumExact(6), "", "", "Otorga +1 punto por cada pez pequeño."));
+                condSumExact(6), "", "", "Otorga +1 punto por cada pez pequeño capturado."));
 
         cards.add(new Card(CardId.ATUN, "Atún", CardType.PEZ, 4,
-                condSumRange(3, 7), "Relanza el dado colocado.", "", ""));
+                condSumRange(3, 7),
+                "Puedes relanzar el dado recién lanzado y reposicionarlo en cualquier carta.",
+                "", ""));
 
         cards.add(new Card(CardId.SALMON, "Salmón", CardType.PEZ, 6,
                 (slotIndex, g) -> {
@@ -112,10 +134,12 @@ public final class GameUtils {
                     int a = values[0];
                     int b = values[1];
                     return (a == 4 && b >= 5) || (b == 4 && a >= 5);
-                }, "", "", ""));
+                }, "Selecciona 1 carta boca abajo y voltéala sin ponerle dado.", "", ""));
 
         cards.add(new Card(CardId.PEZ_PAYASO, "Pez Payaso", CardType.PEZ, 5,
-                condSumRange(8, 10), "Protege un pez adyacente.", "", ""));
+                condSumRange(8, 10),
+                "Elige una carta adyacente boca arriba para protegerla del próximo fallo.",
+                "", ""));
 
         cards.add(new Card(CardId.PEZ_GLOBO, "Pez Globo", CardType.PEZ, 6,
                 (slotIndex, g) -> {
@@ -124,7 +148,7 @@ public final class GameUtils {
                     BoardSlot slot = g.getBoard()[slotIndex];
                     return values[0] == slot.getDice().get(0).getType().getSides() &&
                             values[1] == slot.getDice().get(1).getType().getSides();
-                }, "", "", ""));
+                }, "Puedes inflar el resultado de cualquier dado a su valor máximo.", "", ""));
 
         cards.add(new Card(CardId.MORENA, "Morena", CardType.PEZ, 3,
                 (slotIndex, g) -> {
@@ -133,43 +157,56 @@ public final class GameUtils {
                     int a = values[0];
                     int b = values[1];
                     return Math.abs(a - b) >= 4;
-                }, "", "", ""));
+                }, "Mueve 1 dado de una carta adyacente a otra carta adyacente.", "", ""));
 
         cards.add(new Card(CardId.CABALLITO_DE_MAR, "Caballito de Mar", CardType.PEZ, 5,
-                condSumRange(2, 4), "", "", ""));
+                condSumRange(2, 4), "Puedes recuperar un D4 perdido.", "", ""));
 
         cards.add(new Card(CardId.PEZ_LINTERNA, "Pez Linterna", CardType.PEZ, 6,
-                (slotIndex, g) -> atLeastOneIs(slotIndex, g, 3), "Revela 1 carta boca abajo.", "", ""));
+                (slotIndex, g) -> atLeastOneIs(slotIndex, g, 3),
+                "Selecciona 1 carta boca abajo: si es pez grande, mueve el dado; si es objeto, pierdes el dado.",
+                "", ""));
 
         cards.add(new Card(CardId.KOI, "Koi", CardType.PEZ, 7,
-                condSumExact(9), "", "", ""));
+                condSumExact(9),
+                "Intercambia un dado de esta carta con uno de una carta adyacente boca arriba con 1 dado.",
+                "", ""));
 
         cards.add(new Card(CardId.PEZ_VOLADOR, "Pez Volador", CardType.PEZ, 2,
-                GameUtils::oneEvenOneOdd, "", "", ""));
+                GameUtils::oneEvenOneOdd,
+                "Revela una línea: si el par es mayor, es vertical; si es menor, es horizontal.",
+                "", ""));
 
         cards.add(new Card(CardId.PIRANA, "Piraña", CardType.PEZ, 8,
-                (slotIndex, g) -> condSumAtLeast(8).isSatisfied(slotIndex, g) && atLeastOneIs(slotIndex, g, 6), "", "", ""));
+                (slotIndex, g) -> condSumAtLeast(8).isSatisfied(slotIndex, g) && atLeastOneIs(slotIndex, g, 6),
+                "Descarta 1 pez pequeño adyacente boca arriba y reemplázalo sin perder sus dados.",
+                "", ""));
 
         cards.add(new Card(CardId.PEZ_FANTASMA, "Pez Fantasma", CardType.PEZ, 2,
                 (slotIndex, g) -> condSumGreaterThan(6).isSatisfied(slotIndex, g) && !hasAdjacentFaceUp(slotIndex, g),
                 "Vuelve boca abajo una carta adyacente y recupera su dado.", "", ""));
 
         cards.add(new Card(CardId.PULPO, "Pulpo", CardType.PEZ, 2,
-                condSumLessThan(8), "Si el dado es par, reemplaza por otra carta boca arriba.", "", ""));
+                condSumLessThan(8),
+                "Si el dado es par, reemplaza esta carta por otra del mazo boca arriba manteniendo el dado.",
+                "", ""));
 
         cards.add(new Card(CardId.ARENQUE, "Arenque", CardType.PEZ, 5,
-                condSumRange(5, 7), "Busca 2 peces pequeños y colócalos boca abajo.", "", ""));
+                condSumRange(5, 7),
+                "Busca 2 peces pequeños y colócalos boca abajo adyacentes, reemplazando cartas boca abajo.",
+                "", ""));
 
         cards.add(new Card(CardId.REMORA, "Rémora", CardType.PEZ, 7,
                 (slotIndex, g) -> containsDieType(slotIndex, g, DieType.D4) && containsDieType(slotIndex, g, DieType.D6),
-                "Si está adyacente a un pez grande se adhiere.", "", ""));
+                "Si está adyacente a un pez grande, se adhiere y se captura junto a él.",
+                "", ""));
 
         cards.add(new Card(CardId.CONGRIO, "Congrio", CardType.PEZ, 7,
                 condSumExact(5), "", "", "Otorga +1 por cada pez pequeño descartado por fallo."));
 
         cards.add(new Card(CardId.PEZ_BETTA, "Pez betta", CardType.PEZ, 9,
                 condSumRange(10, 11),
-                "Solo puedes colocar dados en la línea horizontal donde esté.", "", ""));
+                "Mientras esté boca arriba, solo puedes colocar dados en su fila.", "", ""));
 
         cards.add(new Card(CardId.TRUCHA_ARCOIRIS, "Trucha Arcoíris", CardType.PEZ, 5,
                 (slotIndex, g) -> {
@@ -206,37 +243,47 @@ public final class GameUtils {
                 }, "Regresa los dados con valor ≥ 6 al voltearse.", "", ""));
 
         cards.add(new Card(CardId.PEZ_PIPA, "Pez pipa", CardType.PEZ, 4,
-                condSumExact(14), "Si usas un D12 recuperas 1 dado.", "", ""));
+                condSumExact(14), "Si usas un D12 en su captura, recuperas 1 dado.", "", ""));
 
         cards.add(new Card(CardId.PEZ_HACHA_ABISAL, "Pez Hacha Abisal", CardType.PEZ, 9,
                 (slotIndex, g) -> atLeastOneIs(slotIndex, g, 2), "Debes liberar 2 cartas.", "", ""));
 
         cards.add(new Card(CardId.CARPA_DORADA, "Carpa Dorada", CardType.PEZ, 7,
-                differenceAtLeast(3), "La marea solo afecta dados; los que salen se pierden.", "", ""));
+                differenceAtLeast(3), "La marea solo afecta a los dados; los que salen se pierden.", "", ""));
 
         cards.add(new Card(CardId.FLETAN, "Fletan", CardType.PEZ, 7,
-                GameUtils::diceConsecutive, "Al activarse la marea puedes ocultar un pez.", "", ""));
+                GameUtils::diceConsecutive,
+                "Al activarse la marea, elige un pez boca arriba y ponlo boca abajo; recuperas su dado.",
+                "", ""));
 
         cards.add(new Card(CardId.PEZ_LOBO, "Pez Lobo", CardType.PEZ, 6,
                 (slotIndex, g) -> condSumAtLeast(8).isSatisfied(slotIndex, g) && atLeastOneIs(slotIndex, g, 7),
-                "Descarta una carta adyacente boca arriba y reemplázala.", "", ""));
+                "Descarta una carta adyacente boca arriba y reemplázala sin perder sus dados; luego vuelve al mazo.",
+                "", ""));
 
         cards.add(new Card(CardId.PEZ_BORRON, "Pez borrón", CardType.PEZ, 7,
-                condSumGreaterThan(10), "Mueve el dado sobre esta carta a otra boca abajo.", "", ""));
+                condSumGreaterThan(10),
+                "Elige 1 carta boca abajo y mueve el dado de esta carta a ella sin voltearla.",
+                "", ""));
 
         cards.add(new Card(CardId.SEPIA, "Sepia", CardType.PEZ, 3,
-                condSumRange(12, 14), "Si el dado es impar, captura una carta del mazo.", "", ""));
+                condSumRange(12, 14),
+                "Si el dado es impar, mira 3 cartas, captura 1 y baraja esta carta en el mazo.",
+                "", ""));
 
         cards.add(new Card(CardId.DAMISELAS, "Damiselas", CardType.PEZ, 3,
-                condSumRange(6, 10), "Mira y ordena las 6 primeras cartas del mazo.", "", ""));
+                condSumRange(6, 10), "Mira las 6 primeras cartas del mazo y ordénalas.", "", ""));
 
         cards.add(new Card(CardId.LAMPREA, "Lamprea", CardType.PEZ, 2,
                 (slotIndex, g) -> containsDieType(slotIndex, g, DieType.D12) && containsDieType(slotIndex, g, DieType.D8),
-                "Se adhiere a un pez grande boca arriba.", "", ""));
+                "Se adhiere a un pez grande y permite ajustar su dado ±1 al colocar.",
+                "", ""));
 
         // ==== Peces grandes ====
         cards.add(new Card(CardId.TIBURON_BLANCO, "Tiburón Blanco", CardType.PEZ_GRANDE, 3,
-                condSumGreaterThan(10), "", "", ""));
+                condSumGreaterThan(10),
+                "Elimina una carta adyacente boca arriba y mueve su dado a esta carta.",
+                "", ""));
 
         cards.add(new Card(CardId.TIBURON_MARTILLO, "Tiburón Martillo", CardType.PEZ_GRANDE, 8,
                 (slotIndex, g) -> {
@@ -252,7 +299,9 @@ public final class GameUtils {
                 condSumExact(12), "Relanza el dado y elige resultado.", "", ""));
 
         cards.add(new Card(CardId.CALAMAR_GIGANTE, "Calamar Gigante", CardType.PEZ_GRANDE, 9,
-                (slotIndex, g) -> condSumGreaterThan(10).isSatisfied(slotIndex, g) && containsDieType(slotIndex, g, DieType.D8), "", "", ""));
+                (slotIndex, g) -> condSumGreaterThan(10).isSatisfied(slotIndex, g) && containsDieType(slotIndex, g, DieType.D8),
+                "Voltea boca abajo las cartas adyacentes manteniendo sus dados; podrán activarse de nuevo.",
+                "", ""));
 
         cards.add(new Card(CardId.MANTA_GIGANTE, "Manta Gigante", CardType.PEZ_GRANDE, 3,
                 (slotIndex, g) -> {
@@ -262,20 +311,24 @@ public final class GameUtils {
                     int[] values = adjustedDiceValues(slotIndex, g);
                     if (values.length != 2) return false;
                     return values[0] != 4 && values[1] != 4;
-                }, "", "", ""));
+                }, "Recuperas un dado D8 perdido.", "", ""));
 
         cards.add(new Card(CardId.BALLENA_AZUL, "Ballena azul", CardType.PEZ_GRANDE, 2,
-                condSumRange(11, 13), "", "", ""));
+                condSumRange(11, 13),
+                "Reposiciona todos los dados del tablero manteniendo sus valores.",
+                "", ""));
 
         cards.add(new Card(CardId.MERO_GIGANTE, "Mero gigante", CardType.PEZ_GRANDE, 2,
                 (slotIndex, g) -> condSumAtLeast(10).isSatisfied(slotIndex, g) && diceDistinct(slotIndex, g),
-                "Voltea todas las cartas adyacentes boca abajo.", "", ""));
+                "Revela todas las cartas adyacentes que estén boca abajo.", "", ""));
 
         cards.add(new Card(CardId.PEZ_LUNA, "Pez luna", CardType.PEZ_GRANDE, 8,
                 condSumAtLeast(13), "Si sale del tablero por marea, libera tu captura de mayor valor.", "", ""));
 
         cards.add(new Card(CardId.TIBURON_TIGRE, "Tiburón tigre", CardType.PEZ_GRANDE, 3,
-                condSumGreaterThan(13), "Elimina una carta adyacente boca arriba.", "", ""));
+                condSumGreaterThan(13),
+                "Elimina una carta adyacente boca arriba y devuelve su dado a la reserva.",
+                "", ""));
 
         cards.add(new Card(CardId.DELFIN, "Delfín", CardType.PEZ_GRANDE, 4,
                 (slotIndex, g) -> {
@@ -306,21 +359,26 @@ public final class GameUtils {
                 }, "Relanza dados adyacentes; si alguno es máximo recupera un dado.", "", ""));
 
         cards.add(new Card(CardId.CACHALOTE, "Cachalote", CardType.PEZ_GRANDE, 4,
-                condSumRange(12, 15), "Reposiciona dados en cartas boca arriba sin dados.", "", ""));
+                condSumRange(12, 15),
+                "Reposiciona dados en cartas boca arriba sin dados, eligiendo el valor del dado.",
+                "", ""));
 
         cards.add(new Card(CardId.ESTURION, "Esturión", CardType.PEZ_GRANDE, 8,
                 (slotIndex, g) -> condSumAtLeast(8).isSatisfied(slotIndex, g) && bothDiceSameValue(slotIndex, g),
-                "Lanza todos los dados de tu reserva menos 1 y colócalos en la zona de pesca.", "", ""));
+                "Lanza todos los dados de tu reserva y colócalos en la zona de pesca.",
+                "", ""));
 
         cards.add(new Card(CardId.BALLENA_JOROBADA, "Ballena jorobada", CardType.PEZ_GRANDE, 4,
                 condSumRange(1, 2), "Puedes elegir la dirección de la marea.", "", ""));
 
         // ==== Objetos ====
         cards.add(new Card(CardId.BOTA_VIEJA, "Bota Vieja", CardType.OBJETO, 7,
-                condSumLessOrEqual(6), "Aplica −1 a adyacentes.", "", ""));
+                condSumLessOrEqual(6), "Mientras esté boca arriba, aplica −1 a adyacentes.", "", ""));
 
         cards.add(new Card(CardId.BOTELLA_PLASTICO, "Botella de Plástico", CardType.OBJETO, 9,
-                condSumExact(8), "Elige 1 pez pequeño adyacente boca arriba; sus dados obtienen +3.", "", ""));
+                condSumExact(8),
+                "Elige 1 pez pequeño adyacente boca arriba; sus dados obtienen +3.",
+                "", ""));
 
         cards.add(new Card(CardId.RED_ENREDADA, "Red Enredada", CardType.OBJETO, 4,
                 (slotIndex, g) -> {
@@ -336,14 +394,17 @@ public final class GameUtils {
                 condSumGreaterThan(8), "", "", "Otorga +2 por cada objeto capturado."));
 
         cards.add(new Card(CardId.ANZUELO_ROTO, "Anzuelo Roto", CardType.OBJETO, 9,
-                GameUtils::bothDiceSameValue, "Si fallas con 2 dados pierdes 2.", "", ""));
+                GameUtils::bothDiceSameValue,
+                "Mientras esté boca arriba, el primer fallo con 2 dados pierde 2 dados.",
+                "", ""));
 
         cards.add(new Card(CardId.CORRIENTES_PROFUNDAS, "Corrientes profundas", CardType.OBJETO, 6,
                 differenceAtLeast(3),
-                "Activa la marea hacia la derecha si es par, a la izquierda si es impar.", "", ""));
+                "Si un dado iguala el suyo, activa marea: par a la derecha, impar a la izquierda.",
+                "", ""));
 
         cards.add(new Card(CardId.AUTO_HUNDIDO, "Auto hundido", CardType.OBJETO, 8,
-                condSumExact(13), "Aplica +1 a adyacentes.", "", ""));
+                condSumExact(13), "Mientras esté boca arriba, aplica +1 a adyacentes.", "", ""));
 
         cards.add(new Card(CardId.BOTELLA_DE_VIDRIO, "Botella de vidrio", CardType.OBJETO, 9,
                 condSumExact(8), "Elige 1 carta adyacente boca arriba; sus dados obtienen −3.", "", ""));
@@ -367,7 +428,8 @@ public final class GameUtils {
 
         cards.add(new Card(CardId.BARCO_PESQUERO, "Barco pesquero", CardType.OBJETO, 6,
                 GameUtils::diceConsecutive,
-                "Si sale un dado igual, elimina una carta boca arriba adyacente.", "", ""));
+                "Si un dado iguala el suyo, elimina una carta adyacente boca arriba.",
+                "", ""));
 
         return cards;
     }

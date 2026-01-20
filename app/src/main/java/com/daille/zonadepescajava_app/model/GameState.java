@@ -1160,6 +1160,7 @@ public class GameState {
         }
 
         target.setFaceUp(true);
+        markRevealed(slotIndex);
         StringBuilder log = new StringBuilder("Pez Linterna reveló " + target.getCard().getName());
         BoardSlot origin = lanternOriginSlot >= 0 && lanternOriginSlot < board.length ? board[lanternOriginSlot] : null;
         if (origin != null && origin.getDice().size() > 0) {
