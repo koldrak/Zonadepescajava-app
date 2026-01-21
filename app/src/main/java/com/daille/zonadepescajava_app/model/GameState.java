@@ -448,7 +448,9 @@ public class GameState {
     }
 
     public boolean isAwaitingAbilityConfirmation() {
-        return pendingAbilityConfirmation != null;
+        return pendingAbilityConfirmation != null
+                && pendingSelection == PendingSelection.NONE
+                && pendingSelectionQueue.isEmpty();
     }
 
     public AbilityConfirmation getPendingAbilityConfirmation() {
