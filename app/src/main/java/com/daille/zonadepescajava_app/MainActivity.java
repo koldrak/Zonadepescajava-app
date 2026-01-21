@@ -2210,6 +2210,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             promptHorseshoeValue();
             return;
         }
+        if (gameState.isAwaitingCachaloteValue()) {
+            promptCachaloteValue();
+            return;
+        }
         if (gameState.isAwaitingBoxerDecision()) {
             promptBoxerDecision();
             return;
@@ -3960,6 +3964,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (gameState.isAwaitingDecoradorChoice()) { promptDecoradorChoice(); return; }
         if (gameState.isAwaitingViolinistChoice()) { promptViolinistChoice(); return; }
         if (gameState.isAwaitingHorseshoeValue()) { promptHorseshoeValue(); return; }
+        if (gameState.isAwaitingCachaloteValue()) { promptCachaloteValue(); return; }
         if (gameState.isAwaitingBoxerDecision()) { promptBoxerDecision(); return; }
         if (gameState.isAwaitingSepiaChoice()) { promptSepiaChoice(); return; }
         if (gameState.isAwaitingDragnetReleaseChoice()) { promptDragnetReleaseChoice(); return; }
@@ -4173,6 +4178,100 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
         gridView.setOnItemClickListener((parent, view, position, id) -> {
             String msg = gameState.chooseHorseshoeValue(values.get(position));
+            dialog.dismiss();
+            handleGameResult(msg);
+        });
+
+        dialog.show();
+    }
+
+    private void promptCachaloteValue() {
+        int sides = gameState.getCachaloteDieSides();
+        DieType dieType = gameState.getCachaloteDieType();
+        if (sides <= 0 || dieType == null) {
+            handleGameResult("Cachalote: no hay dado válido para ajustar.");
+            return;
+        }
+        List<Integer> values = new ArrayList<>();
+        for (int i = 1; i <= sides; i++) {
+            values.add(i);
+        }
+
+        GridView gridView = new GridView(this);
+        int padding = dpToPx(12);
+        gridView.setPadding(padding, padding, padding, padding);
+        gridView.setHorizontalSpacing(dpToPx(12));
+        gridView.setVerticalSpacing(dpToPx(12));
+        gridView.setNumColumns(Math.min(4, sides));
+        gridView.setAdapter(new BaseAdapter() {
+            @Override
+            public int getCount() {
+                return values.size();
+            }
+
+            @Override
+            public Object getItem(int position) {
+                return values.get(position);
+            }
+
+            @Override
+            public long getItemId(int position) {
+                return position;
+            }
+
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                LinearLayout cell;
+                ImageView img;
+                TextView fallback;
+
+                if (convertView instanceof LinearLayout) {
+                    cell = (LinearLayout) convertView;
+                    img = (ImageView) cell.getChildAt(0);
+                    fallback = (TextView) cell.getChildAt(1);
+                } else {
+                    cell = new LinearLayout(MainActivity.this);
+                    cell.setOrientation(LinearLayout.VERTICAL);
+                    cell.setGravity(Gravity.CENTER);
+                    cell.setLayoutParams(new AbsListView.LayoutParams(dpToPx(64), dpToPx(64)));
+
+                    img = new ImageView(MainActivity.this);
+                    LinearLayout.LayoutParams imgParams =
+                            new LinearLayout.LayoutParams(dpToPx(52), dpToPx(52));
+                    img.setLayoutParams(imgParams);
+                    img.setScaleType(ImageView.ScaleType.FIT_CENTER);
+
+                    fallback = new TextView(MainActivity.this);
+                    fallback.setGravity(Gravity.CENTER);
+
+                    cell.addView(img);
+                    cell.addView(fallback);
+                }
+
+                int value = values.get(position);
+                Bitmap face = diceImageResolver.getFace(dieType, value);
+                if (face != null) {
+                    img.setImageBitmap(face);
+                    fallback.setVisibility(View.GONE);
+                } else {
+                    img.setImageBitmap(null);
+                    fallback.setVisibility(View.VISIBLE);
+                    fallback.setText(String.valueOf(value));
+                }
+
+                return cell;
+            }
+        });
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Cachalote")
+                .setView(gridView)
+                .setCancelable(false)
+                .create();
+        attachDialogButtonSounds(dialog);
+
+        gridView.setOnItemClickListener((parent, view, position, id) -> {
+            String msg = gameState.chooseCachaloteValue(values.get(position));
             dialog.dismiss();
             handleGameResult(msg);
         });
