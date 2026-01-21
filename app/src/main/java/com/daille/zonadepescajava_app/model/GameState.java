@@ -59,6 +59,8 @@ public class GameState {
     private final List<Integer> pendingPercebesTargets = new ArrayList<>();
     private final List<Die> pendingBallenaDice = new ArrayList<>();
     private int pendingBallenaTotal = 0;
+    private final List<DieType> pendingCachaloteDice = new ArrayList<>();
+    private int pendingCachaloteTotal = 0;
     private final List<Card> pendingPulpoOptions = new ArrayList<>();
     private final Deque<PendingSelectionState> pendingSelectionQueue = new ArrayDeque<>();
     private final List<Card> pendingArenquePool = new ArrayList<>();
@@ -81,6 +83,9 @@ public class GameState {
     private int horseshoeSlotIndex = -1;
     private int horseshoeDieIndex = -1;
     private boolean awaitingHorseshoeValue = false;
+    private int cachaloteSlotIndex = -1;
+    private DieType pendingCachaloteDieType = null;
+    private boolean awaitingCachaloteValue = false;
     private boolean awaitingBoxerDecision = false;
     private int boxerMovesRemaining = 0;
     private int boxerSlotIndex = -1;
@@ -182,6 +187,7 @@ public class GameState {
         BOTTLE_TARGET,
         ARENQUE_DESTINATION,
         BLUE_WHALE_PLACE,
+        CACHALOTE_PLACE,
         ESTURION_PLACE,
         SPIDER_CRAB_CHOOSE_CARD,
         SPIDER_CRAB_CHOOSE_SLOT,
@@ -290,6 +296,8 @@ public class GameState {
         recentlyRevealedCards.clear();
         pendingBallenaDice.clear();
         pendingBallenaTotal = 0;
+        pendingCachaloteDice.clear();
+        pendingCachaloteTotal = 0;
         pendingCurrentAnimations.clear();
         pendingPulpoOptions.clear();
         pendingArenquePool.clear();
@@ -325,6 +333,7 @@ public class GameState {
         pendingHumpbackSlot = -1;
         awaitingHumpbackDirection = false;
         clearHorseshoeState();
+        clearCachaloteState();
         clearBoxerState();
         awaitingPulpoChoice = false;
         pulpoSlotIndex = -1;
@@ -486,6 +495,7 @@ public class GameState {
                 || awaitingDecoradorChoice
                 || awaitingViolinistChoice
                 || awaitingHorseshoeValue
+                || awaitingCachaloteValue
                 || awaitingBoxerDecision
                 || awaitingPulpoChoice
                 || awaitingValueAdjustment
@@ -706,6 +716,18 @@ public class GameState {
             return null;
         }
         return slot.getDice().get(horseshoeDieIndex).getType();
+    }
+
+    public boolean isAwaitingCachaloteValue() {
+        return awaitingCachaloteValue;
+    }
+
+    public int getCachaloteDieSides() {
+        return pendingCachaloteDieType == null ? 0 : pendingCachaloteDieType.getSides();
+    }
+
+    public DieType getCachaloteDieType() {
+        return pendingCachaloteDieType;
     }
 
     public int getPendingAdjustmentAmount() {
@@ -1014,6 +1036,14 @@ public class GameState {
                     }
                 }
                 break;
+            case CACHALOTE_PLACE:
+                for (int i = 0; i < board.length; i++) {
+                    BoardSlot s = board[i];
+                    if (s.getCard() != null && s.isFaceUp() && s.getDice().isEmpty()) {
+                        highlight.add(i);
+                    }
+                }
+                break;
             case SPIDER_CRAB_CHOOSE_SLOT:
                 for (int i = 0; i < board.length; i++) {
                     BoardSlot s = board[i];
@@ -1281,6 +1311,9 @@ public class GameState {
             case BLUE_WHALE_PLACE:
             case ESTURION_PLACE:
                 result = placeBlueWhaleDie(slotIndex);
+                break;
+            case CACHALOTE_PLACE:
+                result = chooseCachaloteTarget(slotIndex);
                 break;
             case SPIDER_CRAB_CHOOSE_SLOT:
                 result = placeSpiderCrabRevivedCard(slotIndex);
@@ -1640,6 +1673,18 @@ public class GameState {
         awaitingHorseshoeValue = false;
     }
 
+    private void clearCachaloteValueState() {
+        cachaloteSlotIndex = -1;
+        pendingCachaloteDieType = null;
+        awaitingCachaloteValue = false;
+    }
+
+    private void clearCachaloteState() {
+        pendingCachaloteDice.clear();
+        pendingCachaloteTotal = 0;
+        clearCachaloteValueState();
+    }
+
     private void clearBoxerState() {
         awaitingBoxerDecision = false;
         boxerMovesRemaining = 0;
@@ -1984,6 +2029,9 @@ public class GameState {
         if (awaitingHorseshoeValue) {
             return "Resuelve el ajuste del Cangrejo herradura antes de lanzar otro dado.";
         }
+        if (awaitingCachaloteValue) {
+            return "Resuelve el valor del dado del Cachalote antes de lanzar otro dado.";
+        }
         if (awaitingBoxerDecision) {
             return "Decide si moverás otro dado con el Cangrejo boxeador.";
         }
@@ -1996,6 +2044,9 @@ public class GameState {
             return pendingSelection == PendingSelection.ESTURION_PLACE
                     ? "Coloca los dados pendientes del Esturión antes de continuar."
                     : "Coloca los dados pendientes de la Ballena azul antes de continuar.";
+        }
+        if (pendingSelection == PendingSelection.CACHALOTE_PLACE && !pendingCachaloteDice.isEmpty()) {
+            return "Coloca los dados pendientes del Cachalote antes de continuar.";
         }
         if (selectedDie != null) {
             return "Coloca el dado ya lanzado antes de lanzar otro.";
@@ -2086,6 +2137,9 @@ public class GameState {
         if (awaitingHorseshoeValue) {
             return "Resuelve el ajuste del Cangrejo herradura antes de colocar dados.";
         }
+        if (awaitingCachaloteValue) {
+            return "Resuelve el valor del dado del Cachalote antes de colocar dados.";
+        }
         if (awaitingBoxerDecision) {
             return "Decide si moverás otro dado con el Cangrejo boxeador.";
         }
@@ -2098,6 +2152,9 @@ public class GameState {
             return pendingSelection == PendingSelection.ESTURION_PLACE
                     ? "Primero coloca los dados pendientes del Esturión."
                     : "Primero coloca los dados pendientes de la Ballena azul.";
+        }
+        if (pendingSelection == PendingSelection.CACHALOTE_PLACE && !pendingCachaloteDice.isEmpty()) {
+            return "Primero coloca los dados pendientes del Cachalote.";
         }
         if (!isBettaRowAllowed(slotIndex)) {
             return "Pez betta: solo puedes colocar dados en su fila.";
@@ -2760,6 +2817,11 @@ public class GameState {
             clearHorseshoeState();
         }
 
+        cachaloteSlotIndex = remapIndex(cachaloteSlotIndex, indexMap);
+        if (awaitingCachaloteValue && cachaloteSlotIndex < 0) {
+            clearCachaloteValueState();
+        }
+
         boxerSlotIndex = remapIndex(boxerSlotIndex, indexMap);
         if (awaitingBoxerDecision && boxerSlotIndex < 0) {
             clearBoxerState();
@@ -3313,6 +3375,9 @@ public class GameState {
             case BLUE_WHALE_PLACE:
             case ESTURION_PLACE:
                 clearBallenaState();
+                break;
+            case CACHALOTE_PLACE:
+                clearCachaloteState();
                 break;
             case ARENQUE_DESTINATION:
                 clearArenqueState();
@@ -6329,38 +6394,151 @@ public class GameState {
     }
 
     private String startCachaloteReposition(int slotIndex) {
-        List<Die> pool = new ArrayList<>();
+        List<DieType> pool = new ArrayList<>();
         for (BoardSlot s : board) {
             if (!s.getDice().isEmpty()) {
-                pool.addAll(s.getDice());
+                for (Die die : s.getDice()) {
+                    pool.add(die.getType());
+                }
                 s.clearDice();
             }
         }
         if (pool.isEmpty()) {
             return "Cachalote: no hay dados para reposicionar.";
         }
-        List<Integer> targets = new ArrayList<>();
-        for (int i = 0; i < board.length; i++) {
-            BoardSlot s = board[i];
+        pendingCachaloteDice.clear();
+        pendingCachaloteDice.addAll(pool);
+        pendingCachaloteTotal = pendingCachaloteDice.size();
+        if (!hasCachaloteTargets()) {
+            for (DieType dieType : pendingCachaloteDice) {
+                reserve.add(dieType);
+            }
+            clearCachaloteState();
+            return "Cachalote: no hay cartas boca arriba sin dados; devolviste los dados a la reserva.";
+        }
+        return queueableSelection(
+                PendingSelection.CACHALOTE_PLACE,
+                slotIndex,
+                "Cachalote: coloca cada dado en cartas boca arriba sin dados. Comienza con "
+                        + pendingCachaloteDice.get(0).getLabel() + ".");
+    }
+
+    private boolean hasCachaloteTargets() {
+        for (BoardSlot s : board) {
             if (s.getCard() != null && s.isFaceUp() && s.getDice().isEmpty()) {
-                targets.add(i);
+                return true;
             }
         }
-        int placed = 0;
-        for (Die die : pool) {
-            if (targets.isEmpty()) {
-                reserve.add(die.getType());
-                continue;
-            }
-            int targetIdx = targets.get(0);
-            BoardSlot target = board[targetIdx];
-            target.addDie(die);
-            placed++;
-            targets.remove(0);
+        return false;
+    }
+
+    private String chooseCachaloteTarget(int slotIndex) {
+        if (awaitingCachaloteValue) {
+            return "Cachalote: elige primero el valor del dado.";
         }
-        String base = "Cachalote reposicionó " + placed + " dado(s) en cartas boca arriba sin dados.";
-        String resolved = resolveAllReadySlots();
-        return resolved.isEmpty() ? base : base + " " + resolved;
+        if (pendingCachaloteDice.isEmpty()) {
+            clearPendingSelection();
+            return "Cachalote: no hay dados por colocar.";
+        }
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null || !target.isFaceUp()) {
+            return "Cachalote: debes elegir una carta boca arriba.";
+        }
+        if (!target.getDice().isEmpty()) {
+            return "Cachalote: la carta seleccionada ya tiene dados.";
+        }
+        cachaloteSlotIndex = slotIndex;
+        pendingCachaloteDieType = pendingCachaloteDice.get(0);
+        awaitingCachaloteValue = true;
+        return "Cachalote: elige el valor del dado " + pendingCachaloteDieType.getLabel() + ".";
+    }
+
+    public String chooseCachaloteValue(int value) {
+        if (!awaitingCachaloteValue) {
+            return "No hay ajuste pendiente del Cachalote.";
+        }
+        if (pendingCachaloteDieType == null) {
+            clearCachaloteValueState();
+            return "Cachalote: no hay dado válido para ajustar.";
+        }
+        int sides = pendingCachaloteDieType.getSides();
+        if (value < 1 || value > sides) {
+            return "Elige un valor dentro del rango del dado.";
+        }
+        if (cachaloteSlotIndex < 0 || cachaloteSlotIndex >= board.length) {
+            clearCachaloteValueState();
+            return "La carta destino del Cachalote ya no está disponible.";
+        }
+        BoardSlot target = board[cachaloteSlotIndex];
+        if (target.getCard() == null || !target.isFaceUp() || !target.getDice().isEmpty()) {
+            clearCachaloteValueState();
+            return "La carta destino del Cachalote ya no está disponible.";
+        }
+        Die placed = new Die(pendingCachaloteDieType, value);
+        String reveal = addDieToSlot(cachaloteSlotIndex, placed);
+        pendingCachaloteDice.remove(0);
+        int placedCount = pendingCachaloteTotal - pendingCachaloteDice.size();
+        clearCachaloteValueState();
+
+        if (!hasCachaloteTargets() && !pendingCachaloteDice.isEmpty()) {
+            int returned = pendingCachaloteDice.size();
+            for (DieType dieType : pendingCachaloteDice) {
+                reserve.add(dieType);
+            }
+            clearCachaloteState();
+            clearPendingSelection();
+            String base = "Cachalote colocó " + placedCount + " dado(s) y devolvió " + returned + " a la reserva.";
+            String message = reveal.isEmpty() ? base : base + " " + reveal;
+            if (hasPendingTurnResolutions()) {
+                return message;
+            }
+            String revealLog = continueRevealChain("");
+            if (!revealLog.isEmpty()) {
+                message = message.isEmpty() ? revealLog : message + " " + revealLog;
+            }
+            String endTurn = resolveAllReadySlots();
+            if (!endTurn.isEmpty()) {
+                message = message.isEmpty() ? endTurn : message + " " + endTurn;
+            }
+            return message;
+        }
+
+        if (pendingCachaloteDice.isEmpty()) {
+            clearPendingSelection();
+            String base = "Cachalote reposicionó todos los dados.";
+            String message = reveal.isEmpty() ? base : base + " " + reveal;
+            if (hasPendingTurnResolutions()) {
+                return message;
+            }
+            String revealLog = continueRevealChain("");
+            if (!revealLog.isEmpty()) {
+                message = message.isEmpty() ? revealLog : message + " " + revealLog;
+            }
+            String endTurn = resolveAllReadySlots();
+            if (!endTurn.isEmpty()) {
+                message = message.isEmpty() ? endTurn : message + " " + endTurn;
+            }
+            return message;
+        }
+
+        String nextLabel = pendingCachaloteDice.get(0).getLabel();
+        String base = "Dado " + placedCount + "/" + pendingCachaloteTotal + " colocado.";
+        String prompt = " El siguiente es " + nextLabel + ".";
+        String message = reveal.isEmpty()
+                ? base + prompt
+                : base + " " + reveal + prompt;
+        if (hasPendingTurnResolutions()) {
+            return message;
+        }
+        String revealLog = continueRevealChain("");
+        if (!revealLog.isEmpty()) {
+            message = message.isEmpty() ? revealLog : message + " " + revealLog;
+        }
+        String endTurn = resolveAllReadySlots();
+        if (!endTurn.isEmpty()) {
+            message = message.isEmpty() ? endTurn : message + " " + endTurn;
+        }
+        return message;
     }
 
     private String startEsturionRoll(int slotIndex) {
