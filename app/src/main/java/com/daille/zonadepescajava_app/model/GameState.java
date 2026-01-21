@@ -3688,7 +3688,8 @@ public class GameState {
     private String handleOnReveal(int slotIndex, int placedValue) {
         BoardSlot slot = board[slotIndex];
         if (slot.getCard() == null) return "";
-        if (shouldConfirmRevealAbility(slot.getCard().getId())) {
+        if (shouldConfirmRevealAbility(slot.getCard().getId())
+                && canConfirmRevealAbility(slotIndex, placedValue)) {
             return enqueueAbilityConfirmation(AbilityTrigger.REVEAL, slotIndex, placedValue, null);
         }
         return executeRevealAbility(slotIndex, placedValue);
@@ -6461,11 +6462,328 @@ public class GameState {
     private String handleOnCapture(int slotIndex, List<Die> diceOnCard) {
         Card captured = board[slotIndex].getCard();
         if (captured == null) return "";
-        if (shouldConfirmCaptureAbility(captured.getId())) {
+        if (shouldConfirmCaptureAbility(captured.getId())
+                && canConfirmCaptureAbility(captured, slotIndex, diceOnCard)) {
             List<Die> snapshot = diceOnCard == null ? null : new ArrayList<>(diceOnCard);
             return enqueueAbilityConfirmation(AbilityTrigger.CAPTURE, slotIndex, 0, snapshot);
         }
         return executeCaptureAbility(captured, slotIndex, diceOnCard);
+    }
+
+    private boolean canConfirmRevealAbility(int slotIndex, int placedValue) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getCard() == null) return false;
+        CardId id = slot.getCard().getId();
+        switch (id) {
+            case CANGREJO_BOXEADOR:
+                return hasValidBoxerMove(slotIndex);
+            case JAIBA_AZUL:
+            case ATUN:
+            case PEZ_VELA:
+                return !slot.getDice().isEmpty();
+            case PEZ_BORRON:
+                return !slot.getDice().isEmpty() && hasFaceDownCards();
+            case LANGOSTINO_MANTIS:
+                return !lostDice.isEmpty() && hasAnyDiceOnBoard();
+            case CAMARON_FANTASMA:
+                return countAdjacentFaceDown(slotIndex) >= 2;
+            case PEZ_GLOBO:
+                return hasInflatableDie();
+            case MORENA:
+                return hasMorenaMove(slotIndex);
+            case CANGREJO_ERMITANO:
+                return hasAdjacentFaceUpObject(slotIndex);
+            case CANGREJO_DECORADOR:
+                return hasFaceDownNoDice() && hasObjectInDeck();
+            case NAUTILUS:
+            case CANGREJO_HERRADURA:
+            case PEZ_LEON:
+                return hasAnyDiceOnBoard();
+            case CANGREJO_ARANA:
+                return !failedDiscards.isEmpty() && hasFaceDownNoDice();
+            case CANGREJO_VIOLINISTA:
+                return !failedDiscards.isEmpty();
+            case BOTELLA_PLASTICO:
+                return hasAdjacentFaceUpFish(slotIndex);
+            case BOTELLA_DE_VIDRIO:
+                return hasAdjacentFaceUpCard(slotIndex);
+            case PEZ_PAYASO:
+                return hasAdjacentFaceUpNonObject(slotIndex);
+            case PEZ_LINTERNA:
+                return hasFaceDownCards();
+            case KOI:
+                return !slot.getDice().isEmpty() && hasKoiSwapTarget(slotIndex);
+            case TRUCHA_ARCOIRIS:
+                return countAdjacentFaceDown(slotIndex) > 0;
+            case PEZ_DRAGON_AZUL:
+                return hasHighDiceOnBoard(6);
+            case PEZ_HACHA_ABISAL:
+                return !captures.isEmpty();
+            case SEPIA:
+                return placedValue % 2 != 0 && !deck.isEmpty();
+            case DAMISELAS:
+                return !deck.isEmpty();
+            case PULPO:
+                return placedValue % 2 == 0 && hasNonObjectInDeck();
+            case ARENQUE:
+                return countAdjacentFaceDown(slotIndex) > 0 && hasFishInDeck();
+            case PEZ_FANTASMA:
+            case PEZ_LOBO:
+                return hasAdjacentFaceUpCard(slotIndex);
+            case PIRANA:
+                return hasAdjacentFaceUpFish(slotIndex);
+            case CALAMAR_GIGANTE:
+            case ORCA:
+                return countAdjacentFaceUp(slotIndex) > 0;
+            case MANTA_GIGANTE:
+                return hasLostDieType(DieType.D8);
+            case BALLENA_AZUL:
+            case CACHALOTE:
+                return hasAnyDiceOnBoard();
+            case ESTURION:
+                return reserve.size() > 1;
+            case TIBURON_BLANCO:
+            case TIBURON_TIGRE:
+            case NARVAL:
+                return countAdjacentFaceUp(slotIndex) > 0;
+            case TIBURON_PEREGRINO:
+                return !deck.isEmpty();
+            case ANGUILA_ELECTRICA:
+                return hasAdjacentDice(slotIndex);
+            case MERO_GIGANTE:
+                return countAdjacentFaceDown(slotIndex) > 0;
+            default:
+                return true;
+        }
+    }
+
+    private boolean canConfirmCaptureAbility(Card captured, int slotIndex, List<Die> diceOnCard) {
+        if (captured == null) return false;
+        switch (captured.getId()) {
+            case LANGOSTA_ESPINOSA:
+                return !board[slotIndex].getStatus().langostaRecovered
+                        && hasDieType(diceOnCard, DieType.D8)
+                        && !lostDice.isEmpty();
+            case BOGAVANTE:
+            case LATA_OXIDADA:
+                return !lostDice.isEmpty();
+            case RED_ENREDADA:
+            case RED_DE_ARRASTRE:
+                return countAdjacentFaceDown(slotIndex) > 0;
+            case PERCEBES:
+                return diceOnCard != null
+                        && !diceOnCard.isEmpty()
+                        && countAdjacentWithSpace(slotIndex) >= diceOnCard.size();
+            case LOCO:
+                return diceOnCard != null && !diceOnCard.isEmpty() && hasLocoTargets(slotIndex);
+            case CABALLITO_DE_MAR:
+                return hasLostDieType(DieType.D4);
+            case PEZ_PIPA:
+                return hasDieType(diceOnCard, DieType.D12) && !lostDice.isEmpty();
+            case SALMON:
+                return hasFaceDownCards();
+            case PEZ_VOLADOR:
+                return hasEvenAndOdd(diceOnCard);
+            default:
+                return true;
+        }
+    }
+
+    private boolean hasAnyDiceOnBoard() {
+        for (BoardSlot s : board) {
+            if (!s.getDice().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int countAdjacentFaceDown(int slotIndex) {
+        int count = 0;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && !adj.isFaceUp()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int countAdjacentFaceUp(int slotIndex) {
+        int count = 0;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int countAdjacentWithSpace(int slotIndex) {
+        int count = 0;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.getDice().size() < 2) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean hasAdjacentFaceUpObject(int slotIndex) {
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() == CardType.OBJETO) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasAdjacentFaceUpNonObject(int slotIndex) {
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() != CardType.OBJETO) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasAdjacentFaceUpFish(int slotIndex) {
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() == CardType.PEZ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasAdjacentFaceUpCard(int slotIndex) {
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasFaceDownNoDice() {
+        for (BoardSlot s : board) {
+            if (s.getCard() != null && !s.isFaceUp() && s.getDice().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasObjectInDeck() {
+        for (Card c : deck) {
+            if (c.getType() == CardType.OBJETO) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasNonObjectInDeck() {
+        for (Card c : deck) {
+            if (c.getType() != CardType.OBJETO) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasFishInDeck() {
+        for (Card c : deck) {
+            if (c.getType() == CardType.PEZ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasMorenaMove(int slotIndex) {
+        boolean hasOrigin = false;
+        boolean hasTarget = false;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (!adj.getDice().isEmpty()) {
+                hasOrigin = true;
+            }
+            if (adj.getCard() != null && adj.getDice().size() < 2) {
+                hasTarget = true;
+            }
+        }
+        return hasOrigin && hasTarget;
+    }
+
+    private boolean hasInflatableDie() {
+        for (BoardSlot s : board) {
+            if (s.getDice().isEmpty()) continue;
+            Die top = s.getDice().get(s.getDice().size() - 1);
+            if (top.getValue() < top.getType().getSides()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasHighDiceOnBoard(int minValue) {
+        for (BoardSlot s : board) {
+            for (Die d : s.getDice()) {
+                if (d.getValue() >= minValue) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean hasAdjacentDice(int slotIndex) {
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            if (!board[idx].getDice().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasLostDieType(DieType type) {
+        for (Die die : lostDice) {
+            if (die.getType() == type) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasDieType(List<Die> diceOnCard, DieType type) {
+        if (diceOnCard == null) return false;
+        for (Die die : diceOnCard) {
+            if (die.getType() == type) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasEvenAndOdd(List<Die> diceOnCard) {
+        if (diceOnCard == null) return false;
+        boolean hasEven = false;
+        boolean hasOdd = false;
+        for (Die die : diceOnCard) {
+            if (die.getValue() % 2 == 0) {
+                hasEven = true;
+            } else {
+                hasOdd = true;
+            }
+        }
+        return hasEven && hasOdd;
     }
 
     private String executeCaptureAbility(Card captured, int slotIndex, List<Die> diceOnCard) {
