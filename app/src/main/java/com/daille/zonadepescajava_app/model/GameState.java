@@ -113,6 +113,49 @@ public class GameState {
     private boolean awaitingHumpbackDirection = false;
     private final java.util.List<Die> pendingLocoDice = new java.util.ArrayList<>();
     private Die pendingLocoDie = null;
+    private AbilityActivation pendingAbilityConfirmation = null;
+    private final java.util.Deque<AbilityActivation> pendingAbilityQueue = new java.util.ArrayDeque<>();
+
+    private enum AbilityTrigger {
+        REVEAL,
+        CAPTURE
+    }
+
+    public static class AbilityConfirmation {
+        private final Card card;
+        private final String detail;
+
+        private AbilityConfirmation(Card card, String detail) {
+            this.card = card;
+            this.detail = detail;
+        }
+
+        public Card getCard() {
+            return card;
+        }
+
+        public String getDetail() {
+            return detail;
+        }
+    }
+
+    private static class AbilityActivation {
+        private final AbilityTrigger trigger;
+        private final int slotIndex;
+        private final int placedValue;
+        private final List<Die> diceOnCard;
+        private final Card card;
+        private final String detail;
+
+        private AbilityActivation(AbilityTrigger trigger, int slotIndex, int placedValue, List<Die> diceOnCard, Card card, String detail) {
+            this.trigger = trigger;
+            this.slotIndex = slotIndex;
+            this.placedValue = placedValue;
+            this.diceOnCard = diceOnCard;
+            this.card = card;
+            this.detail = detail;
+        }
+    }
 
     private enum PendingSelection {
         NONE,
@@ -404,6 +447,26 @@ public class GameState {
         return awaitingBoxerDecision;
     }
 
+    public boolean isAwaitingAbilityConfirmation() {
+        return pendingAbilityConfirmation != null;
+    }
+
+    public AbilityConfirmation getPendingAbilityConfirmation() {
+        if (pendingAbilityConfirmation == null) return null;
+        return new AbilityConfirmation(pendingAbilityConfirmation.card, pendingAbilityConfirmation.detail);
+    }
+
+    public String confirmAbilityActivation() {
+        if (pendingAbilityConfirmation == null) return "";
+        AbilityActivation activation = pendingAbilityConfirmation;
+        pendingAbilityConfirmation = null;
+        String result = executeAbilityActivation(activation);
+        if (!pendingAbilityQueue.isEmpty()) {
+            pendingAbilityConfirmation = pendingAbilityQueue.poll();
+        }
+        return result == null || result.isEmpty() ? "Habilidad activada." : result;
+    }
+
     public boolean hasPendingTurnResolutions() {
         return isAwaitingDieLoss()
                 || awaitingAtunDecision
@@ -432,6 +495,8 @@ public class GameState {
                 || awaitingPeregrinoChoice
                 || awaitingHumpbackDirection
                 || awaitingCancelConfirmation
+                || pendingAbilityConfirmation != null
+                || !pendingAbilityQueue.isEmpty()
                 || pendingSelection != PendingSelection.NONE
                 || !pendingSelectionQueue.isEmpty();
         // OJO: recentlyRevealedCards NO debe bloquear el game over (es UI, no resolución).
@@ -1095,6 +1160,7 @@ public class GameState {
         }
 
         target.setFaceUp(true);
+        markRevealed(slotIndex);
         StringBuilder log = new StringBuilder("Pez Linterna reveló " + target.getCard().getName());
         BoardSlot origin = lanternOriginSlot >= 0 && lanternOriginSlot < board.length ? board[lanternOriginSlot] : null;
         if (origin != null && origin.getDice().size() > 0) {
@@ -2740,6 +2806,33 @@ public class GameState {
             pendingRevealChain.addAll(remapped);
         }
 
+        pendingAbilityConfirmation = remapAbilityActivation(pendingAbilityConfirmation, indexMap);
+        if (!pendingAbilityQueue.isEmpty()) {
+            java.util.Deque<AbilityActivation> remapped = new java.util.ArrayDeque<>();
+            for (AbilityActivation activation : pendingAbilityQueue) {
+                AbilityActivation remappedActivation = remapAbilityActivation(activation, indexMap);
+                if (remappedActivation != null) {
+                    remapped.add(remappedActivation);
+                }
+            }
+            pendingAbilityQueue.clear();
+            pendingAbilityQueue.addAll(remapped);
+        }
+
+    }
+
+    private AbilityActivation remapAbilityActivation(AbilityActivation activation, int[] indexMap) {
+        if (activation == null) return null;
+        int remapped = remapIndex(activation.slotIndex, indexMap);
+        if (remapped < 0) return null;
+        return new AbilityActivation(
+                activation.trigger,
+                remapped,
+                activation.placedValue,
+                activation.diceOnCard,
+                activation.card,
+                activation.detail
+        );
     }
 
     private void remapCurrentSelection(int[] indexMap) {
@@ -3302,6 +3395,8 @@ public class GameState {
         }
         pendingLocoDice.clear();
         pendingLocoDie = null;
+        pendingAbilityConfirmation = null;
+        pendingAbilityQueue.clear();
     }
 
     private void clearPulpoState() {
@@ -3337,6 +3432,8 @@ public class GameState {
                 || awaitingLangostaRecovery
                 || awaitingGhostShrimpDecision
                 || awaitingCancelConfirmation
+                || pendingAbilityConfirmation != null
+                || !pendingAbilityQueue.isEmpty()
                 || pendingSelection != PendingSelection.NONE
                 || !pendingSelectionQueue.isEmpty();
     }
@@ -3419,6 +3516,131 @@ public class GameState {
         return result;
     }
 
+    private String enqueueAbilityConfirmation(AbilityTrigger trigger, int slotIndex, int placedValue, List<Die> diceOnCard) {
+        Card card = board[slotIndex].getCard();
+        if (card == null) return "";
+        String detail = buildAbilityDetail(card);
+        AbilityActivation activation = new AbilityActivation(trigger, slotIndex, placedValue, diceOnCard, card, detail);
+        if (pendingAbilityConfirmation == null) {
+            pendingAbilityConfirmation = activation;
+            return "Habilidad activada: " + card.getName() + ".";
+        }
+        pendingAbilityQueue.add(activation);
+        return "Habilidad activada: " + card.getName() + ". Queda en espera.";
+    }
+
+    private String buildAbilityDetail(Card card) {
+        if (card == null) return "";
+        String detail = card.getOnCatch();
+        if (detail == null || detail.isEmpty()) {
+            detail = card.getBonus();
+        }
+        if (detail == null || detail.isEmpty()) {
+            detail = card.getOnFail();
+        }
+        return detail == null || detail.isEmpty() ? "Habilidad especial lista para activarse." : detail;
+    }
+
+    private String executeAbilityActivation(AbilityActivation activation) {
+        if (activation == null) return "";
+        if (activation.trigger == AbilityTrigger.REVEAL) {
+            return executeRevealAbility(activation.slotIndex, activation.placedValue);
+        }
+        if (activation.trigger == AbilityTrigger.CAPTURE) {
+            return executeCaptureAbility(activation.card, activation.slotIndex, activation.diceOnCard);
+        }
+        return "";
+    }
+
+    private boolean shouldConfirmRevealAbility(CardId id) {
+        if (id == null) return false;
+        switch (id) {
+            case CANGREJO_ROJO:
+            case CANGREJO_BOXEADOR:
+            case JAIBA_AZUL:
+            case LANGOSTINO_MANTIS:
+            case CAMARON_FANTASMA:
+            case ATUN:
+            case PEZ_GLOBO:
+            case MORENA:
+            case CANGREJO_ERMITANO:
+            case CANGREJO_DECORADOR:
+            case CENTOLLA:
+            case NAUTILUS:
+            case CANGREJO_HERRADURA:
+            case CANGREJO_ARANA:
+            case CANGREJO_VIOLINISTA:
+            case BOTELLA_PLASTICO:
+            case BOTELLA_DE_VIDRIO:
+            case BOTA_VIEJA:
+            case AUTO_HUNDIDO:
+            case MICRO_PLASTICOS:
+            case DERRAME_PETROLEO:
+            case BARCO_PESQUERO:
+            case CORRIENTES_PROFUNDAS:
+            case PEZ_PAYASO:
+            case PEZ_LINTERNA:
+            case KOI:
+            case PEZ_BETTA:
+            case TRUCHA_ARCOIRIS:
+            case PEZ_PIEDRA:
+            case PEZ_LEON:
+            case PEZ_DRAGON_AZUL:
+            case PEZ_HACHA_ABISAL:
+            case CARPA_DORADA:
+            case FLETAN:
+            case PEZ_LOBO:
+            case PEZ_BORRON:
+            case SEPIA:
+            case DAMISELAS:
+            case LAMPREA:
+            case PEZ_VELA:
+            case PIRANA:
+            case PEZ_FANTASMA:
+            case PULPO:
+            case CALAMAR_GIGANTE:
+            case MANTA_GIGANTE:
+            case ARENQUE:
+            case REMORA:
+            case BALLENA_AZUL:
+            case TIBURON_BLANCO:
+            case TIBURON_TIGRE:
+            case DELFIN:
+            case TIBURON_PEREGRINO:
+            case NARVAL:
+            case ORCA:
+            case ANGUILA_ELECTRICA:
+            case CACHALOTE:
+            case ESTURION:
+            case BALLENA_JOROBADA:
+            case MERO_GIGANTE:
+            case PEZ_LUNA:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private boolean shouldConfirmCaptureAbility(CardId id) {
+        if (id == null) return false;
+        switch (id) {
+            case LANGOSTA_ESPINOSA:
+            case BOGAVANTE:
+            case RED_ENREDADA:
+            case RED_DE_ARRASTRE:
+            case LATA_OXIDADA:
+            case PERCEBES:
+            case LOCO:
+            case CABALLITO_DE_MAR:
+            case PEZ_PIPA:
+            case SALMON:
+            case PEZ_VOLADOR:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private String triggerOilSpill() {
         int flipped = 0;
         for (BoardSlot s : board) {
@@ -3464,6 +3686,16 @@ public class GameState {
     }
 
     private String handleOnReveal(int slotIndex, int placedValue) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getCard() == null) return "";
+        if (shouldConfirmRevealAbility(slot.getCard().getId())
+                && canConfirmRevealAbility(slotIndex, placedValue)) {
+            return enqueueAbilityConfirmation(AbilityTrigger.REVEAL, slotIndex, placedValue, null);
+        }
+        return executeRevealAbility(slotIndex, placedValue);
+    }
+
+    private String executeRevealAbility(int slotIndex, int placedValue) {
         BoardSlot slot = board[slotIndex];
         if (slot.getCard() == null) return "";
         String result;
@@ -4389,9 +4621,12 @@ public class GameState {
         return "Red de arrastre: " + startReleaseFromCapture(chosen);
     }
 
-    private String recoverIfD12Used(int slotIndex) {
+    private String recoverIfD12Used(List<Die> diceOnCard) {
         boolean used = false;
-        for (Die d : board[slotIndex].getDice()) {
+        if (diceOnCard == null) {
+            return "";
+        }
+        for (Die d : diceOnCard) {
             if (d.getType() == DieType.D12) {
                 used = true;
                 break;
@@ -6227,11 +6462,337 @@ public class GameState {
     private String handleOnCapture(int slotIndex, List<Die> diceOnCard) {
         Card captured = board[slotIndex].getCard();
         if (captured == null) return "";
+        if (shouldConfirmCaptureAbility(captured.getId())
+                && canConfirmCaptureAbility(captured, slotIndex, diceOnCard)) {
+            List<Die> snapshot = diceOnCard == null ? null : new ArrayList<>(diceOnCard);
+            return enqueueAbilityConfirmation(AbilityTrigger.CAPTURE, slotIndex, 0, snapshot);
+        }
+        return executeCaptureAbility(captured, slotIndex, diceOnCard);
+    }
+
+    private boolean canConfirmRevealAbility(int slotIndex, int placedValue) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getCard() == null) return false;
+        CardId id = slot.getCard().getId();
+        switch (id) {
+            case CANGREJO_BOXEADOR:
+                return hasValidBoxerMove(slotIndex);
+            case JAIBA_AZUL:
+            case ATUN:
+            case PEZ_VELA:
+                return !slot.getDice().isEmpty();
+            case PEZ_BORRON:
+                return !slot.getDice().isEmpty() && hasFaceDownCards();
+            case LANGOSTINO_MANTIS:
+                return !lostDice.isEmpty() && hasAnyDiceOnBoard();
+            case CAMARON_FANTASMA:
+                return countAdjacentFaceDown(slotIndex) >= 2;
+            case PEZ_GLOBO:
+                return hasInflatableDie();
+            case MORENA:
+                return hasMorenaMove(slotIndex);
+            case CANGREJO_ERMITANO:
+                return hasAdjacentFaceUpObject(slotIndex);
+            case CANGREJO_DECORADOR:
+                return hasFaceDownNoDice() && hasObjectInDeck();
+            case NAUTILUS:
+            case CANGREJO_HERRADURA:
+            case PEZ_LEON:
+                return hasAnyDiceOnBoard();
+            case CANGREJO_ARANA:
+                return !failedDiscards.isEmpty() && hasFaceDownNoDice();
+            case CANGREJO_VIOLINISTA:
+                return !failedDiscards.isEmpty();
+            case BOTELLA_PLASTICO:
+                return hasAdjacentFaceUpFish(slotIndex);
+            case BOTELLA_DE_VIDRIO:
+                return hasAdjacentFaceUpCard(slotIndex);
+            case PEZ_PAYASO:
+                return hasAdjacentFaceUpNonObject(slotIndex);
+            case PEZ_LINTERNA:
+                return hasFaceDownCards();
+            case KOI:
+                return !slot.getDice().isEmpty() && hasKoiSwapTarget(slotIndex);
+            case TRUCHA_ARCOIRIS:
+                return countAdjacentFaceDown(slotIndex) > 0;
+            case PEZ_DRAGON_AZUL:
+                return hasHighDiceOnBoard(6);
+            case PEZ_HACHA_ABISAL:
+                return !captures.isEmpty();
+            case SEPIA:
+                return placedValue % 2 != 0 && !deck.isEmpty();
+            case DAMISELAS:
+                return !deck.isEmpty();
+            case PULPO:
+                return placedValue % 2 == 0 && hasNonObjectInDeck();
+            case ARENQUE:
+                return countAdjacentFaceDown(slotIndex) > 0 && hasFishInDeck();
+            case PEZ_FANTASMA:
+            case PEZ_LOBO:
+                return hasAdjacentFaceUpCard(slotIndex);
+            case PIRANA:
+                return hasAdjacentFaceUpFish(slotIndex);
+            case CALAMAR_GIGANTE:
+            case ORCA:
+                return countAdjacentFaceUp(slotIndex) > 0;
+            case MANTA_GIGANTE:
+                return hasLostDieType(DieType.D8);
+            case BALLENA_AZUL:
+            case CACHALOTE:
+                return hasAnyDiceOnBoard();
+            case ESTURION:
+                return reserve.size() > 1;
+            case TIBURON_BLANCO:
+            case TIBURON_TIGRE:
+            case NARVAL:
+                return countAdjacentFaceUp(slotIndex) > 0;
+            case TIBURON_PEREGRINO:
+                return !deck.isEmpty();
+            case ANGUILA_ELECTRICA:
+                return hasAdjacentDice(slotIndex);
+            case MERO_GIGANTE:
+                return countAdjacentFaceDown(slotIndex) > 0;
+            default:
+                return true;
+        }
+    }
+
+    private boolean canConfirmCaptureAbility(Card captured, int slotIndex, List<Die> diceOnCard) {
+        if (captured == null) return false;
+        switch (captured.getId()) {
+            case LANGOSTA_ESPINOSA:
+                return !board[slotIndex].getStatus().langostaRecovered
+                        && hasDieType(diceOnCard, DieType.D8)
+                        && !lostDice.isEmpty();
+            case BOGAVANTE:
+            case LATA_OXIDADA:
+                return !lostDice.isEmpty();
+            case RED_ENREDADA:
+            case RED_DE_ARRASTRE:
+                return countAdjacentFaceDown(slotIndex) > 0;
+            case PERCEBES:
+                return diceOnCard != null
+                        && !diceOnCard.isEmpty()
+                        && countAdjacentWithSpace(slotIndex) >= diceOnCard.size();
+            case LOCO:
+                return diceOnCard != null && !diceOnCard.isEmpty() && hasLocoTargets(slotIndex);
+            case CABALLITO_DE_MAR:
+                return hasLostDieType(DieType.D4);
+            case PEZ_PIPA:
+                return hasDieType(diceOnCard, DieType.D12) && !lostDice.isEmpty();
+            case SALMON:
+                return hasFaceDownCards();
+            case PEZ_VOLADOR:
+                return hasEvenAndOdd(diceOnCard);
+            default:
+                return true;
+        }
+    }
+
+    private boolean hasAnyDiceOnBoard() {
+        for (BoardSlot s : board) {
+            if (!s.getDice().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int countAdjacentFaceDown(int slotIndex) {
+        int count = 0;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && !adj.isFaceUp()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int countAdjacentFaceUp(int slotIndex) {
+        int count = 0;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int countAdjacentWithSpace(int slotIndex) {
+        int count = 0;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.getDice().size() < 2) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean hasAdjacentFaceUpObject(int slotIndex) {
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() == CardType.OBJETO) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasAdjacentFaceUpNonObject(int slotIndex) {
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() != CardType.OBJETO) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasAdjacentFaceUpFish(int slotIndex) {
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() == CardType.PEZ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasAdjacentFaceUpCard(int slotIndex) {
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (adj.getCard() != null && adj.isFaceUp()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasFaceDownNoDice() {
+        for (BoardSlot s : board) {
+            if (s.getCard() != null && !s.isFaceUp() && s.getDice().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasObjectInDeck() {
+        for (Card c : deck) {
+            if (c.getType() == CardType.OBJETO) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasNonObjectInDeck() {
+        for (Card c : deck) {
+            if (c.getType() != CardType.OBJETO) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasFishInDeck() {
+        for (Card c : deck) {
+            if (c.getType() == CardType.PEZ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasMorenaMove(int slotIndex) {
+        boolean hasOrigin = false;
+        boolean hasTarget = false;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            BoardSlot adj = board[idx];
+            if (!adj.getDice().isEmpty()) {
+                hasOrigin = true;
+            }
+            if (adj.getCard() != null && adj.getDice().size() < 2) {
+                hasTarget = true;
+            }
+        }
+        return hasOrigin && hasTarget;
+    }
+
+    private boolean hasInflatableDie() {
+        for (BoardSlot s : board) {
+            if (s.getDice().isEmpty()) continue;
+            Die top = s.getDice().get(s.getDice().size() - 1);
+            if (top.getValue() < top.getType().getSides()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasHighDiceOnBoard(int minValue) {
+        for (BoardSlot s : board) {
+            for (Die d : s.getDice()) {
+                if (d.getValue() >= minValue) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean hasAdjacentDice(int slotIndex) {
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            if (!board[idx].getDice().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasLostDieType(DieType type) {
+        for (Die die : lostDice) {
+            if (die.getType() == type) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasDieType(List<Die> diceOnCard, DieType type) {
+        if (diceOnCard == null) return false;
+        for (Die die : diceOnCard) {
+            if (die.getType() == type) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasEvenAndOdd(List<Die> diceOnCard) {
+        if (diceOnCard == null) return false;
+        boolean hasEven = false;
+        boolean hasOdd = false;
+        for (Die die : diceOnCard) {
+            if (die.getValue() % 2 == 0) {
+                hasEven = true;
+            } else {
+                hasOdd = true;
+            }
+        }
+        return hasEven && hasOdd;
+    }
+
+    private String executeCaptureAbility(Card captured, int slotIndex, List<Die> diceOnCard) {
+        if (captured == null) return "";
         String remoraLog = collectAttachedRemoras(slotIndex);
         String result;
         switch (captured.getId()) {
             case LANGOSTA_ESPINOSA:
-                result = recoverIfD8Used(slotIndex) + remoraLog;
+                result = recoverIfD8Used(slotIndex, diceOnCard) + remoraLog;
                 break;
             case BOGAVANTE:
                 result = recoverAnyLostDie() + remoraLog;
@@ -6253,7 +6814,7 @@ public class GameState {
                 }
                 break;
             case PERCEBES:
-                result = startPercebesMove(slotIndex) + remoraLog;
+                result = startPercebesMove(slotIndex, diceOnCard) + remoraLog;
                 break;
             case LOCO:
                 result = moveLocoDice(slotIndex, diceOnCard) + remoraLog;
@@ -6262,7 +6823,7 @@ public class GameState {
                 result = recoverSpecificDie(DieType.D4) + remoraLog;
                 break;
             case PEZ_PIPA:
-                result = recoverIfD12Used(slotIndex) + remoraLog;
+                result = recoverIfD12Used(diceOnCard) + remoraLog;
                 break;
             case SALMON:
                 result = startSalmonFlip() + remoraLog;
@@ -6287,12 +6848,15 @@ public class GameState {
         return result;
     }
 
-    private String recoverIfD8Used(int slotIndex) {
+    private String recoverIfD8Used(int slotIndex, List<Die> diceOnCard) {
+        if (diceOnCard == null) {
+            return "";
+        }
         if (board[slotIndex].getStatus().langostaRecovered) {
             return "";
         }
         boolean usedD8 = false;
-        for (Die d : board[slotIndex].getDice()) {
+        for (Die d : diceOnCard) {
             if (d.getType() == DieType.D8) {
                 usedD8 = true;
                 break;
@@ -6305,8 +6869,8 @@ public class GameState {
         return "Langosta espinosa: elige un dado perdido para recuperar.";
     }
 
-    private String startPercebesMove(int slotIndex) {
-        List<Die> dice = new ArrayList<>(board[slotIndex].getDice());
+    private String startPercebesMove(int slotIndex, List<Die> diceOnCard) {
+        List<Die> dice = diceOnCard == null ? new ArrayList<>() : new ArrayList<>(diceOnCard);
         board[slotIndex].clearDice();
         clearPercebesState();
         if (dice.isEmpty()) return "";
