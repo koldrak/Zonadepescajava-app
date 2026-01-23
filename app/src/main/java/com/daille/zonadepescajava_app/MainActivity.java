@@ -79,6 +79,7 @@ import java.text.DateFormat;
 import java.util.Date;
 import java.io.InputStream;
 import java.io.IOException;
+import com.daille.zonadepescajava_app.data.RankingApiClient;
 
 public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.OnSlotInteractionListener {
 
@@ -525,15 +526,97 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void refreshScoreRecords() {
-        List<ScoreRecord> records = scoreDatabaseHelper.getTopScores(10);
+        // ===== 1) TOP PERSONAL (local) =====
+        List<ScoreRecord> records = scoreDatabaseHelper.getTopScores(5);
         List<String> labels = new ArrayList<>();
-        DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault());
 
-        for (int i = 0; i < records.size(); i++) {
-            ScoreRecord record = records.get(i);
-            String date = dateFormat.format(new Date(record.getCreatedAt()));
-            labels.add(String.format(Locale.getDefault(), "#%d • %d puntos (%s)", i + 1, record.getScore(), date));
+        labels.add("🏠 TOP PERSONAL");
+        if (records == null || records.isEmpty()) {
+            labels.add("— Sin registros todavía —");
+        } else {
+            DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault());
+            for (int i = 0; i < records.size(); i++) {
+                ScoreRecord r = records.get(i);
+                String date = dateFormat.format(new Date(r.getCreatedAt()));
+                labels.add(String.format(Locale.getDefault(),
+                        "#%d • %d puntos (%s)", i + 1, r.getScore(), date));
+            }
         }
+
+        // ===== 2) Separador TOP GLOBAL =====
+        labels.add(""); // espacio visual
+        labels.add("🌐 TOP GLOBAL (online)");
+
+        // Mensaje inicial (se reemplaza si hay internet y llega data)
+        if (!RankingApiClient.hasInternet(this)) {
+            labels.add("— Sin conexión —");
+            scoreRecordsAdapter.clear();
+            scoreRecordsAdapter.addAll(labels);
+            scoreRecordsAdapter.notifyDataSetChanged();
+            binding.startMenu.scoreRecordsList.post(() ->
+                    setListViewHeightBasedOnChildren(binding.startMenu.scoreRecordsList)
+            );
+            return;
+        } else {
+            labels.add("Cargando...");
+            scoreRecordsAdapter.clear();
+            scoreRecordsAdapter.addAll(labels);
+            scoreRecordsAdapter.notifyDataSetChanged();
+            binding.startMenu.scoreRecordsList.post(() ->
+                    setListViewHeightBasedOnChildren(binding.startMenu.scoreRecordsList)
+            );
+        }
+
+        // ===== 3) Pedir TOP GLOBAL (10) =====
+        RankingApiClient.fetchTopAsync(10, (top, err) -> {
+            // Volvemos a construir la lista completa: local + global real
+            List<String> merged = new ArrayList<>();
+
+            // (A) Local otra vez (para mantenerlo estable)
+            merged.add("🏠 TOP PERSONAL");
+            if (records == null || records.isEmpty()) {
+                merged.add("— Sin registros todavía —");
+            } else {
+                DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault());
+                for (int i = 0; i < records.size(); i++) {
+                    ScoreRecord r = records.get(i);
+                    String date = dateFormat.format(new Date(r.getCreatedAt()));
+                    merged.add(String.format(Locale.getDefault(),
+                            "#%d • %d puntos (%s)", i + 1, r.getScore(), date));
+                }
+            }
+
+            merged.add("");
+            merged.add("🌐 TOP GLOBAL (online)");
+
+            // (B) Global
+            if (err != null || top == null || top.isEmpty()) {
+                merged.add("— No disponible —");
+            } else {
+                for (int i = 0; i < top.size(); i++) {
+                    RankingApiClient.RemoteScore r = top.get(i);
+
+                    // r.fecha viene como "YYYY-MM-DD" desde tu Worker
+                    merged.add(String.format(Locale.getDefault(),
+                            "#%d • %s (%s) — %d (%s)",
+                            i + 1,
+                            r.nombre,
+                            r.pais,
+                            r.puntaje,
+                            r.fecha
+                    ));
+                }
+            }
+
+            scoreRecordsAdapter.clear();
+            scoreRecordsAdapter.addAll(merged);
+            scoreRecordsAdapter.notifyDataSetChanged();
+            binding.startMenu.scoreRecordsList.post(() ->
+                    setListViewHeightBasedOnChildren(binding.startMenu.scoreRecordsList)
+            );
+        });
+
+
 
         scoreRecordsAdapter.clear();
         scoreRecordsAdapter.addAll(labels);
@@ -569,12 +652,98 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (!viewModel.isFinalScoreRecorded()) {
             int previousBest = scoreDatabaseHelper.getHighestScore();
             scoreDatabaseHelper.saveScore(finalScore);
+
+            // ✅ NUEVO: intenta subir al ranking online (solo si hay internet)
+            submitScoreOnlineIfPossible(finalScore);
+
             viewModel.markFinalScoreRecorded();
             refreshScoreRecords();
             return finalScore > previousBest;
         }
         return false;
     }
+
+    // ===== RANKING ONLINE =====
+    private static final String PREF_RANKING = "ranking_prefs";
+    private static final String KEY_PLAYER_NAME = "player_name";
+    private static final String KEY_PLAYER_COUNTRY = "player_country";
+
+    private void submitScoreOnlineIfPossible(int finalScore) {
+        if (!RankingApiClient.hasInternet(this)) return;
+
+        android.content.SharedPreferences sp = getSharedPreferences(PREF_RANKING, MODE_PRIVATE);
+        String nombre = sp.getString(KEY_PLAYER_NAME, null);
+        String pais = sp.getString(KEY_PLAYER_COUNTRY, "CL");
+
+        if (nombre == null || nombre.trim().isEmpty()) {
+            promptPlayerProfileThenSubmit(finalScore);
+            return;
+        }
+
+        nombre = normalizeNombre(nombre);
+        pais = normalizePais(pais);
+
+        String fecha = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                .format(new java.util.Date());
+
+        RankingApiClient.submitScoreAsync(nombre, pais, finalScore, fecha, (ok, err) -> {
+            // silencioso: si quieres, aquí puedes mostrar Toast cuando falle
+            // if (!ok && err != null) { ... }
+        });
+    }
+
+    private void promptPlayerProfileThenSubmit(int finalScore) {
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        layout.setPadding(pad, pad, pad, pad);
+
+        android.widget.EditText etNombre = new android.widget.EditText(this);
+        etNombre.setHint("Nombre (máx 7)");
+        etNombre.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(7)});
+        layout.addView(etNombre);
+
+        android.widget.EditText etPais = new android.widget.EditText(this);
+        etPais.setHint("País (2 letras, ej: CL)");
+        etPais.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(2)});
+        layout.addView(etPais);
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Ranking online")
+                .setMessage("Se usará para publicar tu puntaje (solo cuando tengas internet).")
+                .setView(layout)
+                .setPositiveButton("Guardar", (d, w) -> {
+                    String nombre = normalizeNombre(etNombre.getText().toString());
+                    String pais = normalizePais(etPais.getText().toString());
+
+                    getSharedPreferences(PREF_RANKING, MODE_PRIVATE)
+                            .edit()
+                            .putString(KEY_PLAYER_NAME, nombre)
+                            .putString(KEY_PLAYER_COUNTRY, pais)
+                            .apply();
+
+                    // ahora sí, subimos
+                    submitScoreOnlineIfPossible(finalScore);
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private static String normalizeNombre(String raw) {
+        if (raw == null) return "PLAYER";
+        String s = raw.trim().toUpperCase(java.util.Locale.ROOT);
+        if (s.isEmpty()) s = "PLAYER";
+        if (s.length() > 7) s = s.substring(0, 7);
+        return s;
+    }
+
+    private static String normalizePais(String raw) {
+        if (raw == null) return "CL";
+        String s = raw.trim().toUpperCase(java.util.Locale.ROOT);
+        if (s.length() != 2) s = "CL";
+        return s;
+    }
+
 
     private void showStartMenu() {
         cancelTutorialOverlay();
