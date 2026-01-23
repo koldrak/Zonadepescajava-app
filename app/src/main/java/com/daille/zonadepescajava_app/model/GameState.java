@@ -2487,10 +2487,13 @@ public class GameState {
     private String capture(int slotIndex) {
         BoardSlot slot = board[slotIndex];
         List<Die> diceOnCard = new ArrayList<>(slot.getDice());
+        boolean holdCaptureDice = shouldHoldCaptureDice(slotIndex, diceOnCard);
         captures.add(slot.getCard());
         String captureLog = handleOnCapture(slotIndex, diceOnCard);
-        for (Die d : new ArrayList<>(slot.getDice())) {
-            reserve.add(d.getType());
+        if (!holdCaptureDice) {
+            for (Die d : new ArrayList<>(slot.getDice())) {
+                reserve.add(d.getType());
+            }
         }
         slot.clearDice();
         slot.setCard(deck.isEmpty() ? null : deck.pop());
@@ -2498,6 +2501,25 @@ public class GameState {
         slot.setStatus(new SlotStatus());
         recomputeBottleAdjustments();
         return captureLog.isEmpty() ? "" : " " + captureLog;
+    }
+
+    private boolean shouldHoldCaptureDice(int slotIndex, List<Die> diceOnCard) {
+        Card card = board[slotIndex].getCard();
+        if (card == null) return false;
+        if (!shouldConfirmCaptureAbility(card.getId())) return false;
+        if (!canConfirmCaptureAbility(card, slotIndex, diceOnCard)) return false;
+        return usesCaptureDice(card.getId());
+    }
+
+    private boolean usesCaptureDice(CardId id) {
+        if (id == null) return false;
+        switch (id) {
+            case PERCEBES:
+            case LOCO:
+                return true;
+            default:
+                return false;
+        }
     }
 
     public void toggleFace(int slotIndex) {
