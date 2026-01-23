@@ -3022,10 +3022,27 @@ public class GameState {
             default:
                 return "Dirección inválida para la marea.";
         }
+        if (!isHumpbackDirectionAllowed(dir)) {
+            return "Dirección inválida para la marea.";
+        }
         awaitingHumpbackDirection = false;
         pendingHumpbackSlot = -1;
         enqueueCurrentAnimation(dir);
         return "Ballena jorobada: la marea se está formando.";
+    }
+
+    public List<CurrentDirection> getAllowedHumpbackDirections() {
+        if (!getPezPiedraColumns().isEmpty()) {
+            return java.util.Arrays.asList(CurrentDirection.UP, CurrentDirection.DOWN);
+        }
+        return java.util.Arrays.asList(CurrentDirection.values());
+    }
+
+    private boolean isHumpbackDirectionAllowed(CurrentDirection direction) {
+        if (direction == CurrentDirection.UP || direction == CurrentDirection.DOWN) {
+            return true;
+        }
+        return getPezPiedraColumns().isEmpty();
     }
 
     private String triggerFishingBoatOnRoll(int rolledValue) {
