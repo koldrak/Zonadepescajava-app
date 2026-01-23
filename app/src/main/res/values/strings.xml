@@ -94,8 +94,11 @@
     <string name="settings_tutorial_deck">Reactivar tutorial de mazos</string>
     <string name="settings_tutorial_game_loop">Reactivar tutorial de juego</string>
     <string name="settings_tutorial_release">Reactivar tutorial de liberar cartas</string>
-    <string name="settings_reset_data">Borrar datos</string>
-    <string name="settings_add_points">1000 pts</string>
+    <string name="ranking_button">Rainking...</string>
+    <string name="ranking_title">Rainking global</string>
+    <string name="ranking_loading">Cargando...</string>
+    <string name="ranking_no_connection">— Sin conexión —</string>
+    <string name="ranking_unavailable">— No disponible —</string>
     <string name="tutorial_next">Siguiente</string>
     <string name="tutorial_step_format">Paso %1$d de %2$d</string>
     <string name="tutorial_dice_step1_title">Selecciona tus dados</string>

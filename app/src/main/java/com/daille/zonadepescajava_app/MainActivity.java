@@ -95,6 +95,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private boolean isRevealingCard = false;
     private ScoreDatabaseHelper scoreDatabaseHelper;
     private ArrayAdapter<String> scoreRecordsAdapter;
+    private ArrayAdapter<String> rankingAdapter;
     private CollectionCardAdapter collectionCardAdapter;
     private DeckSelectionAdapter deckSelectionAdapter;
     private DeckSelectionAdapter cardSellAdapter;
@@ -232,6 +233,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setupTideAnimationOverlay();
         setupCollectionsPanel();
         setupSettingsPanel();
+        setupRankingPanel();
         setupTutorialOverlay();
         setupAudio();
         setupHaptics();
@@ -264,6 +266,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (isPanelVisible(binding.diceSelectionPanel.getRoot())
                 || isPanelVisible(binding.diceShopPanel.getRoot())
                 || isPanelVisible(binding.collectionsPanel.getRoot())
+                || isPanelVisible(binding.rankingPanel.getRoot())
                 || isPanelVisible(binding.settingsPanel.getRoot())
                 || isPanelVisible(binding.gamePanel.getRoot())) {
             showStartMenu();
@@ -337,6 +340,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         });
         setSoundButtonClickListener(binding.startMenu.openSettings, this::showSettingsPanel);
         setSoundButtonClickListener(binding.startMenu.openCollections, this::showCollectionsPanel);
+        setSoundButtonClickListener(binding.startMenu.openRanking, this::showRankingPanel);
     }
 
     private void setupScoreRecordsList() {
@@ -351,6 +355,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.collectionsPanel.collectionsRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.collectionsPanel.collectionsRecycler.setAdapter(collectionCardAdapter);
         setButtonClickListener(binding.collectionsPanel.closeCollections, this::showStartMenu);
+    }
+
+    private void setupRankingPanel() {
+        rankingAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>());
+        binding.rankingPanel.rankingList.setAdapter(rankingAdapter);
+        binding.rankingPanel.rankingList.setEmptyView(binding.rankingPanel.rankingEmpty);
+        setButtonClickListener(binding.rankingPanel.rankingBack, this::showStartMenu);
     }
 
     private void setupDeckSelectionPanel() {
@@ -627,6 +638,49 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 setListViewHeightBasedOnChildren(binding.startMenu.scoreRecordsList)
         );
     }
+
+    private void refreshRankingList() {
+        List<String> labels = new ArrayList<>();
+        labels.add(getString(R.string.ranking_title) + " (TOP 900)");
+
+        if (!RankingApiClient.hasInternet(this)) {
+            labels.add(getString(R.string.ranking_no_connection));
+            rankingAdapter.clear();
+            rankingAdapter.addAll(labels);
+            rankingAdapter.notifyDataSetChanged();
+            return;
+        }
+
+        labels.add(getString(R.string.ranking_loading));
+        rankingAdapter.clear();
+        rankingAdapter.addAll(labels);
+        rankingAdapter.notifyDataSetChanged();
+
+        RankingApiClient.fetchTopAsync(900, (top, err) -> {
+            List<String> merged = new ArrayList<>();
+            merged.add(getString(R.string.ranking_title) + " (TOP 900)");
+
+            if (err != null || top == null || top.isEmpty()) {
+                merged.add(getString(R.string.ranking_unavailable));
+            } else {
+                for (int i = 0; i < top.size(); i++) {
+                    RankingApiClient.RemoteScore r = top.get(i);
+                    merged.add(String.format(Locale.getDefault(),
+                            "#%d • %s %s — %d (%s)",
+                            i + 1,
+                            r.nombre,
+                            countryCodeToFlag(r.pais),
+                            r.puntaje,
+                            r.fecha
+                    ));
+                }
+            }
+
+            rankingAdapter.clear();
+            rankingAdapter.addAll(merged);
+            rankingAdapter.notifyDataSetChanged();
+        });
+    }
     private static void setListViewHeightBasedOnChildren(android.widget.ListView listView) {
         android.widget.ListAdapter listAdapter = listView.getAdapter();
         if (listAdapter == null) return;
@@ -820,6 +874,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        binding.rankingPanel.getRoot().setVisibility(View.GONE);
         updateAmbientMusic("ambientalplaya");
         refreshScoreRecords(); // ✅ asegura recarga al mostrar menú
     }
@@ -836,6 +891,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        binding.rankingPanel.getRoot().setVisibility(View.GONE);
         updateAmbientMusic("ambientalplaya");
         binding.deckSelectionPanel.getRoot().post(() -> maybeStartTutorial(TutorialType.DECK_SELECTION));
     }
@@ -851,6 +907,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        binding.rankingPanel.getRoot().setVisibility(View.GONE);
         updateAmbientMusic("ambientalplaya");
         binding.diceSelectionPanel.getRoot().post(() -> maybeStartTutorial(TutorialType.DICE_SELECTION));
     }
@@ -866,6 +923,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        binding.rankingPanel.getRoot().setVisibility(View.GONE);
         updateAmbientMusic("market");
     }
 
@@ -880,6 +938,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        binding.rankingPanel.getRoot().setVisibility(View.GONE);
         updateAmbientMusic("market");
     }
 
@@ -893,6 +952,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.VISIBLE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        binding.rankingPanel.getRoot().setVisibility(View.GONE);
         updateAmbientMusic("ambientalplaya");
     }
 
@@ -906,6 +966,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.VISIBLE);
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        binding.rankingPanel.getRoot().setVisibility(View.GONE);
         updateAmbientMusic("ambientalplaya");
         refreshCollections();
     }
@@ -920,8 +981,24 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.getRoot().setVisibility(View.GONE);
         binding.collectionsPanel.getRoot().setVisibility(View.GONE);
         binding.settingsPanel.getRoot().setVisibility(View.VISIBLE);
+        binding.rankingPanel.getRoot().setVisibility(View.GONE);
         updateAmbientMusic("ambientalplaya");
         updateTutorialSwitches();
+    }
+
+    private void showRankingPanel() {
+        cancelTutorialOverlay();
+        binding.startMenu.getRoot().setVisibility(View.GONE);
+        binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.diceShopPanel.getRoot().setVisibility(View.GONE);
+        binding.cardSellPanel.getRoot().setVisibility(View.GONE);
+        binding.gamePanel.getRoot().setVisibility(View.GONE);
+        binding.collectionsPanel.getRoot().setVisibility(View.GONE);
+        binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        binding.rankingPanel.getRoot().setVisibility(View.VISIBLE);
+        updateAmbientMusic("ambientalplaya");
+        refreshRankingList();
     }
 
     private void refreshDeckSelectionList() {
@@ -1254,21 +1331,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void setupSettingsPanel() {
         setButtonClickListener(binding.settingsPanel.settingsBack, this::showStartMenu);
-        setButtonClickListener(binding.settingsPanel.settingsResetData, () -> {
-            scoreDatabaseHelper.resetAllData();
-            viewModel.resetProgress();
-            selectedDeck = new ArrayList<>();
-            deckSelectionPoints = 0;
-            refreshScoreRecords();
-            loadAudioSettings();
-            refreshDeckPresetList();
-            showStartMenu();
-            Toast.makeText(this, "Datos borrados.", Toast.LENGTH_SHORT).show();
-        });
-        setButtonClickListener(binding.settingsPanel.settingsAddPoints, () -> {
-            scoreDatabaseHelper.addBonusPoints(1000);
-            Toast.makeText(this, "Se agregaron 1000 puntos.", Toast.LENGTH_SHORT).show();
-        });
         binding.settingsPanel.settingsMusicToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
             musicEnabled = !isChecked;
             applyAudioSettings();
