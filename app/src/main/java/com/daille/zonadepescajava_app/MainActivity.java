@@ -3693,18 +3693,29 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void promptHumpbackDirection() {
         if (!gameState.isAwaitingHumpbackDirection()) return;
-        CharSequence[] items = new CharSequence[] {"Arriba", "Abajo", "Izquierda", "Derecha"};
+        List<GameState.CurrentDirection> directions = gameState.getAllowedHumpbackDirections();
+        CharSequence[] items = new CharSequence[directions.size()];
+        for (int i = 0; i < directions.size(); i++) {
+            switch (directions.get(i)) {
+                case UP:
+                    items[i] = "Arriba";
+                    break;
+                case DOWN:
+                    items[i] = "Abajo";
+                    break;
+                case LEFT:
+                    items[i] = "Izquierda";
+                    break;
+                default:
+                    items[i] = "Derecha";
+                    break;
+            }
+        }
         new AlertDialog.Builder(this)
                 .setTitle("Ballena jorobada")
                 .setItems(items, (dialog, which) -> {
-                    String direction;
-                    switch (which) {
-                        case 0: direction = "UP"; break;
-                        case 1: direction = "DOWN"; break;
-                        case 2: direction = "LEFT"; break;
-                        default: direction = "RIGHT"; break;
-                    }
-                    String msg = gameState.chooseHumpbackDirection(direction);
+                    GameState.CurrentDirection selected = directions.get(which);
+                    String msg = gameState.chooseHumpbackDirection(selected.name());
                     handleGameResult(msg);
                 })
                 .setCancelable(false)
