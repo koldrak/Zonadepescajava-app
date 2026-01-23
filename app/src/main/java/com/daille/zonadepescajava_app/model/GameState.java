@@ -83,6 +83,9 @@ public class GameState {
     private int horseshoeSlotIndex = -1;
     private int horseshoeDieIndex = -1;
     private boolean awaitingHorseshoeValue = false;
+    private int d20CriticalSlotIndex = -1;
+    private int d20CriticalDieIndex = -1;
+    private boolean awaitingD20CriticalValue = false;
     private int cachaloteSlotIndex = -1;
     private DieType pendingCachaloteDieType = null;
     private boolean awaitingCachaloteValue = false;
@@ -333,6 +336,7 @@ public class GameState {
         pendingHumpbackSlot = -1;
         awaitingHumpbackDirection = false;
         clearHorseshoeState();
+        clearD20CriticalState();
         clearCachaloteState();
         clearBoxerState();
         awaitingPulpoChoice = false;
@@ -452,6 +456,10 @@ public class GameState {
         return awaitingHorseshoeValue;
     }
 
+    public boolean isAwaitingD20CriticalValue() {
+        return awaitingD20CriticalValue;
+    }
+
     public boolean isAwaitingBoxerDecision() {
         return awaitingBoxerDecision;
     }
@@ -495,6 +503,7 @@ public class GameState {
                 || awaitingDecoradorChoice
                 || awaitingViolinistChoice
                 || awaitingHorseshoeValue
+                || awaitingD20CriticalValue
                 || awaitingCachaloteValue
                 || awaitingBoxerDecision
                 || awaitingPulpoChoice
@@ -716,6 +725,24 @@ public class GameState {
             return null;
         }
         return slot.getDice().get(horseshoeDieIndex).getType();
+    }
+
+    public int getD20CriticalDieSides() {
+        if (d20CriticalSlotIndex < 0 || d20CriticalSlotIndex >= board.length) return 0;
+        BoardSlot slot = board[d20CriticalSlotIndex];
+        if (slot.getDice().isEmpty() || d20CriticalDieIndex < 0 || d20CriticalDieIndex >= slot.getDice().size()) {
+            return 0;
+        }
+        return slot.getDice().get(d20CriticalDieIndex).getType().getSides();
+    }
+
+    public DieType getD20CriticalDieType() {
+        if (d20CriticalSlotIndex < 0 || d20CriticalSlotIndex >= board.length) return null;
+        BoardSlot slot = board[d20CriticalSlotIndex];
+        if (slot.getDice().isEmpty() || d20CriticalDieIndex < 0 || d20CriticalDieIndex >= slot.getDice().size()) {
+            return null;
+        }
+        return slot.getDice().get(d20CriticalDieIndex).getType();
     }
 
     public boolean isAwaitingCachaloteValue() {
@@ -1627,6 +1654,17 @@ public class GameState {
         return "Cangrejo herradura: elige el nuevo valor del dado.";
     }
 
+    private String startD20CriticalAdjustment(int slotIndex) {
+        BoardSlot slot = board[slotIndex];
+        if (slot.getDice().isEmpty()) {
+            return "D20 crítico: no hay dado para ajustar.";
+        }
+        d20CriticalSlotIndex = slotIndex;
+        d20CriticalDieIndex = slot.getDice().size() - 1;
+        awaitingD20CriticalValue = true;
+        return "D20 crítico: elige el nuevo valor del dado.";
+    }
+
     public String chooseHorseshoeValue(int value) {
         if (!awaitingHorseshoeValue) {
             return "No hay ajuste pendiente del Cangrejo herradura.";
@@ -1667,10 +1705,45 @@ public class GameState {
         return msg;
     }
 
+    public String chooseD20CriticalValue(int value) {
+        if (!awaitingD20CriticalValue) {
+            return "No hay ajuste pendiente del D20 crítico.";
+        }
+        if (d20CriticalSlotIndex < 0 || d20CriticalSlotIndex >= board.length) {
+            clearD20CriticalState();
+            return "D20 crítico: el dado ya no está disponible.";
+        }
+        BoardSlot slot = board[d20CriticalSlotIndex];
+        if (slot.getDice().isEmpty() || d20CriticalDieIndex < 0 || d20CriticalDieIndex >= slot.getDice().size()) {
+            clearD20CriticalState();
+            return "D20 crítico: el dado ya no está disponible.";
+        }
+        Die die = slot.getDice().get(d20CriticalDieIndex);
+        int sides = die.getType().getSides();
+        if (value < 1 || value > sides) {
+            return "Elige un valor dentro del rango del dado.";
+        }
+        slot.setDie(d20CriticalDieIndex, new Die(die.getType(), value));
+        int slotIndex = d20CriticalSlotIndex;
+        clearD20CriticalState();
+        String cocoLoss = applyCoconutCrabLoss(slotIndex, value);
+        String result = resolvePlacementAfterValue(slotIndex, value, cocoLoss);
+        if (result == null || result.isEmpty()) {
+            return "D20 crítico ajustó el dado a " + value + ".";
+        }
+        return "D20 crítico ajustó el dado a " + value + ". " + result;
+    }
+
     private void clearHorseshoeState() {
         horseshoeSlotIndex = -1;
         horseshoeDieIndex = -1;
         awaitingHorseshoeValue = false;
+    }
+
+    private void clearD20CriticalState() {
+        d20CriticalSlotIndex = -1;
+        d20CriticalDieIndex = -1;
+        awaitingD20CriticalValue = false;
     }
 
     private void clearCachaloteValueState() {
@@ -2029,6 +2102,9 @@ public class GameState {
         if (awaitingHorseshoeValue) {
             return "Resuelve el ajuste del Cangrejo herradura antes de lanzar otro dado.";
         }
+        if (awaitingD20CriticalValue) {
+            return "Resuelve el ajuste del D20 crítico antes de lanzar otro dado.";
+        }
         if (awaitingCachaloteValue) {
             return "Resuelve el valor del dado del Cachalote antes de lanzar otro dado.";
         }
@@ -2137,6 +2213,9 @@ public class GameState {
         if (awaitingHorseshoeValue) {
             return "Resuelve el ajuste del Cangrejo herradura antes de colocar dados.";
         }
+        if (awaitingD20CriticalValue) {
+            return "Resuelve el ajuste del D20 crítico antes de colocar dados.";
+        }
         if (awaitingCachaloteValue) {
             return "Resuelve el valor del dado del Cachalote antes de colocar dados.";
         }
@@ -2170,18 +2249,35 @@ public class GameState {
             selectedDie = null;
             return "Una carta no puede tener más de 2 dados.";
         }
-        slot.addDie(selectedDie);
+        Die placedDie = selectedDie;
+        slot.addDie(placedDie);
         lastDiePlaced = true;
-        int placedValue = selectedDie.getValue();
-        String cocoLoss = applyCoconutCrabLoss(slotIndex, placedValue);
+        int placedValue = placedDie.getValue();
         selectedDie = null;
         if (forcedSlotIndex != null && slotIndex == forcedSlotIndex) {
             forcedSlotIndex = null;
         }
 
+        if (placedDie.getType() == DieType.D20 && placedValue == 20 && !slot.isFaceUp()) {
+            return startD20CriticalAdjustment(slotIndex);
+        }
+
+        String cocoLoss = applyCoconutCrabLoss(slotIndex, placedValue);
+        String baseLog = cocoLoss.isEmpty() ? "" : cocoLoss;
+        return resolvePlacementAfterValue(slotIndex, placedValue, baseLog);
+    }
+
+    public boolean consumeLastDiePlaced() {
+        boolean placed = lastDiePlaced;
+        lastDiePlaced = false;
+        return placed;
+    }
+
+    private String resolvePlacementAfterValue(int slotIndex, int placedValue, String baseLog) {
+        BoardSlot slot = board[slotIndex];
         StringBuilder extraLog = new StringBuilder();
-        if (!cocoLoss.isEmpty()) {
-            extraLog.append(" ").append(cocoLoss);
+        if (baseLog != null && !baseLog.isEmpty()) {
+            extraLog.append(" ").append(baseLog.trim());
         }
         if (!slot.isFaceUp()) {
             if (canRevealSlot(slotIndex)) {
@@ -2215,12 +2311,6 @@ public class GameState {
         }
 
         return resolveFishingOutcome(slotIndex, placedValue, extraLog.toString(), true);
-    }
-
-    public boolean consumeLastDiePlaced() {
-        boolean placed = lastDiePlaced;
-        lastDiePlaced = false;
-        return placed;
     }
 
     private String addDieToSlot(int slotIndex, Die die) {
@@ -2815,6 +2905,11 @@ public class GameState {
         horseshoeSlotIndex = remapIndex(horseshoeSlotIndex, indexMap);
         if (awaitingHorseshoeValue && horseshoeSlotIndex < 0) {
             clearHorseshoeState();
+        }
+
+        d20CriticalSlotIndex = remapIndex(d20CriticalSlotIndex, indexMap);
+        if (awaitingD20CriticalValue && d20CriticalSlotIndex < 0) {
+            clearD20CriticalState();
         }
 
         cachaloteSlotIndex = remapIndex(cachaloteSlotIndex, indexMap);
