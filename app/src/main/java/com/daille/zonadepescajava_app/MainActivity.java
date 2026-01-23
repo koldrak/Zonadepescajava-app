@@ -598,10 +598,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
                     // r.fecha viene como "YYYY-MM-DD" desde tu Worker
                     merged.add(String.format(Locale.getDefault(),
-                            "#%d • %s (%s) — %d (%s)",
+                            "#%d • %s %s — %d (%s)",
                             i + 1,
                             r.nombre,
-                            r.pais,
+                            countryCodeToFlag(r.pais),
                             r.puntaje,
                             r.fecha
                     ));
@@ -703,10 +703,25 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         etNombre.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(7)});
         layout.addView(etNombre);
 
-        android.widget.EditText etPais = new android.widget.EditText(this);
-        etPais.setHint("País (2 letras, ej: CL)");
-        etPais.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(2)});
-        layout.addView(etPais);
+        List<CountryOption> countryOptions = buildCountryOptions();
+        android.widget.Spinner spPais = new android.widget.Spinner(this);
+        List<String> labels = new ArrayList<>();
+        for (CountryOption option : countryOptions) {
+            labels.add(option.label);
+        }
+        android.widget.ArrayAdapter<String> paisAdapter = new android.widget.ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_item,
+                labels
+        );
+        paisAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spPais.setAdapter(paisAdapter);
+
+        android.content.SharedPreferences sp = getSharedPreferences(PREF_RANKING, MODE_PRIVATE);
+        String storedPais = sp.getString(KEY_PLAYER_COUNTRY, "CL");
+        int selection = indexForCountryCode(countryOptions, storedPais);
+        spPais.setSelection(selection);
+        layout.addView(spPais);
 
         new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("Ranking online")
@@ -714,7 +729,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setView(layout)
                 .setPositiveButton("Guardar", (d, w) -> {
                     String nombre = normalizeNombre(etNombre.getText().toString());
-                    String pais = normalizePais(etPais.getText().toString());
+                    int index = spPais.getSelectedItemPosition();
+                    String selectedPais = countryOptions.get(index).code;
+                    String pais = normalizePais(selectedPais);
 
                     getSharedPreferences(PREF_RANKING, MODE_PRIVATE)
                             .edit()
@@ -742,6 +759,50 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         String s = raw.trim().toUpperCase(java.util.Locale.ROOT);
         if (s.length() != 2) s = "CL";
         return s;
+    }
+
+    private static String countryCodeToFlag(String raw) {
+        String code = normalizePais(raw);
+        if (code.length() != 2) return "🏳️";
+        int first = Character.codePointAt(code, 0) - 'A' + 0x1F1E6;
+        int second = Character.codePointAt(code, 1) - 'A' + 0x1F1E6;
+        return new String(Character.toChars(first)) + new String(Character.toChars(second));
+    }
+
+    private static List<CountryOption> buildCountryOptions() {
+        String[] codes = java.util.Locale.getISOCountries();
+        List<CountryOption> options = new ArrayList<>();
+        for (String code : codes) {
+            java.util.Locale locale = new java.util.Locale("", code);
+            String name = locale.getDisplayCountry(java.util.Locale.getDefault());
+            if (name == null || name.trim().isEmpty()) {
+                name = code;
+            }
+            options.add(new CountryOption(code, code + " - " + name));
+        }
+        options.sort((a, b) -> a.label.compareToIgnoreCase(b.label));
+        return options;
+    }
+
+    private static int indexForCountryCode(List<CountryOption> options, String code) {
+        if (code == null) return 0;
+        String normalized = normalizePais(code);
+        for (int i = 0; i < options.size(); i++) {
+            if (options.get(i).code.equalsIgnoreCase(normalized)) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    private static class CountryOption {
+        private final String code;
+        private final String label;
+
+        private CountryOption(String code, String label) {
+            this.code = code;
+            this.label = label;
+        }
     }
 
 
