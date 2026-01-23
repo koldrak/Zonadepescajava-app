@@ -3161,7 +3161,10 @@ public class GameState {
         }
 
         for (int i = 0; i < board.length; i++) {
-            board[i].getDice().addAll(incoming.get(i));
+            BoardSlot slot = board[i];
+            for (Die die : incoming.get(i)) {
+                slot.addDie(die);
+            }
         }
 
         if (!lost.isEmpty()) {
