@@ -133,6 +133,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private boolean musicEnabled = true;
     private boolean sfxEnabled = true;
     private boolean buttonEnabled = true;
+    private List<CountryOption> rankingCountryOptions = Collections.emptyList();
 
     private static final String TUTORIAL_PREFS = "tutorial_preferences";
     private static final String TUTORIAL_DICE_DONE_KEY = "tutorial_dice_done";
@@ -755,26 +756,16 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         android.widget.EditText etNombre = new android.widget.EditText(this);
         etNombre.setHint("Nombre (máx 7)");
         etNombre.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(7)});
+        String storedName = getSharedPreferences(PREF_RANKING, MODE_PRIVATE)
+                .getString(KEY_PLAYER_NAME, "");
+        etNombre.setText(storedName == null ? "" : storedName);
         layout.addView(etNombre);
 
         List<CountryOption> countryOptions = buildCountryOptions();
         android.widget.Spinner spPais = new android.widget.Spinner(this);
-        List<String> labels = new ArrayList<>();
-        for (CountryOption option : countryOptions) {
-            labels.add(option.label);
-        }
-        android.widget.ArrayAdapter<String> paisAdapter = new android.widget.ArrayAdapter<>(
-                this,
-                android.R.layout.simple_spinner_item,
-                labels
-        );
-        paisAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spPais.setAdapter(paisAdapter);
-
         android.content.SharedPreferences sp = getSharedPreferences(PREF_RANKING, MODE_PRIVATE);
         String storedPais = sp.getString(KEY_PLAYER_COUNTRY, "CL");
-        int selection = indexForCountryCode(countryOptions, storedPais);
-        spPais.setSelection(selection);
+        configureCountrySpinner(spPais, countryOptions, storedPais);
         layout.addView(spPais);
 
         new androidx.appcompat.app.AlertDialog.Builder(this)
@@ -836,6 +827,22 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         options.sort((a, b) -> a.label.compareToIgnoreCase(b.label));
         return options;
+    }
+
+    private void configureCountrySpinner(android.widget.Spinner spinner, List<CountryOption> countryOptions, String selectedCode) {
+        List<String> labels = new ArrayList<>();
+        for (CountryOption option : countryOptions) {
+            labels.add(option.label);
+        }
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_item,
+                labels
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        int selection = indexForCountryCode(countryOptions, selectedCode);
+        spinner.setSelection(selection);
     }
 
     private static int indexForCountryCode(List<CountryOption> options, String code) {
@@ -984,6 +991,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.rankingPanel.getRoot().setVisibility(View.GONE);
         updateAmbientMusic("ambientalplaya");
         updateTutorialSwitches();
+        refreshRankingProfileSettings();
     }
 
     private void showRankingPanel() {
@@ -1390,6 +1398,40 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             public void onStopTrackingTouch(SeekBar seekBar) {
             }
         });
+        setupRankingProfileSettings();
+    }
+
+    private void setupRankingProfileSettings() {
+        rankingCountryOptions = buildCountryOptions();
+        SharedPreferences sp = getSharedPreferences(PREF_RANKING, MODE_PRIVATE);
+        String storedCountry = sp.getString(KEY_PLAYER_COUNTRY, "CL");
+        configureCountrySpinner(binding.settingsPanel.settingsRankingCountrySpinner, rankingCountryOptions, storedCountry);
+        binding.settingsPanel.settingsRankingSave.setOnClickListener(v -> saveRankingProfileSettings());
+    }
+
+    private void refreshRankingProfileSettings() {
+        SharedPreferences sp = getSharedPreferences(PREF_RANKING, MODE_PRIVATE);
+        String storedName = sp.getString(KEY_PLAYER_NAME, "");
+        String storedCountry = sp.getString(KEY_PLAYER_COUNTRY, "CL");
+        binding.settingsPanel.settingsRankingNameInput.setText(storedName == null ? "" : storedName);
+        int selection = indexForCountryCode(rankingCountryOptions, storedCountry);
+        binding.settingsPanel.settingsRankingCountrySpinner.setSelection(selection);
+    }
+
+    private void saveRankingProfileSettings() {
+        String nombre = normalizeNombre(binding.settingsPanel.settingsRankingNameInput.getText().toString());
+        int index = binding.settingsPanel.settingsRankingCountrySpinner.getSelectedItemPosition();
+        if (index < 0 || index >= rankingCountryOptions.size()) {
+            index = 0;
+        }
+        String selectedPais = rankingCountryOptions.get(index).code;
+        String pais = normalizePais(selectedPais);
+        getSharedPreferences(PREF_RANKING, MODE_PRIVATE)
+                .edit()
+                .putString(KEY_PLAYER_NAME, nombre)
+                .putString(KEY_PLAYER_COUNTRY, pais)
+                .apply();
+        binding.settingsPanel.settingsRankingNameInput.setText(nombre);
     }
 
     private void setupTutorialOverlay() {
