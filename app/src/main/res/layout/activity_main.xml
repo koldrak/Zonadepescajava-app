@@ -52,6 +52,11 @@
             android:visibility="gone" />
 
         <include
+            android:id="@+id/rankingPanel"
+            layout="@layout/layout_ranking"
+            android:visibility="gone" />
+
+        <include
             android:id="@+id/tutorialOverlay"
             layout="@layout/layout_tutorial_overlay"
             android:visibility="gone" />
