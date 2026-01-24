@@ -7394,6 +7394,7 @@ public class GameState {
     }
 
     private String startBlueWhaleReposition(int slotIndex) {
+        clearPendingDieLoss();
         List<Die> pool = new ArrayList<>();
         for (BoardSlot s : board) {
             if (!s.getDice().isEmpty()) {
@@ -7412,6 +7413,11 @@ public class GameState {
                 slotIndex,
                 "Ballena azul: coloca cada dado nuevamente en el tablero. Comienza con "
                         + pendingBallenaDice.get(0).getLabel() + ".");
+    }
+
+    private void clearPendingDieLoss() {
+        pendingDieLossSlot = null;
+        pendingLossTriggerValue = 0;
     }
 
     private String placeBlueWhaleDie(int slotIndex) {
