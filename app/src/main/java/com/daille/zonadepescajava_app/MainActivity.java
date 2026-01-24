@@ -763,22 +763,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
         List<CountryOption> countryOptions = buildCountryOptions();
         android.widget.Spinner spPais = new android.widget.Spinner(this);
-        List<String> labels = new ArrayList<>();
-        for (CountryOption option : countryOptions) {
-            labels.add(option.label);
-        }
-        android.widget.ArrayAdapter<String> paisAdapter = new android.widget.ArrayAdapter<>(
-                this,
-                android.R.layout.simple_spinner_item,
-                labels
-        );
-        paisAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spPais.setAdapter(paisAdapter);
-
         android.content.SharedPreferences sp = getSharedPreferences(PREF_RANKING, MODE_PRIVATE);
         String storedPais = sp.getString(KEY_PLAYER_COUNTRY, "CL");
-        int selection = indexForCountryCode(countryOptions, storedPais);
-        spPais.setSelection(selection);
+        configureCountrySpinner(spPais, countryOptions, storedPais);
         layout.addView(spPais);
 
         new androidx.appcompat.app.AlertDialog.Builder(this)
@@ -840,6 +827,22 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         options.sort((a, b) -> a.label.compareToIgnoreCase(b.label));
         return options;
+    }
+
+    private void configureCountrySpinner(android.widget.Spinner spinner, List<CountryOption> countryOptions, String selectedCode) {
+        List<String> labels = new ArrayList<>();
+        for (CountryOption option : countryOptions) {
+            labels.add(option.label);
+        }
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_item,
+                labels
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        int selection = indexForCountryCode(countryOptions, selectedCode);
+        spinner.setSelection(selection);
     }
 
     private static int indexForCountryCode(List<CountryOption> options, String code) {
@@ -1400,17 +1403,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void setupRankingProfileSettings() {
         rankingCountryOptions = buildCountryOptions();
-        List<String> labels = new ArrayList<>();
-        for (CountryOption option : rankingCountryOptions) {
-            labels.add(option.label);
-        }
-        ArrayAdapter<String> countryAdapter = new ArrayAdapter<>(
-                this,
-                android.R.layout.simple_spinner_item,
-                labels
-        );
-        countryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        binding.settingsPanel.settingsRankingCountrySpinner.setAdapter(countryAdapter);
+        SharedPreferences sp = getSharedPreferences(PREF_RANKING, MODE_PRIVATE);
+        String storedCountry = sp.getString(KEY_PLAYER_COUNTRY, "CL");
+        configureCountrySpinner(binding.settingsPanel.settingsRankingCountrySpinner, rankingCountryOptions, storedCountry);
         binding.settingsPanel.settingsRankingSave.setOnClickListener(v -> saveRankingProfileSettings());
     }
 
