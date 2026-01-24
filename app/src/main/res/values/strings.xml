@@ -94,6 +94,11 @@
     <string name="settings_tutorial_deck">Reactivar tutorial de mazos</string>
     <string name="settings_tutorial_game_loop">Reactivar tutorial de juego</string>
     <string name="settings_tutorial_release">Reactivar tutorial de liberar cartas</string>
+    <string name="settings_ranking_title">Ranking global</string>
+    <string name="settings_ranking_name_label">Nombre para ranking</string>
+    <string name="settings_ranking_name_hint">Máx. 7 caracteres</string>
+    <string name="settings_ranking_country_label">País</string>
+    <string name="settings_ranking_save">Guardar perfil</string>
     <string name="ranking_button">Rainking...</string>
     <string name="ranking_title">Rainking global</string>
     <string name="ranking_loading">Cargando...</string>
