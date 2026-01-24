@@ -89,6 +89,10 @@
     <string name="settings_sfx_volume">Efectos de sonido</string>
     <string name="settings_button_volume">Sonido de botones</string>
     <string name="settings_audio_toggle">Bloquear</string>
+    <string name="settings_ranking_title">Ranking global</string>
+    <string name="settings_ranking_name_label">Nombre para el ranking</string>
+    <string name="settings_ranking_name_hint">Nombre (máx 7)</string>
+    <string name="settings_ranking_country_label">País</string>
     <string name="settings_tutorials_title">Tutoriales</string>
     <string name="settings_tutorial_dice">Reactivar tutorial de dados</string>
     <string name="settings_tutorial_deck">Reactivar tutorial de mazos</string>

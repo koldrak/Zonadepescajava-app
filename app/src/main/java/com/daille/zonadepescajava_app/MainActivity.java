@@ -16,12 +16,16 @@ import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
+import android.text.Editable;
+import android.text.InputFilter;
+import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.widget.AbsListView;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.BaseAdapter;
 import android.widget.ImageButton;
@@ -100,6 +104,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private DeckSelectionAdapter deckSelectionAdapter;
     private DeckSelectionAdapter cardSellAdapter;
     private ArrayAdapter<String> deckPresetsAdapter;
+    private List<CountryOption> rankingCountryOptions = new ArrayList<>();
+    private boolean isUpdatingRankingProfileUi = false;
     private final List<ImageView> diceTokens = new ArrayList<>();
     private final Card[] lastBoardCards = new Card[9];
     private final List<List<Die>> lastBoardDice = new ArrayList<>();
@@ -984,6 +990,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.rankingPanel.getRoot().setVisibility(View.GONE);
         updateAmbientMusic("ambientalplaya");
         updateTutorialSwitches();
+        updateRankingProfileUi();
     }
 
     private void showRankingPanel() {
@@ -1390,6 +1397,98 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             public void onStopTrackingTouch(SeekBar seekBar) {
             }
         });
+
+        setupRankingProfileSettings();
+    }
+
+    private void setupRankingProfileSettings() {
+        rankingCountryOptions = buildCountryOptions();
+        List<String> labels = new ArrayList<>();
+        for (CountryOption option : rankingCountryOptions) {
+            labels.add(option.label);
+        }
+        ArrayAdapter<String> countryAdapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_item,
+                labels
+        );
+        countryAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        binding.settingsPanel.settingsRankingCountrySpinner.setAdapter(countryAdapter);
+        binding.settingsPanel.settingsRankingCountrySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (isUpdatingRankingProfileUi) {
+                    return;
+                }
+                String selected = rankingCountryOptions.get(position).code;
+                String normalized = normalizePais(selected);
+                getSharedPreferences(PREF_RANKING, MODE_PRIVATE)
+                        .edit()
+                        .putString(KEY_PLAYER_COUNTRY, normalized)
+                        .apply();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+
+        binding.settingsPanel.settingsRankingNameInput.setFilters(
+                new InputFilter[]{new InputFilter.LengthFilter(7)}
+        );
+        binding.settingsPanel.settingsRankingNameInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (isUpdatingRankingProfileUi) {
+                    return;
+                }
+                String raw = s.toString();
+                String trimmed = raw.trim();
+                SharedPreferences.Editor editor = getSharedPreferences(PREF_RANKING, MODE_PRIVATE).edit();
+                if (trimmed.isEmpty()) {
+                    editor.remove(KEY_PLAYER_NAME);
+                } else {
+                    editor.putString(KEY_PLAYER_NAME, normalizeNombre(trimmed));
+                }
+                editor.apply();
+            }
+        });
+        binding.settingsPanel.settingsRankingNameInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                return;
+            }
+            String raw = binding.settingsPanel.settingsRankingNameInput.getText().toString();
+            String trimmed = raw.trim();
+            if (trimmed.isEmpty()) {
+                return;
+            }
+            String normalized = normalizeNombre(trimmed);
+            if (!normalized.equals(raw)) {
+                isUpdatingRankingProfileUi = true;
+                binding.settingsPanel.settingsRankingNameInput.setText(normalized);
+                binding.settingsPanel.settingsRankingNameInput.setSelection(normalized.length());
+                isUpdatingRankingProfileUi = false;
+            }
+        });
+    }
+
+    private void updateRankingProfileUi() {
+        SharedPreferences sp = getSharedPreferences(PREF_RANKING, MODE_PRIVATE);
+        String storedName = sp.getString(KEY_PLAYER_NAME, "");
+        String storedCountry = sp.getString(KEY_PLAYER_COUNTRY, "CL");
+        isUpdatingRankingProfileUi = true;
+        binding.settingsPanel.settingsRankingNameInput.setText(storedName);
+        int selection = indexForCountryCode(rankingCountryOptions, storedCountry);
+        binding.settingsPanel.settingsRankingCountrySpinner.setSelection(selection);
+        isUpdatingRankingProfileUi = false;
     }
 
     private void setupTutorialOverlay() {

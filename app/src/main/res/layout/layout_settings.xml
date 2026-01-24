@@ -116,19 +116,54 @@
                     android:layout_weight="1"
                     android:text="@string/settings_button_volume" />
 
-                <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/settingsButtonToggle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/settings_audio_toggle" />
-            </LinearLayout>
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/settingsButtonToggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_audio_toggle" />
+    </LinearLayout>
 
             <SeekBar
-                android:id="@+id/settingsButtonVolume"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:max="100" />
+            android:id="@+id/settingsButtonVolume"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/settingsRankingTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/settings_ranking_title"
+            style="@style/App.Text.Title.Ocean.Sub" />
+
+        <TextView
+            android:id="@+id/settingsRankingNameLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_ranking_name_label" />
+
+        <EditText
+            android:id="@+id/settingsRankingNameInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/settings_ranking_name_hint"
+            android:inputType="textPersonName"
+            android:maxLength="7" />
+
+        <TextView
+            android:id="@+id/settingsRankingCountryLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_ranking_country_label" />
+
+        <Spinner
+            android:id="@+id/settingsRankingCountrySpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
 
         <TextView
             android:id="@+id/settingsTutorialsTitle"
