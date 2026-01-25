@@ -87,8 +87,9 @@ public class CollectionCardAdapter extends RecyclerView.Adapter<CollectionCardAd
         CardId cardId = card != null ? card.getId() : null;
         int ownedCount = getOwnedCount(cardId);
         int captureCount = entry.getCaptureCount();
-        int progress = GameUtils.getCaptureRewardProgress(captureCount);
-        int target = GameUtils.getCaptureRewardTarget(captureCount);
+        int baseTarget = card != null ? card.getPoints() : 0;
+        int progress = GameUtils.getCaptureRewardProgress(captureCount, baseTarget);
+        int target = GameUtils.getCaptureRewardTarget(captureCount, baseTarget);
         holder.captureProgress.setText(holder.captureProgress.getContext()
                 .getString(R.string.collection_capture_progress_format, progress, target));
 

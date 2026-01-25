@@ -12,11 +12,11 @@ public final class GameUtils {
 
     private GameUtils() {}
 
-    public static boolean isCaptureRewardThreshold(int totalCaptures) {
+    public static boolean isCaptureRewardThreshold(int totalCaptures, int baseTarget) {
         if (totalCaptures <= 0) {
             return false;
         }
-        int target = 3;
+        int target = Math.max(1, baseTarget);
         int accumulated = 0;
         while (accumulated < totalCaptures) {
             accumulated += target;
@@ -28,8 +28,8 @@ public final class GameUtils {
         return false;
     }
 
-    public static int getCaptureRewardProgress(int totalCaptures) {
-        int target = 3;
+    public static int getCaptureRewardProgress(int totalCaptures, int baseTarget) {
+        int target = Math.max(1, baseTarget);
         int remaining = Math.max(0, totalCaptures);
         while (remaining >= target) {
             remaining -= target;
@@ -38,8 +38,8 @@ public final class GameUtils {
         return remaining;
     }
 
-    public static int getCaptureRewardTarget(int totalCaptures) {
-        int target = 3;
+    public static int getCaptureRewardTarget(int totalCaptures, int baseTarget) {
+        int target = Math.max(1, baseTarget);
         int remaining = Math.max(0, totalCaptures);
         while (remaining >= target) {
             remaining -= target;
