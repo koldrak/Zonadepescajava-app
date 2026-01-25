@@ -24,6 +24,7 @@ import android.view.ViewParent;
 import android.widget.AbsListView;
 import android.widget.Button;
 import android.widget.BaseAdapter;
+import android.app.Dialog;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.FrameLayout;
@@ -57,6 +58,7 @@ import com.daille.zonadepescajava_app.model.GameUtils;
 import com.daille.zonadepescajava_app.model.ShopPrices;
 import com.daille.zonadepescajava_app.ui.BoardLinksDecoration;
 import com.daille.zonadepescajava_app.ui.BoardSlotAdapter;
+import com.daille.zonadepescajava_app.ui.AcquiredCardsAdapter;
 import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 import com.daille.zonadepescajava_app.ui.CardImageResolver;
 import com.daille.zonadepescajava_app.ui.CardPackOpenDialog;
@@ -115,6 +117,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private int deckSelectionPoints = 0;
     private int cardSellPoints = 0;
     private final Map<String, Bitmap> packImageCache = new java.util.HashMap<>();
+    private final List<Card> acquiredCopiesInMatch = new ArrayList<>();
     private MediaPlayer ambientPlayer;
     private int ambientResId = 0;
     private SoundPool soundPool;
@@ -333,6 +336,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             viewModel.startNewGame(startingReserve, ownedCounts, selectedDeck);
             gameState = viewModel.getGameState();
             endScoringShown = false;
+            acquiredCopiesInMatch.clear();
             setupBoard();
             snapshotBoardState();
             showGameLayout();
@@ -2691,11 +2695,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 : "Total final: " + finalScore;
         Bitmap image = cardImageResolver.getCardBack();
         CardFullscreenDialog.show(this, image, overlay, () -> {
-            if (brokeRecord) {
-                awardRecordBreakPack();
-            } else {
-                showStartMenu();
-            }
+            Runnable finish = () -> {
+                if (brokeRecord) {
+                    awardRecordBreakPack();
+                } else {
+                    showStartMenu();
+                }
+            };
+            showAcquiredCardsDialogIfNeeded(finish);
         });
     }
 
@@ -3038,8 +3045,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             if (!lastCaptures.contains(card)) {
                 hasNewCapture = true;
                 int totalCaptures = scoreDatabaseHelper.incrementCaptureCount(card.getId());
-                if (totalCaptures > 0 && totalCaptures % 3 == 0) {
+                if (GameUtils.isCaptureRewardThreshold(totalCaptures)) {
                     scoreDatabaseHelper.addCardCopies(card.getId(), 1);
+                    acquiredCopiesInMatch.add(card);
                 }
             }
         }
@@ -3051,6 +3059,37 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 && gameState.getCaptures().size() >= 5) {
             binding.gamePanel.getRoot().post(() -> maybeStartTutorial(TutorialType.CARD_RELEASE));
         }
+    }
+
+    private void showAcquiredCardsDialogIfNeeded(Runnable onComplete) {
+        if (acquiredCopiesInMatch.isEmpty()) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+        Dialog dialog = new Dialog(this);
+        dialog.setContentView(R.layout.dialog_acquired_cards);
+        RecyclerView recyclerView = dialog.findViewById(R.id.acquiredCardsRecycler);
+        recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
+        AcquiredCardsAdapter adapter = new AcquiredCardsAdapter(this);
+        adapter.submitList(new ArrayList<>(acquiredCopiesInMatch));
+        recyclerView.setAdapter(adapter);
+        Button continueButton = dialog.findViewById(R.id.acquiredCardsContinue);
+        continueButton.setOnClickListener(v -> {
+            dialog.dismiss();
+            acquiredCopiesInMatch.clear();
+            if (onComplete != null) {
+                onComplete.run();
+            }
+        });
+        dialog.setOnCancelListener(cancel -> {
+            acquiredCopiesInMatch.clear();
+            if (onComplete != null) {
+                onComplete.run();
+            }
+        });
+        dialog.show();
     }
 
     private void renderCapturedCards() {
