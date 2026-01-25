@@ -12,7 +12,9 @@ android {
         targetSdk = 35
         versionCode = 3
         versionName = "1.3"
-//correccion de errores con ballena azul
+/*1. correccion de ebonificaciones y ui
+
+ */
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
