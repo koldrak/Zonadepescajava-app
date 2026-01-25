@@ -37,7 +37,7 @@
                 android:paddingHorizontal="6dp"
                 android:paddingVertical="2dp"
                 android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
-                android:textColor="@android:color/black" />
+                android:textColor="@android:color/white" />
         </FrameLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -49,6 +49,6 @@
         android:gravity="center"
         android:text="@string/collection_capture_progress_placeholder"
         android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
-        android:textColor="@android:color/white" />
+        android:textColor="@android:color/black" />
 
 </LinearLayout>
