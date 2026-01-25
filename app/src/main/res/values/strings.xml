@@ -77,8 +77,9 @@
     <string name="card_pack_reward_detail">Carta obtenida: %1$s</string>
     <string name="collection_capture_progress_placeholder">0/3 para nueva copia</string>
     <string name="collection_capture_progress_format">%1$d/%2$d para nueva copia</string>
-    <string name="acquired_cards_title">Cartas adquiridas</string>
+    <string name="acquired_cards_title">Cartas agregadas por bonificacion de capturas</string>
     <string name="acquired_cards_continue">Continuar</string>
+    <string name="global_ranking_congrats">Top Global #%1$d</string>
     <string name="record_break_reward_message">felicidades por romper tu record, toma una recompenza</string>
     <string name="buy">Comprar</string>
     <string name="back">Volver</string>

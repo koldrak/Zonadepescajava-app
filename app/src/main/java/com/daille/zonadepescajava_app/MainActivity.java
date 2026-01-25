@@ -2702,7 +2702,46 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                     showStartMenu();
                 }
             };
-            showAcquiredCardsDialogIfNeeded(finish);
+            showAcquiredCardsDialogIfNeeded(() -> showGlobalRankingDialogIfNeeded(finalScore, finish));
+        });
+    }
+
+    private void showGlobalRankingDialogIfNeeded(int finalScore, Runnable onComplete) {
+        if (!RankingApiClient.hasInternet(this)) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        RankingApiClient.fetchTopAsync(900, (top, err) -> {
+            Integer rank = null;
+            if (err == null) {
+                if (top != null && !top.isEmpty()) {
+                    for (int i = 0; i < top.size(); i++) {
+                        if (finalScore >= top.get(i).puntaje) {
+                            rank = i + 1;
+                            break;
+                        }
+                    }
+                    if (rank == null && top.size() < 900) {
+                        rank = top.size() + 1;
+                    }
+                } else if (top != null && top.isEmpty()) {
+                    rank = 1;
+                }
+            }
+
+            if (rank == null) {
+                if (onComplete != null) {
+                    onComplete.run();
+                }
+                return;
+            }
+
+            String overlay = getString(R.string.global_ranking_congrats, rank);
+            Bitmap image = cardImageResolver.getCardBack();
+            CardFullscreenDialog.show(this, image, overlay, onComplete);
         });
     }
 
