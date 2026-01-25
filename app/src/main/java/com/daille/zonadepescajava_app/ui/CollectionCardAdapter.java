@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.daille.zonadepescajava_app.R;
 import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardId;
+import com.daille.zonadepescajava_app.model.GameUtils;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -85,6 +86,11 @@ public class CollectionCardAdapter extends RecyclerView.Adapter<CollectionCardAd
 
         CardId cardId = card != null ? card.getId() : null;
         int ownedCount = getOwnedCount(cardId);
+        int captureCount = entry.getCaptureCount();
+        int progress = GameUtils.getCaptureRewardProgress(captureCount);
+        int target = GameUtils.getCaptureRewardTarget(captureCount);
+        holder.captureProgress.setText(holder.captureProgress.getContext()
+                .getString(R.string.collection_capture_progress_format, progress, target));
 
         if (ownedCount > 0) {
             holder.copyCount.setText(holder.copyCount.getContext()
@@ -131,11 +137,13 @@ public class CollectionCardAdapter extends RecyclerView.Adapter<CollectionCardAd
     static class CollectionViewHolder extends RecyclerView.ViewHolder {
         private final ImageView cardImage;
         private final TextView copyCount;
+        private final TextView captureProgress;
 
         CollectionViewHolder(@NonNull View itemView) {
             super(itemView);
             cardImage = itemView.findViewById(R.id.collectionCardImage);
             copyCount = itemView.findViewById(R.id.collectionCardCopies);
+            captureProgress = itemView.findViewById(R.id.collectionCardProgress);
         }
     }
 }

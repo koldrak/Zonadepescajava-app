@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="4dp">
+
+    <ImageView
+        android:id="@+id/acquiredCardImage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:adjustViewBounds="true"
+        android:contentDescription="@string/card_image_content_description"
+        android:scaleType="fitCenter"
+        android:layout_gravity="center"
+        android:minHeight="72dp"
+        android:layout_margin="2dp" />
+</FrameLayout>
