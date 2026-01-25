@@ -3045,7 +3045,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             if (!lastCaptures.contains(card)) {
                 hasNewCapture = true;
                 int totalCaptures = scoreDatabaseHelper.incrementCaptureCount(card.getId());
-                if (GameUtils.isCaptureRewardThreshold(totalCaptures)) {
+                int baseTarget = card != null ? card.getPoints() : 0;
+                if (GameUtils.isCaptureRewardThreshold(totalCaptures, baseTarget)) {
                     scoreDatabaseHelper.addCardCopies(card.getId(), 1);
                     acquiredCopiesInMatch.add(card);
                 }
