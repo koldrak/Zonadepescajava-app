@@ -12,8 +12,8 @@ android {
         targetSdk = 35
         versionCode = 4
         versionName = "1.4"
-/*1. correccion de ebonificaciones y ui
-
+/*1. correccion de boonificaciones y ui
+  2. incorporacion de alerta de romper top global
  */
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
