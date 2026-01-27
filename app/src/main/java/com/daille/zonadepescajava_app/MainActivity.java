@@ -130,6 +130,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private int tideSoundId;
     private int captureSoundId;
     private int packOpenSoundId;
+    private int whaleSoundId;
+    private int orcaSoundId;
     private final Set<Integer> loadedSoundIds = new java.util.HashSet<>();
     private final Set<Integer> pendingSoundIds = new java.util.HashSet<>();
     private Vibrator vibrator;
@@ -1863,6 +1865,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         tideSoundId = loadSound("marea");
         captureSoundId = loadSound("capturar");
         packOpenSoundId = loadSound("sobre");
+        whaleSoundId = loadSound("ballena");
+        orcaSoundId = loadSound("orca");
     }
 
     private void setupHaptics() {
@@ -2630,11 +2634,33 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         isRevealingCard = true;
         Card card = revealed.remove(0);
+        playRevealSound(card);
         Bitmap image = cardImageResolver.getImageFor(card, true);
         if (image == null) {
             image = cardImageResolver.getCardBack();
         }
         CardFullscreenDialog.show(this, image, null, () -> showRevealedCardsSequential(revealed, onComplete));
+    }
+
+    private void playRevealSound(Card card) {
+        if (card == null) {
+            return;
+        }
+        CardId id = card.getId();
+        if (id == null) {
+            return;
+        }
+        switch (id) {
+            case BALLENA_AZUL:
+            case BALLENA_JOROBADA:
+                playSound(whaleSoundId);
+                break;
+            case ORCA:
+                playSound(orcaSoundId);
+                break;
+            default:
+                break;
+        }
     }
 
     private void finishRevealSequence(Runnable onComplete) {
