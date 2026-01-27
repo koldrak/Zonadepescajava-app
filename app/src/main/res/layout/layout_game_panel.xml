@@ -80,6 +80,36 @@
                     android:src="@drawable/mazocardumen" />
 
                 <ImageView
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:layout_gravity="center"
+                    android:alpha="0.5"
+                    android:contentDescription="@string/description"
+                    android:rotationX="6"
+                    android:rotationY="14"
+                    android:scaleX="1.04"
+                    android:scaleY="0.96"
+                    android:translationX="-3dp"
+                    android:translationY="-3dp"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/mazocardumen" />
+
+                <ImageView
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:layout_gravity="center"
+                    android:alpha="0.7"
+                    android:contentDescription="@string/description"
+                    android:rotationX="6"
+                    android:rotationY="14"
+                    android:scaleX="1.04"
+                    android:scaleY="0.96"
+                    android:translationX="0dp"
+                    android:translationY="0dp"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/mazocardumen" />
+
+                <ImageView
                     android:id="@+id/cardumenDeckImage"
                     android:layout_width="80dp"
                     android:layout_height="80dp"
