@@ -88,6 +88,8 @@
     <string name="dice_selection_counter_placeholder">Dados seleccionados: 0 (máx. 6)</string>
     <string name="dice_selection_counter_format">Dados seleccionados: %1$d (máx. %2$d)</string>
     <string name="dice_selection_limit_warning">La zona de selección solo admite %1$d dados.</string>
+    <string name="dice_selection_zone_label">zona de selección</string>
+    <string name="dice_warehouse_zone_label">almacén de dados</string>
     <string name="settings_title">Configuraciones</string>
     <string name="settings_audio_title">Audio</string>
     <string name="settings_music_volume">Música de fondo</string>
