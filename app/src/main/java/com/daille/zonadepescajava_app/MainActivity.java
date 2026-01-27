@@ -10,6 +10,8 @@ import androidx.recyclerview.widget.GridLayoutManager;
 
 import com.daille.zonadepescajava_app.databinding.ActivityMainBinding;
 import com.daille.zonadepescajava_app.model.BoardSlot;
+import com.daille.zonadepescajava_app.model.Card;
+import com.daille.zonadepescajava_app.model.CardId;
 import com.daille.zonadepescajava_app.model.DieType;
 import com.daille.zonadepescajava_app.model.GameState;
 import com.daille.zonadepescajava_app.ui.BoardSlotAdapter;
@@ -96,14 +98,64 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     @Override
     public void onSlotTapped(int position) {
+        BoardSlot slot = gameState.getBoard()[position];
+        boolean wasFaceUp = slot.isFaceUp();
         String result = gameState.placeSelectedDie(position);
+        BoardSlot updatedSlot = gameState.getBoard()[position];
+        if (!wasFaceUp && updatedSlot.isFaceUp()) {
+            playWhaleSound(updatedSlot.getCard());
+        }
         refreshUi(result);
         Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void onSlotLongPressed(int position) {
+        BoardSlot slot = gameState.getBoard()[position];
+        boolean wasFaceUp = slot.isFaceUp();
         gameState.toggleFace(position);
+        BoardSlot updatedSlot = gameState.getBoard()[position];
+        if (!wasFaceUp && updatedSlot.isFaceUp()) {
+            playWhaleSound(updatedSlot.getCard());
+        }
         refreshUi("Has volteado la carta");
+    }
+
+    private void playWhaleSound(Card card) {
+        int soundResId = getWhaleSoundResId(card);
+        if (soundResId == 0) {
+            return;
+        }
+        android.media.MediaPlayer player = android.media.MediaPlayer.create(this, soundResId);
+        if (player == null) {
+            return;
+        }
+        player.setOnCompletionListener(android.media.MediaPlayer::release);
+        player.start();
+    }
+
+    private int getWhaleSoundResId(Card card) {
+        if (card == null) {
+            return 0;
+        }
+        if (card.getId() == CardId.BALLENA_AZUL) {
+            return getRawSoundId("ballena");
+        }
+        String name = card.getName();
+        if (name == null) {
+            return 0;
+        }
+        String normalized = name.toLowerCase(Locale.ROOT);
+        if (normalized.contains("ballena azul") || normalized.contains("ballena jorobada")) {
+            return getRawSoundId("ballena");
+        }
+        if (normalized.contains("orca")) {
+            return getRawSoundId("orca");
+        }
+        return 0;
+    }
+
+    private int getRawSoundId(String rawName) {
+        return getResources().getIdentifier(rawName, "raw", getPackageName());
     }
 }
