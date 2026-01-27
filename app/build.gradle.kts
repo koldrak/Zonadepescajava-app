@@ -14,6 +14,7 @@ android {
         versionName = "1.4"
 /*1. correccion de boonificaciones y ui
   2. incorporacion de alerta de romper top global
+  3. animacion de carniboros
  */
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
