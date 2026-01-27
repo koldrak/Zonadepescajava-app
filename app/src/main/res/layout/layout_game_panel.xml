@@ -22,17 +22,21 @@
         android:orientation="vertical">
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:id="@+id/gameHeader"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:orientation="horizontal">
+            android:background="@drawable/action_bar_bg"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp">
 
             <TextView
                 android:id="@+id/score"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 style="@style/App.Text.Title.Ocean.Sub"
-                android:paddingHorizontal="20dp"
+                android:paddingEnd="16dp"
                 tools:text="Puntaje: 0" />
 
             <TextView
@@ -40,9 +44,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                android:paddingHorizontal="20dp"
+                android:paddingStart="12dp"
                 tools:text="Capturas: 0" />
         </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="10dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -92,6 +100,7 @@
             android:id="@+id/fishingZoneContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@drawable/section_panel"
             android:layout_marginTop="12dp"
             android:layout_marginBottom="16dp">
 
@@ -114,10 +123,14 @@
         </FrameLayout>
 
         <LinearLayout
+            android:id="@+id/actionBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@drawable/action_bar_bg"
             android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp">
 
             <TextView
                 android:id="@+id/selection"
@@ -129,10 +142,10 @@
 
             <ImageView
                 android:id="@+id/selectedDieImage"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
                 android:contentDescription="@string/description"
-                android:padding="6dp"
+                android:padding="8dp"
                 android:visibility="gone"
                 tools:src="@drawable/ic_launcher_foreground"
                 tools:visibility="visible" />
@@ -145,6 +158,10 @@
             android:text="Toca un dado de la reserva para lanzarlo"
             style="@style/App.Text.Title.Ocean.Sub"
             android:textAppearance="@style/TextAppearance.Material3.BodySmall" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="10dp" />
 
         <HorizontalScrollView
             android:layout_width="match_parent"
@@ -196,6 +213,7 @@
             android:layout_width="match_parent"
             android:layout_height="120dp"
             android:layout_marginTop="4dp"
+            android:background="@drawable/section_panel"
             android:scrollbars="none"
             android:fillViewport="true">
 
