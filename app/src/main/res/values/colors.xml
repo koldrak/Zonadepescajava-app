@@ -9,5 +9,13 @@
     <color name="marine_foam">#E8FFFF</color>      <!-- blanco espuma -->
     <color name="marine_turquoise">#18D5C7</color> <!-- turquesa -->
     <color name="marine_deep">#0B1F2A</color>      <!-- azul profundo para sombra -->
+    <color name="dice_zone_start">#EAFBFF</color>
+    <color name="dice_zone_end">#CFF5F2</color>
+    <color name="dice_zone_border">#3318D5C7</color>
+    <color name="dice_warehouse_start">#F2F4FF</color>
+    <color name="dice_warehouse_end">#E1E6FF</color>
+    <color name="dice_warehouse_border">#33495DDB</color>
+    <color name="dice_label_background">#CCFFFFFF</color>
+    <color name="dice_label_border">#1A0B1F2A</color>
 
 </resources>
