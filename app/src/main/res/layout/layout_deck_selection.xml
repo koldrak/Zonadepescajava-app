@@ -51,66 +51,33 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:gravity="center_vertical"
+            android:layout_marginTop="8dp"
             android:orientation="horizontal">
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="8dp"
-                android:hint="@string/deck_selection_name_hint"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-                app:boxCornerRadiusBottomEnd="12dp"
-                app:boxCornerRadiusBottomStart="12dp"
-                app:boxCornerRadiusTopEnd="12dp"
-                app:boxCornerRadiusTopStart="12dp">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/deckSelectionNameInput"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:imeOptions="actionDone"
-                    android:inputType="textPersonName"
-                    android:maxLines="1" />
-            </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/deckSelectionSave"
                 style="@style/App.Button.Watercolor"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/deck_selection_save" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <Spinner
-                android:id="@+id/deckSelectionSavedSpinner"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1" />
+                android:layout_weight="1"
+                android:text="@string/deck_selection_save" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/deckSelectionLoad"
                 style="@style/App.Button.Glass"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
+                android:layout_weight="1"
                 android:text="@string/deck_selection_load" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/deckSelectionDelete"
                 style="@style/App.Button.Glass"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
+                android:layout_weight="1"
                 android:text="@string/deck_selection_delete" />
         </LinearLayout>
 

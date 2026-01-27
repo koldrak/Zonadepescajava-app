@@ -104,7 +104,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private CollectionCardAdapter collectionCardAdapter;
     private DeckSelectionAdapter deckSelectionAdapter;
     private DeckSelectionAdapter cardSellAdapter;
-    private ArrayAdapter<String> deckPresetsAdapter;
+    private final List<String> deckPresetNames = new ArrayList<>();
     private final List<ImageView> diceTokens = new ArrayList<>();
     private final Card[] lastBoardCards = new Card[9];
     private final List<List<Die>> lastBoardDice = new ArrayList<>();
@@ -381,9 +381,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         deckSelectionAdapter = new DeckSelectionAdapter(this, this::updateDeckSelectionScore);
         binding.deckSelectionPanel.deckSelectionRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.deckSelectionPanel.deckSelectionRecycler.setAdapter(deckSelectionAdapter);
-        deckPresetsAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
-        deckPresetsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        binding.deckSelectionPanel.deckSelectionSavedSpinner.setAdapter(deckPresetsAdapter);
         setButtonClickListener(binding.deckSelectionPanel.deckSelectionBack, this::showDiceSelectionPanel);
         setButtonClickListener(binding.deckSelectionPanel.deckSelectionConfirm, () -> {
             if (deckSelectionAdapter == null) {
@@ -397,77 +394,111 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             selectedDeck = new ArrayList<>(selected);
             showDiceSelectionPanel();
         });
-        setButtonClickListener(binding.deckSelectionPanel.deckSelectionSave, () -> {
-            if (deckSelectionAdapter == null) {
-                return;
-            }
-            EditText nameInput = binding.deckSelectionPanel.deckSelectionNameInput;
-            String name = nameInput.getText().toString().trim();
-            if (name.isEmpty()) {
-                Toast.makeText(this, "Ingresa un nombre para el mazo.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            Map<CardId, Integer> selection = new EnumMap<>(CardId.class);
-            selection.putAll(deckSelectionAdapter.getSelectionCounts());
-            if (selection.isEmpty()) {
-                Toast.makeText(this, "Selecciona cartas antes de guardar el mazo.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            scoreDatabaseHelper.saveDeckPreset(name, selection);
-            refreshDeckPresetList();
-            int position = deckPresetsAdapter.getPosition(name);
-            if (position >= 0) {
-                binding.deckSelectionPanel.deckSelectionSavedSpinner.setSelection(position);
-            }
-            Toast.makeText(this, "Mazo guardado.", Toast.LENGTH_SHORT).show();
-            if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 1) {
-                advanceTutorialStep();
-            }
+        setButtonClickListener(binding.deckSelectionPanel.deckSelectionSave, this::showDeckSaveDialog);
+        setButtonClickListener(binding.deckSelectionPanel.deckSelectionLoad,
+                () -> showDeckPresetSelectionDialog(R.string.deck_selection_load_title, this::loadDeckPreset));
+        setButtonClickListener(binding.deckSelectionPanel.deckSelectionDelete,
+                () -> showDeckPresetSelectionDialog(R.string.deck_selection_delete_title, this::confirmDeleteDeckPreset));
+    }
+
+    private interface DeckPresetSelectionHandler {
+        void onPresetSelected(String name);
+    }
+
+    private void showDeckSaveDialog() {
+        if (deckSelectionAdapter == null) {
+            return;
+        }
+        Map<CardId, Integer> selection = new EnumMap<>(CardId.class);
+        selection.putAll(deckSelectionAdapter.getSelectionCounts());
+        if (selection.isEmpty()) {
+            Toast.makeText(this, "Selecciona cartas antes de guardar el mazo.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        EditText nameInput = new EditText(this);
+        nameInput.setHint(R.string.deck_selection_name_hint);
+        nameInput.setSingleLine(true);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.deck_selection_create_title)
+                .setView(nameInput)
+                .setPositiveButton(R.string.deck_selection_save, null)
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        dialog.setOnShowListener(ignored -> {
+            Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            positiveButton.setOnClickListener(view -> {
+                String name = nameInput.getText().toString().trim();
+                if (name.isEmpty()) {
+                    Toast.makeText(this, "Ingresa un nombre para el mazo.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Map<CardId, Integer> currentSelection = new EnumMap<>(CardId.class);
+                currentSelection.putAll(deckSelectionAdapter.getSelectionCounts());
+                if (currentSelection.isEmpty()) {
+                    Toast.makeText(this, "Selecciona cartas antes de guardar el mazo.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                scoreDatabaseHelper.saveDeckPreset(name, currentSelection);
+                refreshDeckPresetList();
+                Toast.makeText(this, "Mazo guardado.", Toast.LENGTH_SHORT).show();
+                if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 1) {
+                    advanceTutorialStep();
+                }
+                dialog.dismiss();
+            });
         });
-        setButtonClickListener(binding.deckSelectionPanel.deckSelectionLoad, () -> {
-            Object selected = binding.deckSelectionPanel.deckSelectionSavedSpinner.getSelectedItem();
-            if (selected == null) {
-                Toast.makeText(this, "No hay mazos guardados.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            String name = selected.toString();
-            Map<CardId, Integer> preset = scoreDatabaseHelper.getDeckPreset(name);
-            if (preset.isEmpty()) {
-                Toast.makeText(this, "No se encontró el mazo seleccionado.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (deckSelectionAdapter != null) {
-                deckSelectionAdapter.setSelectionCounts(preset);
-            }
-            Toast.makeText(this, "Mazo cargado.", Toast.LENGTH_SHORT).show();
-        });
-        setButtonClickListener(binding.deckSelectionPanel.deckSelectionDelete, () -> {
-            if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 2) {
-                advanceTutorialStep();
-            }
-            Object selected = binding.deckSelectionPanel.deckSelectionSavedSpinner.getSelectedItem();
-            if (selected == null) {
-                Toast.makeText(this, "No hay mazos guardados.", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            String name = selected.toString();
-            AlertDialog dialog = new AlertDialog.Builder(this)
-                    .setTitle("Eliminar mazo")
-                    .setMessage("¿Eliminar el mazo guardado \"" + name + "\"?")
-                    .setPositiveButton("Eliminar", (dlg, which) -> {
-                        boolean removed = scoreDatabaseHelper.deleteDeckPreset(name);
-                        refreshDeckPresetList();
-                        if (removed) {
-                            Toast.makeText(this, "Mazo eliminado.", Toast.LENGTH_SHORT).show();
-                        } else {
-                            Toast.makeText(this, "No se pudo eliminar el mazo.", Toast.LENGTH_SHORT).show();
-                        }
-                    })
-                    .setNegativeButton("Cancelar", null)
-                    .create();
-            attachDialogButtonSounds(dialog);
-            dialog.show();
-        });
+        attachDialogButtonSounds(dialog);
+        dialog.show();
+    }
+
+    private void showDeckPresetSelectionDialog(int titleResId, DeckPresetSelectionHandler handler) {
+        refreshDeckPresetList();
+        if (deckPresetNames.isEmpty()) {
+            Toast.makeText(this, "No hay mazos guardados.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        CharSequence[] items = deckPresetNames.toArray(new CharSequence[0]);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(titleResId)
+                .setItems(items, (dlg, which) -> handler.onPresetSelected(deckPresetNames.get(which)))
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
+    }
+
+    private void loadDeckPreset(String name) {
+        Map<CardId, Integer> preset = scoreDatabaseHelper.getDeckPreset(name);
+        if (preset.isEmpty()) {
+            Toast.makeText(this, "No se encontró el mazo seleccionado.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (deckSelectionAdapter != null) {
+            deckSelectionAdapter.setSelectionCounts(preset);
+        }
+        Toast.makeText(this, "Mazo cargado.", Toast.LENGTH_SHORT).show();
+    }
+
+    private void confirmDeleteDeckPreset(String name) {
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.deck_selection_delete_title)
+                .setMessage("¿Eliminar el mazo guardado \"" + name + "\"?")
+                .setPositiveButton(R.string.deck_selection_delete, (dlg, which) -> {
+                    boolean removed = scoreDatabaseHelper.deleteDeckPreset(name);
+                    refreshDeckPresetList();
+                    if (removed) {
+                        Toast.makeText(this, "Mazo eliminado.", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, "No se pudo eliminar el mazo.", Toast.LENGTH_SHORT).show();
+                    }
+                    if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 2) {
+                        advanceTutorialStep();
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .create();
+        attachDialogButtonSounds(dialog);
+        dialog.show();
     }
 
     private void setupCardSellPanel() {
@@ -1042,13 +1073,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void refreshDeckPresetList() {
-        if (deckPresetsAdapter == null) {
-            return;
-        }
         List<String> presets = scoreDatabaseHelper.getDeckPresetNames();
-        deckPresetsAdapter.clear();
-        deckPresetsAdapter.addAll(presets);
-        deckPresetsAdapter.notifyDataSetChanged();
+        deckPresetNames.clear();
+        deckPresetNames.addAll(presets);
     }
 
     private void updateDeckSelectionScore() {
@@ -1521,12 +1548,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                     R.string.tutorial_deck_step2_title,
                     R.string.tutorial_deck_step2_message,
                     binding.deckSelectionPanel.deckSelectionRecycler,
-                    binding.deckSelectionPanel.deckSelectionNameInput,
                     binding.deckSelectionPanel.deckSelectionSave));
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_deck_step3_title,
                     R.string.tutorial_deck_step3_message,
-                    binding.deckSelectionPanel.deckSelectionSavedSpinner,
+                    binding.deckSelectionPanel.deckSelectionLoad,
                     binding.deckSelectionPanel.deckSelectionDelete));
         } else if (type == TutorialType.GAME_LOOP) {
             tutorialSteps.add(new TutorialStep(
