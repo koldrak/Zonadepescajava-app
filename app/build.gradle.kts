@@ -17,6 +17,7 @@ android {
   3. Animación de carniboros
   4. Implementacion de sonidos temáticos para ballenas
   5. Se agrego tutorial de mareas
+  6. Reestructuracion de UI de juego
  */
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
