@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -43,7 +44,7 @@
             android:id="@+id/deckSelectionSavedTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="16dp"
             android:text="@string/deck_selection_saved_title"
             style="@style/App.Text.Title.Ocean.Sub" />
 
@@ -84,16 +85,17 @@
             android:id="@+id/deckSelectionRecycler"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="12dp"
             android:layout_weight="1"
             android:clipToPadding="false"
-            android:padding="4dp"
+            android:padding="8dp"
             tools:listitem="@layout/item_deck_selection_card" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="16dp"
+            android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
