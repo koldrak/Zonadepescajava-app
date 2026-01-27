@@ -99,6 +99,7 @@
     <string name="settings_tutorial_deck">Reactivar tutorial de mazos</string>
     <string name="settings_tutorial_game_loop">Reactivar tutorial de juego</string>
     <string name="settings_tutorial_release">Reactivar tutorial de liberar cartas</string>
+    <string name="settings_tutorial_tide">Reactivar tutorial de mareas</string>
     <string name="settings_ranking_title">Ranking global</string>
     <string name="settings_ranking_name_label">Nombre para ranking</string>
     <string name="settings_ranking_name_hint">Máx. 7 caracteres</string>
@@ -138,6 +139,8 @@
     <string name="tutorial_release_step1_message">Puedes liberar una carta a la zona de pesca para reutilizar sus habilidades. Haz click sobre la carta que quieres liberar.</string>
     <string name="tutorial_release_step2_title">Elige dónde liberar</string>
     <string name="tutorial_release_step2_message">Puedes seleccionar en qué parte de la zona de pesca liberar la carta.</string>
+    <string name="tutorial_tide_step1_title">Mareas</string>
+    <string name="tutorial_tide_step1_message">La marea se activa si un dado arroja 1 y arrastra todas las cartas hacia arriba; aquellos dados que por causa de la marea salgan de juego serán perdidos. Para aprobar el tutorial solo debes dar un click en pantalla para continuar.</string>
 
     <string name="ability_activation_title">Habilidad activada</string>
     <string name="ability_activation_accept">Aceptar</string>

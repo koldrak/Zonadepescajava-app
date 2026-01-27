@@ -171,6 +171,13 @@
             android:layout_marginTop="8dp"
             android:text="@string/settings_tutorial_release" />
 
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/settingsTutorialTideToggle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_tutorial_tide" />
+
         <TextView
             android:id="@+id/settingsRankingTitle"
             android:layout_width="match_parent"
