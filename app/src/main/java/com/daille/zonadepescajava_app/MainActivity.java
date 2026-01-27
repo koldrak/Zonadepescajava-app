@@ -148,12 +148,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final String TUTORIAL_DECK_DONE_KEY = "tutorial_deck_done";
     private static final String TUTORIAL_GAME_LOOP_DONE_KEY = "tutorial_game_loop_done";
     private static final String TUTORIAL_RELEASE_DONE_KEY = "tutorial_release_done";
+    private static final String TUTORIAL_TIDE_DONE_KEY = "tutorial_tide_done";
     private SharedPreferences tutorialPreferences;
     private TutorialType activeTutorial;
     private final List<TutorialStep> tutorialSteps = new ArrayList<>();
     private int tutorialStepIndex = -1;
     private final List<View> tutorialHighlightedViews = new ArrayList<>();
     private final List<ObjectAnimator> tutorialHighlightAnimators = new ArrayList<>();
+    private boolean pendingTideTutorial;
 
     private static final String PACK_RANDOM_ASSET = "sobresorpresa.png";
     private static final String PACK_CRUSTACEO_ASSET = "sobrecrustaceos.png";
@@ -171,7 +173,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         DICE_SELECTION,
         DECK_SELECTION,
         GAME_LOOP,
-        CARD_RELEASE
+        CARD_RELEASE,
+        TIDE
     }
 
     private static class TutorialStep {
@@ -1455,6 +1458,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             if (activeTutorial == null) {
                 return false;
             }
+            if (activeTutorial == TutorialType.TIDE && event.getAction() == MotionEvent.ACTION_UP) {
+                advanceTutorialStep();
+                return true;
+            }
             View target = getActiveTutorialTouchTarget(event.getRawX(), event.getRawY());
             if (target == null) {
                 return true;
@@ -1553,6 +1560,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                     R.string.tutorial_release_step2_title,
                     R.string.tutorial_release_step2_message,
                     binding.gamePanel.boardRecycler));
+        } else if (type == TutorialType.TIDE) {
+            tutorialSteps.add(new TutorialStep(
+                    R.string.tutorial_tide_step1_title,
+                    R.string.tutorial_tide_step1_message));
         }
         updateTutorialStep();
     }
@@ -1610,6 +1621,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         tutorialStepIndex = -1;
         binding.tutorialOverlay.getRoot().setVisibility(View.GONE);
         clearTutorialHighlights();
+        maybeStartPendingTideTutorial();
     }
 
     private boolean isTutorialCompleted(TutorialType type) {
@@ -1636,6 +1648,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 return TUTORIAL_GAME_LOOP_DONE_KEY;
             case CARD_RELEASE:
                 return TUTORIAL_RELEASE_DONE_KEY;
+            case TIDE:
+                return TUTORIAL_TIDE_DONE_KEY;
             default:
                 return TUTORIAL_DICE_DONE_KEY;
         }
@@ -1838,6 +1852,37 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                             : "Tutorial de liberar cartas desactivado.",
                     Toast.LENGTH_SHORT).show();
         });
+
+        boolean tideEnabled = !isTutorialCompleted(TutorialType.TIDE);
+        binding.settingsPanel.settingsTutorialTideToggle.setOnCheckedChangeListener(null);
+        binding.settingsPanel.settingsTutorialTideToggle.setChecked(tideEnabled);
+        binding.settingsPanel.settingsTutorialTideToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            setTutorialCompleted(TutorialType.TIDE, !isChecked);
+            Toast.makeText(this,
+                    isChecked ? "Tutorial de mareas reactivado."
+                            : "Tutorial de mareas desactivado.",
+                    Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void maybeStartTideTutorial() {
+        if (isTutorialCompleted(TutorialType.TIDE) || activeTutorial == TutorialType.TIDE) {
+            return;
+        }
+        if (activeTutorial == null) {
+            startTutorial(TutorialType.TIDE);
+            pendingTideTutorial = false;
+            return;
+        }
+        pendingTideTutorial = true;
+    }
+
+    private void maybeStartPendingTideTutorial() {
+        if (!pendingTideTutorial || activeTutorial != null || isTutorialCompleted(TutorialType.TIDE)) {
+            return;
+        }
+        pendingTideTutorial = false;
+        startTutorial(TutorialType.TIDE);
     }
 
     private void setupAudio() {
@@ -2192,6 +2237,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
             return;
         }
+        maybeStartTideTutorial();
         List<TideParticlesView.Direction> directions = new ArrayList<>();
         for (GameState.CurrentDirection current : currents) {
             switch (current) {
