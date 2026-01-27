@@ -11,6 +11,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:animateLayoutChanges="true"
         android:background="@drawable/menu_glass_panel"
         android:elevation="6dp"
         android:orientation="vertical"
@@ -22,6 +23,14 @@
             android:layout_height="wrap_content"
             android:text="@string/deck_selection_title"
             style="@style/App.Text.Title.Ocean" />
+
+        <TextView
+            android:id="@+id/deckSelectionSummaryTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/deck_selection_summary_title"
+            style="@style/App.Text.Title.Ocean.Sub" />
 
         <TextView
             android:id="@+id/deckSelectionScore"
@@ -45,6 +54,14 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:text="@string/deck_selection_saved_title"
+            style="@style/App.Text.Title.Ocean.Sub" />
+
+        <TextView
+            android:id="@+id/deckSelectionSaveHelper"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="@string/deck_selection_save_helper"
             style="@style/App.Text.Title.Ocean.Sub" />
 
         <LinearLayout
@@ -82,7 +99,9 @@
                 android:id="@+id/deckSelectionSavedSpinner"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1" />
+                android:layout_weight="1"
+                android:visibility="gone"
+                tools:visibility="visible" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/deckSelectionLoad"
@@ -100,6 +119,14 @@
                 android:layout_marginStart="8dp"
                 android:text="@string/deck_selection_delete" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/deckSelectionLoadHelper"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/deck_selection_load_helper"
+            style="@style/App.Text.Title.Ocean.Sub" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/deckSelectionRecycler"

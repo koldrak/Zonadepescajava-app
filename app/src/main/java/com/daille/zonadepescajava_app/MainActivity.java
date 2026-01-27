@@ -384,6 +384,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         deckPresetsAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, new ArrayList<>());
         deckPresetsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         binding.deckSelectionPanel.deckSelectionSavedSpinner.setAdapter(deckPresetsAdapter);
+        binding.deckSelectionPanel.deckSelectionSavedSpinner.setVisibility(View.GONE);
         setButtonClickListener(binding.deckSelectionPanel.deckSelectionBack, this::showDiceSelectionPanel);
         setButtonClickListener(binding.deckSelectionPanel.deckSelectionConfirm, () -> {
             if (deckSelectionAdapter == null) {
@@ -425,6 +426,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
         });
         setButtonClickListener(binding.deckSelectionPanel.deckSelectionLoad, () -> {
+            if (binding.deckSelectionPanel.deckSelectionSavedSpinner.getVisibility() != View.VISIBLE) {
+                binding.deckSelectionPanel.deckSelectionSavedSpinner.setVisibility(View.VISIBLE);
+                Toast.makeText(this, R.string.deck_selection_pick_to_load, Toast.LENGTH_SHORT).show();
+                return;
+            }
             Object selected = binding.deckSelectionPanel.deckSelectionSavedSpinner.getSelectedItem();
             if (selected == null) {
                 Toast.makeText(this, "No hay mazos guardados.", Toast.LENGTH_SHORT).show();
@@ -440,10 +446,16 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 deckSelectionAdapter.setSelectionCounts(preset);
             }
             Toast.makeText(this, "Mazo cargado.", Toast.LENGTH_SHORT).show();
+            binding.deckSelectionPanel.deckSelectionSavedSpinner.setVisibility(View.GONE);
         });
         setButtonClickListener(binding.deckSelectionPanel.deckSelectionDelete, () -> {
             if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 2) {
                 advanceTutorialStep();
+            }
+            if (binding.deckSelectionPanel.deckSelectionSavedSpinner.getVisibility() != View.VISIBLE) {
+                binding.deckSelectionPanel.deckSelectionSavedSpinner.setVisibility(View.VISIBLE);
+                Toast.makeText(this, R.string.deck_selection_pick_to_delete, Toast.LENGTH_SHORT).show();
+                return;
             }
             Object selected = binding.deckSelectionPanel.deckSelectionSavedSpinner.getSelectedItem();
             if (selected == null) {
@@ -462,6 +474,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                         } else {
                             Toast.makeText(this, "No se pudo eliminar el mazo.", Toast.LENGTH_SHORT).show();
                         }
+                        binding.deckSelectionPanel.deckSelectionSavedSpinner.setVisibility(View.GONE);
                     })
                     .setNegativeButton("Cancelar", null)
                     .create();
