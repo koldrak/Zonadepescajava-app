@@ -18,6 +18,7 @@ android {
   4. Implementacion de sonidos temáticos para ballenas
   5. Se agrego tutorial de mareas
   6. Reestructuracion de UI de juego
+  7. Reestructuracion de panel de dados y mazos
  */
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
