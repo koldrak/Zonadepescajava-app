@@ -59,13 +59,39 @@
             android:gravity="center_vertical"
             android:paddingVertical="8dp">
 
-            <ImageView
-                android:id="@+id/cardumenDeckImage"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:contentDescription="@string/description"
-                android:scaleType="centerCrop"
-                android:src="@drawable/mazocardumen" />
+            <FrameLayout
+                android:layout_width="92dp"
+                android:layout_height="92dp"
+                android:layout_marginEnd="4dp">
+
+                <ImageView
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:layout_gravity="center"
+                    android:alpha="0.35"
+                    android:contentDescription="@string/description"
+                    android:rotationX="6"
+                    android:rotationY="14"
+                    android:scaleX="1.04"
+                    android:scaleY="0.96"
+                    android:translationX="-6dp"
+                    android:translationY="-6dp"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/mazocardumen" />
+
+                <ImageView
+                    android:id="@+id/cardumenDeckImage"
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@string/description"
+                    android:rotationX="6"
+                    android:rotationY="14"
+                    android:scaleX="1.04"
+                    android:scaleY="0.96"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/mazocardumen" />
+            </FrameLayout>
 
             <TextView
                 android:id="@+id/cardumenDeckLabel"
