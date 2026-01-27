@@ -12,9 +12,10 @@ android {
         targetSdk = 35
         versionCode = 4
         versionName = "1.4"
-/*1. correccion de boonificaciones y ui
-  2. incorporacion de alerta de romper top global
-  3. animacion de carniboros
+/*1. Correccion de bonificaciones y ui
+  2. Incorporación de alerta de romper top global
+  3. Animación de carniboros
+  4. Sonidos temáticos para ballenas
  */
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
