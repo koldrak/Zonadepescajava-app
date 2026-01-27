@@ -2,6 +2,7 @@ package com.daille.zonadepescajava_app;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
@@ -59,6 +60,7 @@ import com.daille.zonadepescajava_app.model.ShopPrices;
 import com.daille.zonadepescajava_app.ui.BoardLinksDecoration;
 import com.daille.zonadepescajava_app.ui.BoardSlotAdapter;
 import com.daille.zonadepescajava_app.ui.AcquiredCardsAdapter;
+import com.daille.zonadepescajava_app.ui.BiteTeethView;
 import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 import com.daille.zonadepescajava_app.ui.CardImageResolver;
 import com.daille.zonadepescajava_app.ui.CardPackOpenDialog;
@@ -67,6 +69,7 @@ import com.daille.zonadepescajava_app.ui.DeckSelectionAdapter;
 import com.daille.zonadepescajava_app.ui.DiceImageResolver;
 import com.daille.zonadepescajava_app.ui.TideParticlesView;
 import com.google.android.material.card.MaterialCardView;
+import android.view.animation.DecelerateInterpolator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -2570,7 +2573,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
 
         if (gameState.isAwaitingBoardSelection()) {
-            handleGameResult(gameState.handleBoardSelection(position));
+            if (gameState.shouldPlayBiteAnimation(position)) {
+                animateBiteOnSlot(position, () -> handleGameResult(gameState.handleBoardSelection(position)));
+            } else {
+                handleGameResult(gameState.handleBoardSelection(position));
+            }
             if (activeTutorial == TutorialType.CARD_RELEASE && tutorialStepIndex == 1) {
                 advanceTutorialStep();
             }
@@ -4884,6 +4891,81 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         flying.setX(startX);
         flying.setY(startY);
         floatingDieTravel(source, flying, endX, endY, onComplete);
+    }
+
+    private void animateBiteOnSlot(int slotIndex, Runnable onComplete) {
+        FrameLayout overlay = binding.animationOverlay;
+        if (overlay == null || binding.gamePanel.boardRecycler.getLayoutManager() == null) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+        RecyclerView.LayoutManager layoutManager = binding.gamePanel.boardRecycler.getLayoutManager();
+        View slotView = layoutManager.findViewByPosition(slotIndex);
+        if (slotView == null || overlay.getWidth() == 0 || overlay.getHeight() == 0) {
+            if (onComplete != null) {
+                onComplete.run();
+            }
+            return;
+        }
+
+        int[] overlayLoc = new int[2];
+        int[] slotLoc = new int[2];
+        overlay.getLocationOnScreen(overlayLoc);
+        slotView.getLocationOnScreen(slotLoc);
+
+        float slotX = slotLoc[0] - overlayLoc[0];
+        float slotY = slotLoc[1] - overlayLoc[1];
+        float slotWidth = slotView.getWidth();
+        float slotHeight = slotView.getHeight();
+
+        int teethHeight = Math.max(dpToPx(16), (int) (slotHeight * 0.22f));
+
+        BiteTeethView topTeeth = new BiteTeethView(this);
+        topTeeth.setDirection(BiteTeethView.Direction.DOWN);
+        BiteTeethView bottomTeeth = new BiteTeethView(this);
+        bottomTeeth.setDirection(BiteTeethView.Direction.UP);
+
+        FrameLayout.LayoutParams topParams = new FrameLayout.LayoutParams((int) slotWidth, teethHeight);
+        FrameLayout.LayoutParams bottomParams = new FrameLayout.LayoutParams((int) slotWidth, teethHeight);
+        overlay.addView(topTeeth, topParams);
+        overlay.addView(bottomTeeth, bottomParams);
+
+        topTeeth.setX(slotX);
+        topTeeth.setY(slotY - teethHeight);
+        bottomTeeth.setX(slotX);
+        bottomTeeth.setY(slotY + slotHeight);
+
+        float targetTopY = slotY + (slotHeight * 0.5f) - teethHeight;
+        float targetBottomY = slotY + (slotHeight * 0.5f);
+
+        ObjectAnimator topAnimator = ObjectAnimator.ofFloat(topTeeth, View.Y, topTeeth.getY(), targetTopY);
+        ObjectAnimator bottomAnimator = ObjectAnimator.ofFloat(bottomTeeth, View.Y, bottomTeeth.getY(), targetBottomY);
+        AnimatorSet set = new AnimatorSet();
+        set.playTogether(topAnimator, bottomAnimator);
+        set.setDuration(240L);
+        set.setInterpolator(new DecelerateInterpolator(1.4f));
+        set.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                overlay.removeView(topTeeth);
+                overlay.removeView(bottomTeeth);
+                if (onComplete != null) {
+                    onComplete.run();
+                }
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                overlay.removeView(topTeeth);
+                overlay.removeView(bottomTeeth);
+                if (onComplete != null) {
+                    onComplete.run();
+                }
+            }
+        });
+        set.start();
     }
 
     private void floatingDieTravel(ImageView source, ImageView flying, float endX, float endY,

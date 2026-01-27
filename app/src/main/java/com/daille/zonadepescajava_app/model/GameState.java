@@ -1102,6 +1102,20 @@ public class GameState {
         }
         return highlight;
     }
+
+    public boolean isBiteSelectionPending() {
+        return pendingSelection == PendingSelection.PIRANA_TARGET
+                || pendingSelection == PendingSelection.WHITE_SHARK_TARGET
+                || pendingSelection == PendingSelection.TIGER_SHARK_TARGET
+                || pendingSelection == PendingSelection.PEZ_LOBO_TARGET;
+    }
+
+    public boolean shouldPlayBiteAnimation(int slotIndex) {
+        if (!isBiteSelectionPending()) {
+            return false;
+        }
+        return getHighlightSlots().contains(slotIndex);
+    }
     // === UI helpers ===
     private final java.util.List<Integer> remoraBorderSlots = new java.util.ArrayList<>();
 
