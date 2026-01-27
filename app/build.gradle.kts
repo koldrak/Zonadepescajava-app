@@ -15,7 +15,8 @@ android {
 /*1. Correccion de bonificaciones y ui
   2. Incorporación de alerta de romper top global
   3. Animación de carniboros
-  4. Sonidos temáticos para ballenas
+  4. Implementacion de sonidos temáticos para ballenas
+  5. Se agrego tutorial de mareas
  */
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
