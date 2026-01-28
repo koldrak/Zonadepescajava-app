@@ -19,6 +19,8 @@ android {
   5. Se agrego tutorial de mareas
   6. Reestructuracion de UI de juego
   7. Reestructuracion de panel de dados y mazos
+  8. Actualizacion de tipos de cartas
+  9. Ajuste de habilidades de "Pulpo y Sepia"
  */
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
