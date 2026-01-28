@@ -73,6 +73,7 @@ public class GameState {
     private Card pendingDecoradorCard = null;
     private final List<Card> pendingPezBorronTargets = new ArrayList<>();
     private final List<Card> pendingSepiaOptions = new ArrayList<>();
+    private final List<Card> pendingSepiaNonOrange = new ArrayList<>();
     private final List<Card> pendingDragnetTargets = new ArrayList<>();
     private final List<Card> pendingHachaReleaseChoices = new ArrayList<>();
     private final List<Card> pendingDamiselasTop = new ArrayList<>();
@@ -316,6 +317,7 @@ public class GameState {
         pendingPezBorronTargets.clear();
         pendingPezBorronSlot = -1;
         pendingSepiaOptions.clear();
+        pendingSepiaNonOrange.clear();
         pendingSepiaSlot = -1;
         pendingFletanActive = false;
         pendingFletanSlot = -1;
@@ -1658,6 +1660,9 @@ public class GameState {
 
     private String chooseHorseshoeDie(int slotIndex) {
         BoardSlot slot = board[slotIndex];
+        if (slot.getCard() == null || slot.getCard().getType() != CardType.CRUSTACEO) {
+            return "Cangrejo herradura: elige una carta naranja con un dado.";
+        }
         if (slot.getDice().isEmpty()) {
             return "Elige una carta con un dado para ajustar.";
         }
@@ -4675,10 +4680,24 @@ public class GameState {
             return "Sepia: el mazo está vacío.";
         }
         pendingSepiaOptions.clear();
+        pendingSepiaNonOrange.clear();
         pendingSepiaSlot = slotIndex;
         int count = Math.min(3, deck.size());
         for (int i = 0; i < count; i++) {
-            pendingSepiaOptions.add(deck.pop());
+            Card candidate = deck.pop();
+            if (candidate.getType() == CardType.CRUSTACEO) {
+                pendingSepiaOptions.add(candidate);
+            } else {
+                pendingSepiaNonOrange.add(candidate);
+            }
+        }
+        if (pendingSepiaOptions.isEmpty()) {
+            for (Card c : pendingSepiaNonOrange) {
+                deck.addLast(c);
+            }
+            pendingSepiaNonOrange.clear();
+            pendingSepiaSlot = -1;
+            return "Sepia: no hay cartas naranjas para capturar.";
         }
         awaitingSepiaChoice = true;
         return "Sepia: elige una carta para capturar.";
@@ -4700,7 +4719,11 @@ public class GameState {
         for (Card c : pendingSepiaOptions) {
             deck.addLast(c);
         }
+        for (Card c : pendingSepiaNonOrange) {
+            deck.addLast(c);
+        }
         pendingSepiaOptions.clear();
+        pendingSepiaNonOrange.clear();
         awaitingSepiaChoice = false;
 
         boolean reshuffle = false;
@@ -5559,18 +5582,18 @@ public class GameState {
     private String startHorseshoeAdjustment(int slotIndex) {
         boolean hasDice = false;
         for (BoardSlot s : board) {
-            if (!s.getDice().isEmpty()) {
+            if (s.getCard() != null && s.getCard().getType() == CardType.CRUSTACEO && !s.getDice().isEmpty()) {
                 hasDice = true;
                 break;
             }
         }
         if (!hasDice) {
-            return "Cangrejo herradura: no hay dados en la zona de pesca.";
+            return "Cangrejo herradura: no hay dados en cartas naranjas.";
         }
         return queueableSelection(
                 PendingSelection.HORSESHOE_DIE,
                 slotIndex,
-                "Cangrejo herradura: elige un dado para ajustar a cualquier valor.");
+                "Cangrejo herradura: elige un dado de una carta naranja para ajustar a cualquier valor.");
     }
 
     private String startViolinistCapture() {
@@ -5935,7 +5958,7 @@ public class GameState {
         if (placedValue % 2 != 0) return "";
         pendingPulpoOptions.clear();
         for (Card c : deck) {
-            if (c.getType() != CardType.OBJETO) {
+            if (c.getType() == CardType.CRUSTACEO) {
                 pendingPulpoOptions.add(c);
             }
         }

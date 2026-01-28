@@ -136,7 +136,7 @@ public final class GameUtils {
                 "", ""));
 
         cards.add(new Card(CardId.CANGREJO_HERRADURA, "Cangrejo herradura", CardType.CRUSTACEO, 3,
-                condSumAtLeast(14), "Puedes cambiar el valor de 1 dado al número que elijas.", "", ""));
+                condSumAtLeast(14), "Puedes cambiar el valor de 1 dado de una carta naranja al número que elijas.", "", ""));
 
         cards.add(new Card(CardId.ALMEJAS, "Almejas", CardType.CRUSTACEO, 2,
                 condSumAtLeast(8), "Lanza un dado descartado y colócalo aquí si se activó una habilidad adyacente.", "", ""));
@@ -222,9 +222,9 @@ public final class GameUtils {
                 (slotIndex, g) -> condSumGreaterThan(6).isSatisfied(slotIndex, g) && !hasAdjacentFaceUp(slotIndex, g),
                 "Vuelve boca abajo una carta adyacente y recupera su dado.", "", ""));
 
-        cards.add(new Card(CardId.PULPO, "Pulpo", CardType.PEZ, 2,
+        cards.add(new Card(CardId.PULPO, "Pulpo", CardType.CRUSTACEO, 2,
                 condSumLessThan(8),
-                "Si el dado es par, reemplaza esta carta por otra del mazo boca arriba manteniendo el dado.",
+                "Si el dado es par, busca una carta naranja y reemplaza esta carta manteniendo el dado.",
                 "", ""));
 
         cards.add(new Card(CardId.ARENQUE, "Arenque", CardType.PEZ, 5,
@@ -302,9 +302,9 @@ public final class GameUtils {
                 "Elige 1 carta boca abajo y mueve el dado de esta carta a ella sin voltearla.",
                 "", ""));
 
-        cards.add(new Card(CardId.SEPIA, "Sepia", CardType.PEZ, 3,
+        cards.add(new Card(CardId.SEPIA, "Sepia", CardType.CRUSTACEO, 3,
                 condSumRange(12, 14),
-                "Si el dado es impar, mira 3 cartas, captura 1 y baraja esta carta en el mazo.",
+                "Si el dado es impar, mira 3 cartas y captura 1 naranja; luego baraja esta carta en el mazo.",
                 "", ""));
 
         cards.add(new Card(CardId.DAMISELAS, "Damiselas", CardType.PEZ, 3,
@@ -334,7 +334,7 @@ public final class GameUtils {
         cards.add(new Card(CardId.PEZ_VELA, "Pez Vela", CardType.PEZ_GRANDE, 9,
                 condSumExact(12), "Relanza el dado y elige resultado.", "", ""));
 
-        cards.add(new Card(CardId.CALAMAR_GIGANTE, "Calamar Gigante", CardType.PEZ_GRANDE, 9,
+        cards.add(new Card(CardId.CALAMAR_GIGANTE, "Calamar Gigante", CardType.CRUSTACEO, 9,
                 (slotIndex, g) -> condSumGreaterThan(10).isSatisfied(slotIndex, g) && containsDieType(slotIndex, g, DieType.D8),
                 "Voltea boca abajo las cartas adyacentes manteniendo sus dados; podrán activarse de nuevo.",
                 "", ""));
