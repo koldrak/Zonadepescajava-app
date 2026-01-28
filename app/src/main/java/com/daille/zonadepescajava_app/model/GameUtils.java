@@ -103,7 +103,7 @@ public final class GameUtils {
                             values.length == 2 &&
                             values[0] % 2 != 0 &&
                             values[1] % 2 != 0;
-                }, "Si hay una carta negra adyacente boca arriba, puedes descartarla y reemplazarla.", "", ""));
+                }, "Si hay una carta negra adyacente boca arriba, puedes colocarla bajo esta carta y reemplazarla por una carta del mazo que elijas boca abajo.", "", ""));
 
         cards.add(new Card(CardId.CANGREJO_DECORADOR, "Cangrejo Decorador", CardType.CRUSTACEO, 7,
                 (slotIndex, g) -> condSumRange(5, 9).isSatisfied(slotIndex, g) && bothDiceEven(slotIndex, g),

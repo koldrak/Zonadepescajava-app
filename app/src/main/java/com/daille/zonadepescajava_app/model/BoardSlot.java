@@ -6,6 +6,7 @@ import java.util.List;
 
 public class BoardSlot {
     private Card card;
+    private Card underCard;
     private boolean faceUp;
     private final List<Die> dice = new ArrayList<>();
     private SlotStatus status = new SlotStatus();
@@ -16,6 +17,7 @@ public class BoardSlot {
 
     public void setCard(Card card) {
         this.card = card;
+        this.underCard = null;
     }
 
     public boolean isFaceUp() {
@@ -44,6 +46,14 @@ public class BoardSlot {
 
     public void clearDice() {
         dice.clear();
+    }
+
+    public Card getUnderCard() {
+        return underCard;
+    }
+
+    public void setUnderCard(Card underCard) {
+        this.underCard = underCard;
     }
 
     public SlotStatus getStatus() {
