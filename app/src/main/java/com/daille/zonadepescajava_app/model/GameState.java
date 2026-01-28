@@ -62,6 +62,9 @@ public class GameState {
     private final List<DieType> pendingCachaloteDice = new ArrayList<>();
     private int pendingCachaloteTotal = 0;
     private final List<Card> pendingPulpoOptions = new ArrayList<>();
+    private final List<Card> pendingMorsaOptions = new ArrayList<>();
+    private final List<Card> pendingLeonMarinoTop = new ArrayList<>();
+    private final List<Card> pendingLeonMarinoGreen = new ArrayList<>();
     private final Deque<PendingSelectionState> pendingSelectionQueue = new ArrayDeque<>();
     private final List<Card> pendingArenquePool = new ArrayList<>();
     private final List<Card> pendingArenqueChosen = new ArrayList<>();
@@ -94,8 +97,15 @@ public class GameState {
     private int boxerMovesRemaining = 0;
     private int boxerSlotIndex = -1;
     private boolean awaitingPulpoChoice = false;
+    private boolean awaitingMorsaChoice = false;
+    private boolean awaitingLeonMarinoChoice = false;
+    private int morsaTargetSlotIndex = -1;
     private int pulpoSlotIndex = -1;
     private int pulpoPlacedValue = 0;
+    private boolean pendingFocaMoteada = false;
+    private int focaMoteadaSlotIndex = -1;
+    private int focaMoteadaDieIndex = -1;
+    private boolean awaitingFocaMoteadaValue = false;
     private boolean pendingGameOver = false;
     private String pendingGameOverMessage = null;
     private Card pendingSpiderCrabCard = null;
@@ -209,7 +219,8 @@ public class GameState {
         TIGER_SHARK_TARGET,
         DRAGNET_RELEASE,
         LOCO_TARGET,
-        SEPIA_CAPTURE
+        SEPIA_CAPTURE,
+        MORSA_TARGET
     }
     private PendingSelection pendingSelection = PendingSelection.NONE;
     private int pendingSelectionActor = -1;
@@ -304,6 +315,9 @@ public class GameState {
         pendingCachaloteTotal = 0;
         pendingCurrentAnimations.clear();
         pendingPulpoOptions.clear();
+        pendingMorsaOptions.clear();
+        pendingLeonMarinoTop.clear();
+        pendingLeonMarinoGreen.clear();
         pendingArenquePool.clear();
         pendingArenqueChosen.clear();
         awaitingArenqueChoice = false;
@@ -342,8 +356,15 @@ public class GameState {
         clearCachaloteState();
         clearBoxerState();
         awaitingPulpoChoice = false;
+        awaitingMorsaChoice = false;
+        awaitingLeonMarinoChoice = false;
+        morsaTargetSlotIndex = -1;
         pulpoSlotIndex = -1;
         pulpoPlacedValue = 0;
+        pendingFocaMoteada = false;
+        focaMoteadaSlotIndex = -1;
+        focaMoteadaDieIndex = -1;
+        awaitingFocaMoteadaValue = false;
         pendingGameOver = false;
         pendingGameOverMessage = null;
         pendingRevealChain.clear();
@@ -509,6 +530,8 @@ public class GameState {
                 || awaitingCachaloteValue
                 || awaitingBoxerDecision
                 || awaitingPulpoChoice
+                || awaitingMorsaChoice
+                || awaitingLeonMarinoChoice
                 || awaitingValueAdjustment
                 || awaitingGhostShrimpDecision
                 || awaitingSepiaChoice
@@ -517,6 +540,7 @@ public class GameState {
                 || awaitingDamiselasChoice
                 || awaitingPeregrinoChoice
                 || awaitingHumpbackDirection
+                || awaitingFocaMoteadaValue
                 || awaitingCancelConfirmation
                 || pendingAbilityConfirmation != null
                 || !pendingAbilityQueue.isEmpty()
@@ -699,6 +723,14 @@ public class GameState {
         return awaitingPulpoChoice;
     }
 
+    public boolean isAwaitingMorsaChoice() {
+        return awaitingMorsaChoice;
+    }
+
+    public boolean isAwaitingLeonMarinoChoice() {
+        return awaitingLeonMarinoChoice;
+    }
+
     public List<String> getPendingPulpoNames() {
         List<String> names = new ArrayList<>();
         for (Card c : pendingPulpoOptions) {
@@ -709,6 +741,36 @@ public class GameState {
 
     public List<Card> getPendingPulpoCards() {
         return new ArrayList<>(pendingPulpoOptions);
+    }
+
+    public List<Card> getPendingMorsaCards() {
+        return new ArrayList<>(pendingMorsaOptions);
+    }
+
+    public List<Card> getPendingLeonMarinoCards() {
+        return new ArrayList<>(pendingLeonMarinoGreen);
+    }
+
+    public boolean isAwaitingFocaMoteadaValue() {
+        return awaitingFocaMoteadaValue;
+    }
+
+    public int getFocaMoteadaDieSides() {
+        if (focaMoteadaSlotIndex < 0 || focaMoteadaSlotIndex >= board.length) return 0;
+        BoardSlot slot = board[focaMoteadaSlotIndex];
+        if (slot.getDice().isEmpty() || focaMoteadaDieIndex < 0 || focaMoteadaDieIndex >= slot.getDice().size()) {
+            return 0;
+        }
+        return slot.getDice().get(focaMoteadaDieIndex).getType().getSides();
+    }
+
+    public DieType getFocaMoteadaDieType() {
+        if (focaMoteadaSlotIndex < 0 || focaMoteadaSlotIndex >= board.length) return null;
+        BoardSlot slot = board[focaMoteadaSlotIndex];
+        if (slot.getDice().isEmpty() || focaMoteadaDieIndex < 0 || focaMoteadaDieIndex >= slot.getDice().size()) {
+            return null;
+        }
+        return slot.getDice().get(focaMoteadaDieIndex).getType();
     }
 
     public int getHorseshoeDieSides() {
@@ -896,6 +958,14 @@ public class GameState {
                 for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
                     BoardSlot adj = board[idx];
                     if (adj.getCard() != null && adj.isFaceUp()) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case MORSA_TARGET:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    BoardSlot adj = board[idx];
+                    if (adj.getCard() != null) {
                         highlight.add(idx);
                     }
                 }
@@ -1394,6 +1464,9 @@ public class GameState {
             case TIGER_SHARK_TARGET:
                 result = resolveTigerSharkDevour(slotIndex);
                 break;
+            case MORSA_TARGET:
+                result = resolveMorsaElimination(slotIndex);
+                break;
             case LOCO_TARGET:
                 result = chooseLocoTarget(slotIndex);
                 break;
@@ -1724,6 +1797,35 @@ public class GameState {
         return msg;
     }
 
+    public String chooseFocaMoteadaValue(int value) {
+        if (!awaitingFocaMoteadaValue) {
+            return "No hay ajuste pendiente de la Foca moteada.";
+        }
+        if (focaMoteadaSlotIndex < 0 || focaMoteadaSlotIndex >= board.length) {
+            clearFocaMoteadaState();
+            return "La carta destino de la Foca moteada ya no está disponible.";
+        }
+        BoardSlot slot = board[focaMoteadaSlotIndex];
+        if (slot.getDice().isEmpty() || focaMoteadaDieIndex < 0 || focaMoteadaDieIndex >= slot.getDice().size()) {
+            clearFocaMoteadaState();
+            return "La carta destino de la Foca moteada ya no está disponible.";
+        }
+        Die die = slot.getDice().get(focaMoteadaDieIndex);
+        int sides = die.getType().getSides();
+        if (value < 1 || value > sides) {
+            return "Elige un valor dentro del rango del dado.";
+        }
+        slot.setDie(focaMoteadaDieIndex, new Die(die.getType(), value));
+        int slotIndex = focaMoteadaSlotIndex;
+        clearFocaMoteadaState();
+        String cocoLoss = applyCoconutCrabLoss(slotIndex, value);
+        String result = resolvePlacementAfterValue(slotIndex, value, cocoLoss);
+        if (result == null || result.isEmpty()) {
+            return "Foca moteada ajustó el dado a " + value + ".";
+        }
+        return "Foca moteada ajustó el dado a " + value + ". " + result;
+    }
+
     public String chooseD20CriticalValue(int value) {
         if (!awaitingD20CriticalValue) {
             return "No hay ajuste pendiente del D20 crítico.";
@@ -1757,6 +1859,12 @@ public class GameState {
         horseshoeSlotIndex = -1;
         horseshoeDieIndex = -1;
         awaitingHorseshoeValue = false;
+    }
+
+    private void clearFocaMoteadaState() {
+        focaMoteadaSlotIndex = -1;
+        focaMoteadaDieIndex = -1;
+        awaitingFocaMoteadaValue = false;
     }
 
     private void clearD20CriticalState() {
@@ -2115,6 +2223,12 @@ public class GameState {
         if (awaitingPulpoChoice) {
             return "Elige la carta para reemplazar al Pulpo antes de lanzar otro dado.";
         }
+        if (awaitingMorsaChoice) {
+            return "Elige la carta verde para reemplazar con la Morsa antes de lanzar otro dado.";
+        }
+        if (awaitingLeonMarinoChoice) {
+            return "Resuelve la selección del León Marino antes de lanzar otro dado.";
+        }
         if (awaitingValueAdjustment) {
             return "Resuelve el ajuste pendiente antes de lanzar otro dado.";
         }
@@ -2123,6 +2237,9 @@ public class GameState {
         }
         if (awaitingD20CriticalValue) {
             return "Resuelve el ajuste del D20 crítico antes de lanzar otro dado.";
+        }
+        if (awaitingFocaMoteadaValue) {
+            return "Resuelve el ajuste de la Foca moteada antes de lanzar otro dado.";
         }
         if (awaitingCachaloteValue) {
             return "Resuelve el valor del dado del Cachalote antes de lanzar otro dado.";
@@ -2226,6 +2343,12 @@ public class GameState {
         if (awaitingPulpoChoice) {
             return "Elige primero la carta que reemplazará al Pulpo.";
         }
+        if (awaitingMorsaChoice) {
+            return "Elige primero la carta verde que reemplazará a la carta eliminada por la Morsa.";
+        }
+        if (awaitingLeonMarinoChoice) {
+            return "Resuelve la selección del León Marino antes de colocar otros dados.";
+        }
         if (awaitingValueAdjustment) {
             return "Resuelve el ajuste pendiente antes de colocar dados.";
         }
@@ -2234,6 +2357,9 @@ public class GameState {
         }
         if (awaitingD20CriticalValue) {
             return "Resuelve el ajuste del D20 crítico antes de colocar dados.";
+        }
+        if (awaitingFocaMoteadaValue) {
+            return "Resuelve el ajuste de la Foca moteada antes de colocar dados.";
         }
         if (awaitingCachaloteValue) {
             return "Resuelve el valor del dado del Cachalote antes de colocar dados.";
@@ -2275,6 +2401,16 @@ public class GameState {
         selectedDie = null;
         if (forcedSlotIndex != null && slotIndex == forcedSlotIndex) {
             forcedSlotIndex = null;
+        }
+
+        if (pendingFocaMoteada) {
+            pendingFocaMoteada = false;
+            if (slot.getCard() != null && slot.getCard().getType() == CardType.PEZ_GRANDE) {
+                focaMoteadaSlotIndex = slotIndex;
+                focaMoteadaDieIndex = slot.getDice().size() - 1;
+                awaitingFocaMoteadaValue = true;
+                return "Foca moteada: elige el nuevo valor del dado.";
+            }
         }
 
         if (placedDie.getType() == DieType.D20 && placedValue == 20 && !slot.isFaceUp()) {
@@ -2993,6 +3129,18 @@ public class GameState {
             pulpoSlotIndex = remapIndex(pulpoSlotIndex, indexMap);
             if (pulpoSlotIndex < 0) {
                 clearPulpoState();
+            }
+        }
+        if (awaitingMorsaChoice) {
+            morsaTargetSlotIndex = remapIndex(morsaTargetSlotIndex, indexMap);
+            if (morsaTargetSlotIndex < 0) {
+                clearMorsaState();
+            }
+        }
+        if (awaitingFocaMoteadaValue) {
+            focaMoteadaSlotIndex = remapIndex(focaMoteadaSlotIndex, indexMap);
+            if (focaMoteadaSlotIndex < 0) {
+                clearFocaMoteadaState();
             }
         }
         // ✅ Remap pending reveal chain indices after currents
@@ -3793,6 +3941,7 @@ public class GameState {
             case CANGREJO_HERRADURA:
             case CANGREJO_ARANA:
             case CANGREJO_VIOLINISTA:
+            case FOCA_MOTEADA:
             case BOTELLA_PLASTICO:
             case BOTELLA_DE_VIDRIO:
             case BOTA_VIEJA:
@@ -3821,6 +3970,7 @@ public class GameState {
             case PIRANA:
             case PEZ_FANTASMA:
             case PULPO:
+            case MORSA:
             case CALAMAR_GIGANTE:
             case MANTA_GIGANTE:
             case ARENQUE:
@@ -3858,6 +4008,7 @@ public class GameState {
             case PEZ_PIPA:
             case SALMON:
             case PEZ_VOLADOR:
+            case LEON_MARINO:
                 return true;
             default:
                 return false;
@@ -3977,6 +4128,10 @@ public class GameState {
             case CANGREJO_VIOLINISTA:
                 result = startViolinistCapture();
                 break;
+            case FOCA_MOTEADA:
+                pendingFocaMoteada = true;
+                result = "Foca moteada: tu próximo lanzamiento podrá ajustar el valor del dado en una carta verde.";
+                break;
 
             case BOTELLA_PLASTICO:
                 result = startBottleTargetSelection(slotIndex);
@@ -4062,6 +4217,9 @@ public class GameState {
                 break;
             case PULPO:
                 result = replacePulpoIfEven(slotIndex, placedValue);
+                break;
+            case MORSA:
+                result = startMorsaSelection(slotIndex);
                 break;
             case CALAMAR_GIGANTE:
                 result = flipAdjacentFaceUpCardsDown(slotIndex);
@@ -4750,6 +4908,66 @@ public class GameState {
         pendingSepiaSlot = -1;
         recomputeBottleAdjustments();
         return "Sepia capturó " + chosen.getName() + " y regresó al mazo.";
+    }
+
+    private String startLeonMarinoCapture() {
+        if (deck.isEmpty()) {
+            return "León Marino: el mazo está vacío.";
+        }
+        pendingLeonMarinoTop.clear();
+        pendingLeonMarinoGreen.clear();
+        int count = Math.min(4, deck.size());
+        for (int i = 0; i < count; i++) {
+            Card candidate = deck.pop();
+            pendingLeonMarinoTop.add(candidate);
+            if (candidate.getType() == CardType.PEZ_GRANDE) {
+                pendingLeonMarinoGreen.add(candidate);
+            }
+        }
+        if (pendingLeonMarinoGreen.isEmpty()) {
+            restoreCardsToTop(pendingLeonMarinoTop);
+            pendingLeonMarinoTop.clear();
+            return "León Marino: no hay cartas verdes entre las primeras cartas.";
+        }
+        awaitingLeonMarinoChoice = true;
+        return "León Marino: elige hasta 2 cartas verdes para capturarlas.";
+    }
+
+    public String chooseLeonMarinoCapture(List<Integer> indices) {
+        if (!awaitingLeonMarinoChoice) {
+            return "No hay selección pendiente del León Marino.";
+        }
+        awaitingLeonMarinoChoice = false;
+        List<Card> selected = new ArrayList<>();
+        List<Integer> unique = new ArrayList<>();
+        for (Integer i : indices) {
+            if (i == null) continue;
+            if (i < 0 || i >= pendingLeonMarinoGreen.size()) continue;
+            if (unique.contains(i)) continue;
+            unique.add(i);
+            if (unique.size() >= 2) break;
+        }
+        for (int idx : unique) {
+            Card chosen = pendingLeonMarinoGreen.get(idx);
+            selected.add(chosen);
+            captures.add(chosen);
+        }
+        if (!selected.isEmpty()) {
+            pendingLeonMarinoTop.removeAll(selected);
+        }
+        restoreCardsToTop(pendingLeonMarinoTop);
+        pendingLeonMarinoTop.clear();
+        pendingLeonMarinoGreen.clear();
+        if (selected.isEmpty()) {
+            return "León Marino no capturó cartas verdes.";
+        }
+        return "León Marino capturó " + selected.size() + " carta(s) verde(s).";
+    }
+
+    private void restoreCardsToTop(List<Card> cards) {
+        for (int i = cards.size() - 1; i >= 0; i--) {
+            deck.push(cards.get(i));
+        }
     }
 
     private String startDamiselasReorder(int slotIndex) {
@@ -6006,6 +6224,91 @@ public class GameState {
         return result;
     }
 
+    private String startMorsaSelection(int slotIndex) {
+        if (countAdjacentAny(slotIndex) == 0) {
+            return "Morsa: no hay cartas adyacentes para eliminar.";
+        }
+        if (!hasBigFishInDeck()) {
+            return "Morsa: no hay cartas verdes en el mazo.";
+        }
+        return queueableSelection(
+                PendingSelection.MORSA_TARGET,
+                slotIndex,
+                "Morsa: elige una carta adyacente para eliminar.");
+    }
+
+    private String resolveMorsaElimination(int targetIndex) {
+        if (!adjacentIndices(pendingSelectionActor, true).contains(targetIndex)) {
+            return "Elige una carta adyacente a la Morsa.";
+        }
+        BoardSlot target = board[targetIndex];
+        if (target.getCard() == null) {
+            return "Debes elegir una carta válida para eliminar.";
+        }
+        for (Die d : new ArrayList<>(target.getDice())) {
+            reserve.add(d.getType());
+        }
+        target.clearDice();
+        failedDiscards.add(target.getCard());
+        target.setCard(null);
+        target.setFaceUp(false);
+        target.setStatus(new SlotStatus());
+        clearPendingSelection();
+        recomputeBottleAdjustments();
+
+        pendingMorsaOptions.clear();
+        for (Card c : deck) {
+            if (c.getType() == CardType.PEZ_GRANDE) {
+                pendingMorsaOptions.add(c);
+            }
+        }
+        if (pendingMorsaOptions.isEmpty()) {
+            morsaTargetSlotIndex = -1;
+            return "Morsa eliminó una carta, pero no hay cartas verdes en el mazo.";
+        }
+        awaitingMorsaChoice = true;
+        morsaTargetSlotIndex = targetIndex;
+        return "Morsa: elige una carta verde del cardumen para reemplazarla.";
+    }
+
+    public String chooseMorsaReplacement(int index) {
+        if (!awaitingMorsaChoice) {
+            return "No hay selección pendiente de la Morsa.";
+        }
+        if (morsaTargetSlotIndex < 0 || morsaTargetSlotIndex >= board.length) {
+            clearMorsaState();
+            return "La carta objetivo de la Morsa ya no está disponible.";
+        }
+        if (index < 0 || index >= pendingMorsaOptions.size()) {
+            return "Debes elegir una carta verde válida del cardumen.";
+        }
+        Card replacement = pendingMorsaOptions.get(index);
+        if (!deck.remove(replacement)) {
+            clearMorsaState();
+            shuffleDeck();
+            return "La carta seleccionada ya no está en el mazo.";
+        }
+        BoardSlot slot = board[morsaTargetSlotIndex];
+        slot.setCard(replacement);
+        slot.setFaceUp(true);
+        slot.clearDice();
+        slot.setStatus(new SlotStatus());
+        markRevealed(morsaTargetSlotIndex);
+        String reveal = handleOnReveal(morsaTargetSlotIndex, 0);
+        String result = reveal.isEmpty()
+                ? "Morsa reemplazó la carta eliminada por " + replacement.getName() + "."
+                : "Morsa reemplazó la carta eliminada por " + replacement.getName() + ". " + reveal;
+        clearMorsaState();
+        shuffleDeck();
+        return result;
+    }
+
+    private void clearMorsaState() {
+        pendingMorsaOptions.clear();
+        awaitingMorsaChoice = false;
+        morsaTargetSlotIndex = -1;
+    }
+
     private String flipAdjacentFaceUpCardsDown(int slotIndex) {
         int flipped = 0;
         for (Integer idx : adjacentIndices(slotIndex, true)) {
@@ -6031,6 +6334,24 @@ public class GameState {
             }
         }
         return "";
+    }
+
+    private String recoverIfThreeGreensFaceUp() {
+        int faceUpGreens = 0;
+        for (BoardSlot slot : board) {
+            if (slot.getCard() != null && slot.isFaceUp() && slot.getCard().getType() == CardType.PEZ_GRANDE) {
+                faceUpGreens++;
+            }
+        }
+        if (faceUpGreens < 3 || lostDice.isEmpty()) {
+            return "";
+        }
+        int recovered = Math.min(2, lostDice.size());
+        for (int i = 0; i < recovered; i++) {
+            Die die = lostDice.remove(lostDice.size() - 1);
+            reserve.add(die.getType());
+        }
+        return recovered == 2 ? "Manatí recuperó 2 dados." : "Manatí recuperó 1 dado.";
     }
 
     private String recoverAnyLostDie() {
@@ -6853,6 +7174,8 @@ public class GameState {
             case CANGREJO_HERRADURA:
             case PEZ_LEON:
                 return hasAnyDiceOnBoard();
+            case FOCA_MOTEADA:
+                return true;
             case CANGREJO_ARANA:
                 return !failedDiscards.isEmpty() && hasFaceDownNoDice();
             case CANGREJO_VIOLINISTA:
@@ -6879,6 +7202,8 @@ public class GameState {
                 return !deck.isEmpty();
             case PULPO:
                 return placedValue % 2 == 0 && hasNonObjectInDeck();
+            case MORSA:
+                return countAdjacentAny(slotIndex) > 0 && hasBigFishInDeck();
             case ARENQUE:
                 return countAdjacentFaceDown(slotIndex) > 0 && hasFishInDeck();
             case PEZ_FANTASMA:
@@ -6938,6 +7263,8 @@ public class GameState {
                 return hasFaceDownCards();
             case PEZ_VOLADOR:
                 return hasEvenAndOdd(diceOnCard);
+            case LEON_MARINO:
+                return hasGreenInTopCards(4);
             default:
                 return true;
         }
@@ -6968,6 +7295,16 @@ public class GameState {
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
             if (adj.getCard() != null && adj.isFaceUp()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int countAdjacentAny(int slotIndex) {
+        int count = 0;
+        for (Integer idx : adjacentIndices(slotIndex, true)) {
+            if (board[idx].getCard() != null) {
                 count++;
             }
         }
@@ -7056,6 +7393,30 @@ public class GameState {
         for (Card c : deck) {
             if (c.getType() == CardType.PEZ) {
                 return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasBigFishInDeck() {
+        for (Card c : deck) {
+            if (c.getType() == CardType.PEZ_GRANDE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasGreenInTopCards(int max) {
+        if (deck.isEmpty()) return false;
+        int count = 0;
+        for (Card c : deck) {
+            if (c.getType() == CardType.PEZ_GRANDE) {
+                return true;
+            }
+            count++;
+            if (count >= max) {
+                break;
             }
         }
         return false;
@@ -7184,6 +7545,12 @@ public class GameState {
                 break;
             case PEZ_VOLADOR:
                 result = flipLineFromFlyingFish(slotIndex, diceOnCard) + remoraLog;
+                break;
+            case LEON_MARINO:
+                result = startLeonMarinoCapture() + remoraLog;
+                break;
+            case MANATI:
+                result = recoverIfThreeGreensFaceUp() + remoraLog;
                 break;
             default:
                 result = remoraLog;
