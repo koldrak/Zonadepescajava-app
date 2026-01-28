@@ -5069,6 +5069,15 @@ public class GameState {
     }
 
     private String startHachaAbisalRelease() {
+        int faceDownFishingCards = 0;
+        for (BoardSlot slot : board) {
+            if (slot.getCard() != null && !slot.isFaceUp()) {
+                faceDownFishingCards++;
+            }
+        }
+        if (faceDownFishingCards < 2) {
+            return "Pez Hacha Abisal: no hay suficientes cartas boca abajo en la zona de pesca.";
+        }
         if (captures.isEmpty()) {
             return "Pez Hacha Abisal: no hay capturas para liberar.";
         }
