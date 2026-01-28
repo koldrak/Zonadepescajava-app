@@ -1660,6 +1660,9 @@ public class GameState {
 
     private String chooseHorseshoeDie(int slotIndex) {
         BoardSlot slot = board[slotIndex];
+        if (slot.getCard() == null || slot.getCard().getType() != CardType.CRUSTACEO) {
+            return "Cangrejo herradura: elige una carta naranja con un dado.";
+        }
         if (slot.getDice().isEmpty()) {
             return "Elige una carta con un dado para ajustar.";
         }
@@ -5579,18 +5582,18 @@ public class GameState {
     private String startHorseshoeAdjustment(int slotIndex) {
         boolean hasDice = false;
         for (BoardSlot s : board) {
-            if (!s.getDice().isEmpty()) {
+            if (s.getCard() != null && s.getCard().getType() == CardType.CRUSTACEO && !s.getDice().isEmpty()) {
                 hasDice = true;
                 break;
             }
         }
         if (!hasDice) {
-            return "Cangrejo herradura: no hay dados en la zona de pesca.";
+            return "Cangrejo herradura: no hay dados en cartas naranjas.";
         }
         return queueableSelection(
                 PendingSelection.HORSESHOE_DIE,
                 slotIndex,
-                "Cangrejo herradura: elige un dado para ajustar a cualquier valor.");
+                "Cangrejo herradura: elige un dado de una carta naranja para ajustar a cualquier valor.");
     }
 
     private String startViolinistCapture() {

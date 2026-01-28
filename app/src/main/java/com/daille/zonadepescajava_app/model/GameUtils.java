@@ -136,7 +136,7 @@ public final class GameUtils {
                 "", ""));
 
         cards.add(new Card(CardId.CANGREJO_HERRADURA, "Cangrejo herradura", CardType.CRUSTACEO, 3,
-                condSumAtLeast(14), "Puedes cambiar el valor de 1 dado al número que elijas.", "", ""));
+                condSumAtLeast(14), "Puedes cambiar el valor de 1 dado de una carta naranja al número que elijas.", "", ""));
 
         cards.add(new Card(CardId.ALMEJAS, "Almejas", CardType.CRUSTACEO, 2,
                 condSumAtLeast(8), "Lanza un dado descartado y colócalo aquí si se activó una habilidad adyacente.", "", ""));
