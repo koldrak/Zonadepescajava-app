@@ -71,6 +71,10 @@ public class GameState {
     private final List<Card> pendingDecoradorOptions = new ArrayList<>();
     private boolean awaitingDecoradorChoice = false;
     private Card pendingDecoradorCard = null;
+    private final List<Card> pendingHermitOptions = new ArrayList<>();
+    private boolean awaitingHermitChoice = false;
+    private int hermitSlotIndex = -1;
+    private int hermitTargetSlotIndex = -1;
     private final List<Card> pendingPezBorronTargets = new ArrayList<>();
     private final List<Card> pendingSepiaOptions = new ArrayList<>();
     private final List<Card> pendingSepiaNonOrange = new ArrayList<>();
@@ -198,6 +202,7 @@ public class GameState {
         KOI_TARGET,
         RELEASE_CHOOSE_SLOT,
         DECORADOR_CHOOSE_SLOT,
+        HERMIT_CRAB_TARGET,
         HORSESHOE_DIE,
         PEZ_BORRON_TARGET,
         FLETAN_HIDE,
@@ -313,6 +318,10 @@ public class GameState {
         pendingDecoradorCard = null;
         awaitingDecoradorChoice = false;
         decoradorSlotIndex = -1;
+        pendingHermitOptions.clear();
+        awaitingHermitChoice = false;
+        hermitSlotIndex = -1;
+        hermitTargetSlotIndex = -1;
         awaitingViolinistChoice = false;
         pendingPezBorronTargets.clear();
         pendingPezBorronSlot = -1;
@@ -450,6 +459,10 @@ public class GameState {
         return awaitingDecoradorChoice;
     }
 
+    public boolean isAwaitingHermitChoice() {
+        return awaitingHermitChoice;
+    }
+
     public boolean isAwaitingViolinistChoice() {
         return awaitingViolinistChoice;
     }
@@ -503,6 +516,7 @@ public class GameState {
                 || isAwaitingBoardSelection()
                 || awaitingArenqueChoice
                 || awaitingDecoradorChoice
+                || awaitingHermitChoice
                 || awaitingViolinistChoice
                 || awaitingHorseshoeValue
                 || awaitingD20CriticalValue
@@ -601,6 +615,18 @@ public class GameState {
 
     public List<Card> getPendingDecoradorCards() {
         return new ArrayList<>(pendingDecoradorOptions);
+    }
+
+    public List<String> getPendingHermitNames() {
+        List<String> names = new ArrayList<>();
+        for (Card c : pendingHermitOptions) {
+            names.add(c.getName());
+        }
+        return names;
+    }
+
+    public List<Card> getPendingHermitCards() {
+        return new ArrayList<>(pendingHermitOptions);
     }
 
     public boolean isAwaitingSepiaChoice() {
@@ -857,6 +883,15 @@ public class GameState {
                 for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
                     BoardSlot adj = board[idx];
                     if (adj.getCard() != null && adj.isFaceUp()) {
+                        highlight.add(idx);
+                    }
+                }
+                break;
+            case HERMIT_CRAB_TARGET:
+                for (Integer idx : adjacentIndices(pendingSelectionActor, true)) {
+                    BoardSlot adj = board[idx];
+                    if (adj.getCard() != null && adj.isFaceUp()
+                            && adj.getCard().getType() == CardType.OBJETO) {
                         highlight.add(idx);
                     }
                 }
@@ -1369,6 +1404,9 @@ public class GameState {
                 break;
             case DECORADOR_CHOOSE_SLOT:
                 result = placeDecoradorObject(slotIndex);
+                break;
+            case HERMIT_CRAB_TARGET:
+                result = chooseHermitTarget(slotIndex);
                 break;
             case HORSESHOE_DIE:
                 result = chooseHorseshoeDie(slotIndex);
@@ -2109,6 +2147,9 @@ public class GameState {
         if (awaitingDecoradorChoice) {
             return "Elige la carta negra del Cangrejo decorador antes de continuar.";
         }
+        if (awaitingHermitChoice) {
+            return "Elige la carta del mazo para reemplazar con el Cangrejo ermitaño antes de continuar.";
+        }
         if (awaitingViolinistChoice) {
             return "Elige la carta del Cangrejo violinista antes de continuar.";
         }
@@ -2219,6 +2260,9 @@ public class GameState {
         }
         if (awaitingDecoradorChoice) {
             return "Elige la carta negra del Cangrejo decorador antes de colocar dados.";
+        }
+        if (awaitingHermitChoice) {
+            return "Elige la carta del mazo para reemplazar con el Cangrejo ermitaño antes de colocar dados.";
         }
         if (awaitingViolinistChoice) {
             return "Elige la carta del Cangrejo violinista antes de colocar dados.";
@@ -2507,7 +2551,7 @@ public class GameState {
         BoardSlot slot = board[slotIndex];
         List<Die> diceOnCard = new ArrayList<>(slot.getDice());
         boolean holdCaptureDice = shouldHoldCaptureDice(slotIndex, diceOnCard);
-        captures.add(slot.getCard());
+        captureSlotCard(slot);
         String captureLog = handleOnCapture(slotIndex, diceOnCard);
         if (!holdCaptureDice) {
             for (Die d : new ArrayList<>(slot.getDice())) {
@@ -2520,6 +2564,20 @@ public class GameState {
         slot.setStatus(new SlotStatus());
         recomputeBottleAdjustments();
         return captureLog.isEmpty() ? "" : " " + captureLog;
+    }
+
+    private void captureSlotCard(BoardSlot slot) {
+        if (slot == null) return;
+        Card card = slot.getCard();
+        if (card == null) return;
+        captures.add(card);
+        if (card.getId() == CardId.CANGREJO_ERMITANO) {
+            Card underCard = slot.getUnderCard();
+            if (underCard != null) {
+                captures.add(underCard);
+                slot.setUnderCard(null);
+            }
+        }
     }
 
     private boolean shouldHoldCaptureDice(int slotIndex, List<Die> diceOnCard) {
@@ -3647,6 +3705,7 @@ public class GameState {
                 || isAwaitingBoardSelection()
                 || awaitingArenqueChoice
                 || awaitingDecoradorChoice
+                || awaitingHermitChoice
                 || awaitingViolinistChoice
                 || awaitingHorseshoeValue
                 || awaitingBoxerDecision
@@ -3953,7 +4012,7 @@ public class GameState {
                 result = moveMorenaDie(slotIndex);
                 break;
             case CANGREJO_ERMITANO:
-                result = replaceAdjacentObject(slotIndex);
+                result = startHermitCrabReplacement(slotIndex);
                 break;
             case CANGREJO_DECORADOR:
                 result = startDecoradorSelection(slotIndex);
@@ -4826,7 +4885,7 @@ public class GameState {
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
             if (adj.getCard() != null && !adj.isFaceUp()) {
-                captures.add(adj.getCard());
+                captureSlotCard(adj);
                 adj.clearDice();
                 adj.setCard(deck.isEmpty() ? null : deck.pop());
                 adj.setFaceUp(false);
@@ -5533,25 +5592,104 @@ public class GameState {
         return "Langostino mantis reemplazó un dado en la zona de pesca. " + reveal;
     }
 
-    private String replaceAdjacentObject(int slotIndex) {
+    private String startHermitCrabReplacement(int slotIndex) {
+        if (board[slotIndex].getUnderCard() != null) {
+            return "Cangrejo ermitaño: ya tiene una carta bajo él.";
+        }
+        if (deck.isEmpty()) {
+            return "Cangrejo ermitaño: no hay cartas en el mazo para reemplazar.";
+        }
+        boolean hasTarget = false;
         for (Integer idx : adjacentIndices(slotIndex, true)) {
             BoardSlot adj = board[idx];
             if (adj.getCard() != null && adj.isFaceUp() && adj.getCard().getType() == CardType.OBJETO) {
-                failedDiscards.add(adj.getCard());
-
-                // ✅ DEVOLVER DADOS A RESERVA (como en capture)
-                for (Die d : new ArrayList<>(adj.getDice())) {
-                    reserve.add(d.getType());
-                }
-                adj.clearDice();
-                adj.setCard(deck.isEmpty() ? null : deck.pop());
-                adj.setFaceUp(false);
-                adj.setStatus(new SlotStatus());
-                recomputeBottleAdjustments();
-                return "Cangrejo ermitaño reemplazó una carta negra adyacente.";
+                hasTarget = true;
+                break;
             }
         }
-        return "";
+        if (!hasTarget) {
+            return "Cangrejo ermitaño: no hay cartas negras adyacentes boca arriba.";
+        }
+        hermitSlotIndex = slotIndex;
+        return queueableSelection(
+                PendingSelection.HERMIT_CRAB_TARGET,
+                slotIndex,
+                "Cangrejo ermitaño: elige una carta negra adyacente boca arriba.");
+    }
+
+    private String chooseHermitTarget(int slotIndex) {
+        if (!isAdjacentToActor(slotIndex)) {
+            return "Cangrejo ermitaño: elige una carta negra adyacente.";
+        }
+        BoardSlot target = board[slotIndex];
+        if (target.getCard() == null || !target.isFaceUp() || target.getCard().getType() != CardType.OBJETO) {
+            return "Cangrejo ermitaño: selecciona una carta negra boca arriba.";
+        }
+        if (deck.isEmpty()) {
+            clearPendingSelection();
+            return "Cangrejo ermitaño: no hay cartas en el mazo para reemplazar.";
+        }
+        hermitTargetSlotIndex = slotIndex;
+        pendingHermitOptions.clear();
+        pendingHermitOptions.addAll(deck);
+        awaitingHermitChoice = true;
+        clearPendingSelection();
+        return "Cangrejo ermitaño: elige una carta del mazo para reemplazar.";
+    }
+
+    public String chooseHermitReplacementCard(int index) {
+        if (!awaitingHermitChoice) {
+            return "No hay selección pendiente del Cangrejo ermitaño.";
+        }
+        if (index < 0 || index >= pendingHermitOptions.size()) {
+            return "Debes elegir una carta válida del mazo.";
+        }
+        if (hermitSlotIndex < 0 || hermitSlotIndex >= board.length
+                || hermitTargetSlotIndex < 0 || hermitTargetSlotIndex >= board.length) {
+            clearHermitState();
+            return "No hay reemplazo pendiente del Cangrejo ermitaño.";
+        }
+        Card chosen = pendingHermitOptions.get(index);
+        if (!deck.remove(chosen)) {
+            clearHermitState();
+            shuffleDeck();
+            return "La carta elegida ya no está disponible en el mazo.";
+        }
+        BoardSlot hermitSlot = board[hermitSlotIndex];
+        BoardSlot target = board[hermitTargetSlotIndex];
+        if (hermitSlot.getCard() == null || hermitSlot.getCard().getId() != CardId.CANGREJO_ERMITANO) {
+            clearHermitState();
+            deck.addLast(chosen);
+            shuffleDeck();
+            return "Cangrejo ermitaño: la carta ya no está disponible.";
+        }
+        if (target.getCard() == null || !target.isFaceUp() || target.getCard().getType() != CardType.OBJETO) {
+            clearHermitState();
+            deck.addLast(chosen);
+            shuffleDeck();
+            return "Cangrejo ermitaño: la carta negra ya no está disponible.";
+        }
+
+        Card blackCard = target.getCard();
+        for (Die d : new ArrayList<>(target.getDice())) {
+            reserve.add(d.getType());
+        }
+        target.clearDice();
+        hermitSlot.setUnderCard(blackCard);
+        target.setCard(chosen);
+        target.setFaceUp(false);
+        target.setStatus(new SlotStatus());
+        target.clearDice();
+        clearHermitState();
+        recomputeBottleAdjustments();
+        return "Cangrejo ermitaño colocó la carta negra bajo él y la reemplazó por una carta del mazo.";
+    }
+
+    private void clearHermitState() {
+        pendingHermitOptions.clear();
+        awaitingHermitChoice = false;
+        hermitSlotIndex = -1;
+        hermitTargetSlotIndex = -1;
     }
 
     private String startDecoradorSelection(int slotIndex) {
@@ -7346,7 +7484,7 @@ public class GameState {
             if (rr < 0 || rr > 2 || cc < 0 || cc > 2) continue;
             BoardSlot adj = board[rr * 3 + cc];
             if (adj.getCard() != null && !adj.isFaceUp()) {
-                captures.add(adj.getCard());
+                captureSlotCard(adj);
                 adj.clearDice();
                 adj.setCard(deck.isEmpty() ? null : deck.pop());
                 adj.setFaceUp(false);

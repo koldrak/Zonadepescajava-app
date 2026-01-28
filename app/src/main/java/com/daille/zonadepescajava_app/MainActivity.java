@@ -4553,6 +4553,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (gameState.isAwaitingPulpoChoice()) { promptPulpoChoice(); return; }
         if (gameState.isAwaitingArenqueChoice()) { promptArenqueChoice(); return; }
         if (gameState.isAwaitingDecoradorChoice()) { promptDecoradorChoice(); return; }
+        if (gameState.isAwaitingHermitChoice()) { promptHermitChoice(); return; }
         if (gameState.isAwaitingViolinistChoice()) { promptViolinistChoice(); return; }
         if (gameState.isAwaitingHorseshoeValue()) { promptHorseshoeValue(); return; }
         if (gameState.isAwaitingD20CriticalValue()) { promptD20CriticalValue(); return; }
@@ -4666,6 +4667,20 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 cards,
                 gameState::chooseDecoradorCard,
                 gameState::cancelDecoradorAbility
+        );
+    }
+
+    private void promptHermitChoice() {
+        List<Card> cards = new ArrayList<>(gameState.getPendingHermitCards());
+        if (cards.isEmpty()) {
+            handleGameResult("Cangrejo ermitaño: no hay cartas disponibles en el mazo.");
+            return;
+        }
+        showSingleCardChoiceDialog(
+                "Cangrejo ermitaño",
+                cards,
+                gameState::chooseHermitReplacementCard,
+                null
         );
     }
 
