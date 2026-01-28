@@ -12,7 +12,6 @@ android {
         targetSdk = 35
         versionCode = 4
         versionName = "1.4"
-
         /*1. Correccion de bonificaciones y ui
           2. Incorporación de alerta de romper top global
           3. Animación de carniboros
@@ -21,7 +20,8 @@ android {
           6. Reestructuracion de UI de juegos, panel de dados y mazos
           7. Actualizacion de tipos de cartas
           8. Ajuste de habilidades de "Pulpo, Sepia, cangrejo herradura cangrejo ermitaño"
-          9. Nuevas Cartas de Morsa, Foca moteada, León marino y Manati.
+          9. Nuevas Cartas de Morsa, Foca moteada, León marino y Manati
+         */
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
