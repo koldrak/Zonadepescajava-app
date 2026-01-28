@@ -38,6 +38,61 @@
                 android:text="@string/close" />
         </LinearLayout>
 
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:scrollbars="none">
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/collectionsFilterGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:singleSelection="true"
+                app:selectionRequired="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/collectionsFilterAll"
+                    style="@style/App.Button.Glass"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_all" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/collectionsFilterOrange"
+                    style="@style/App.Button.Glass"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/filter_orange_cards" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/collectionsFilterGreen"
+                    style="@style/App.Button.Glass"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/filter_green_cards" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/collectionsFilterBlue"
+                    style="@style/App.Button.Glass"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/filter_blue_cards" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/collectionsFilterBlack"
+                    style="@style/App.Button.Glass"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/filter_black_cards" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+        </HorizontalScrollView>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/collectionsRecycler"
             android:layout_width="match_parent"

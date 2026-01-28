@@ -8,6 +8,11 @@
     <string name="collection_capture_progress">%1$d de %2$d capturas</string>
     <string name="collection_locked">Bloqueado</string>
     <string name="collection_copy_badge">x%1$d</string>
+    <string name="filter_all">Todas</string>
+    <string name="filter_orange_cards">Cartas Naranjas</string>
+    <string name="filter_green_cards">Cartas Verdes</string>
+    <string name="filter_blue_cards">Cartas Celestes</string>
+    <string name="filter_black_cards">Cartas Negras</string>
     <string name="card_sell_price_format">Venta: %1$d</string>
     <string name="deck_selection_title">Selección de mazo</string>
     <string name="deck_selection_button">Armado de mazo</string>
