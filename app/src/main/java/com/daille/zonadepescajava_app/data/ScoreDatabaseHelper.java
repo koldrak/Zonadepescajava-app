@@ -676,6 +676,7 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
             return;
         }
         SQLiteDatabase db = getWritableDatabase();
+        ensureDeckPresetTable(db);
         ContentValues values = new ContentValues();
         values.put(COLUMN_DECK_NAME, trimmed);
         values.put(COLUMN_DECK_CARDS, serialized);
@@ -683,7 +684,8 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
     }
 
     public List<String> getDeckPresetNames() {
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getWritableDatabase();
+        ensureDeckPresetTable(db);
         List<String> names = new ArrayList<>();
         try (Cursor cursor = db.query(TABLE_DECK_PRESETS,
                 new String[]{COLUMN_DECK_NAME},
@@ -701,7 +703,8 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         if (name == null || name.trim().isEmpty()) {
             return selection;
         }
-        SQLiteDatabase db = getReadableDatabase();
+        SQLiteDatabase db = getWritableDatabase();
+        ensureDeckPresetTable(db);
         try (Cursor cursor = db.query(TABLE_DECK_PRESETS,
                 new String[]{COLUMN_DECK_CARDS},
                 COLUMN_DECK_NAME + " = ?",
@@ -719,6 +722,7 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
             return false;
         }
         SQLiteDatabase db = getWritableDatabase();
+        ensureDeckPresetTable(db);
         return db.delete(TABLE_DECK_PRESETS, COLUMN_DECK_NAME + " = ?", new String[]{name.trim()}) > 0;
     }
 
