@@ -154,6 +154,11 @@ public final class GameUtils {
                 condSumRange(13, 15),
                 "Elige una carta descartada por fallo y captúrala directamente.", "", ""));
 
+        cards.add(new Card(CardId.FOCA_MOTEADA, "Foca moteada", CardType.CRUSTACEO, 2,
+                condSumAtLeast(10),
+                "Tras tu próximo lanzamiento, si colocas el dado en una carta verde, puedes elegir su valor.",
+                "", ""));
+
         // ==== Cartas Celestes ====
         cards.add(new Card(CardId.SARDINA, "Sardina", CardType.PEZ, 9,
                 condSumExact(6), "", "", "Otorga +1 punto por cada carta celeste capturada."));
@@ -316,6 +321,21 @@ public final class GameUtils {
                 "", ""));
 
         // ==== Cartas Verdes ====
+        cards.add(new Card(CardId.MORSA, "Morsa", CardType.PEZ_GRANDE, 4,
+                condSumRange(7, 8),
+                "Elimina una carta adyacente y luego busca una carta verde en el mazo para reemplazarla boca arriba.",
+                "", ""));
+
+        cards.add(new Card(CardId.LEON_MARINO, "León Marino", CardType.PEZ_GRANDE, 3,
+                condSumRange(13, 14),
+                "Mira las 4 primeras cartas del mazo y captura hasta 2 cartas verdes.",
+                "", ""));
+
+        cards.add(new Card(CardId.MANATI, "Manatí", CardType.PEZ_GRANDE, 5,
+                condSumRange(8, 9),
+                "Si hay al menos 3 cartas verdes boca arriba al capturarlo, recupera 2 dados.",
+                "", ""));
+
         cards.add(new Card(CardId.TIBURON_BLANCO, "Tiburón Blanco", CardType.PEZ_GRANDE, 3,
                 condSumGreaterThan(10),
                 "Elimina una carta adyacente boca arriba y mueve su dado a esta carta.",
