@@ -20,7 +20,7 @@ android {
   6. Reestructuracion de UI de juego
   7. Reestructuracion de panel de dados y mazos
   8. Actualizacion de tipos de cartas
-  9. Ajuste de habilidades de "Pulpo y Sepia"
+  9. Ajuste de habilidades de "Pulpo, Sepia y cangrejo herradura"
  */
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
