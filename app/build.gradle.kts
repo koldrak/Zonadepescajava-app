@@ -12,16 +12,17 @@ android {
         targetSdk = 35
         versionCode = 4
         versionName = "1.4"
-/*1. Correccion de bonificaciones y ui
-  2. Incorporación de alerta de romper top global
-  3. Animación de carniboros
-  4. Implementacion de sonidos temáticos para ballenas
-  5. Se agrego tutorial de mareas
-  6. Reestructuracion de UI de juego
-  7. Reestructuracion de panel de dados y mazos
-  8. Actualizacion de tipos de cartas
-  9. Ajuste de habilidades de "Pulpo, Sepia y cangrejo herradura"
- */
+
+        /*1. Correccion de bonificaciones y ui
+          2. Incorporación de alerta de romper top global
+          3. Animación de carniboros
+          4. Implementacion de sonidos temáticos para ballenas
+          5. Se agrego tutorial de mareas
+          6. Reestructuracion de UI de juegos, panel de dados y mazos
+          7. Actualizacion de tipos de cartas
+          8. Ajuste de habilidades de "Pulpo, Sepia, cangrejo herradura cangrejo ermitaño"
+          9. Nuevas Cartas de Morsa, Foca moteada, León marino y Manati.
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
