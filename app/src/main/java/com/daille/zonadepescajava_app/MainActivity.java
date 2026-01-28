@@ -119,6 +119,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private List<Card> selectedDeck = new ArrayList<>();
     private int deckSelectionPoints = 0;
     private int cardSellPoints = 0;
+    private CardType deckSelectionFilterType;
+    private CardType collectionsFilterType;
     private final Map<String, Bitmap> packImageCache = new java.util.HashMap<>();
     private final List<Card> acquiredCopiesInMatch = new ArrayList<>();
     private MediaPlayer ambientPlayer;
@@ -367,6 +369,19 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         collectionCardAdapter = new CollectionCardAdapter(this);
         binding.collectionsPanel.collectionsRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.collectionsPanel.collectionsRecycler.setAdapter(collectionCardAdapter);
+        binding.collectionsPanel.collectionsFilterGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) {
+                return;
+            }
+            collectionsFilterType = resolveCardFilterType(checkedId,
+                    R.id.collectionsFilterAll,
+                    R.id.collectionsFilterOrange,
+                    R.id.collectionsFilterGreen,
+                    R.id.collectionsFilterBlue,
+                    R.id.collectionsFilterBlack);
+            refreshCollections();
+        });
+        binding.collectionsPanel.collectionsFilterGroup.check(R.id.collectionsFilterAll);
         setButtonClickListener(binding.collectionsPanel.closeCollections, this::showStartMenu);
     }
 
@@ -381,6 +396,19 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         deckSelectionAdapter = new DeckSelectionAdapter(this, this::updateDeckSelectionScore);
         binding.deckSelectionPanel.deckSelectionRecycler.setLayoutManager(new GridLayoutManager(this, 3));
         binding.deckSelectionPanel.deckSelectionRecycler.setAdapter(deckSelectionAdapter);
+        binding.deckSelectionPanel.deckSelectionFilterGroup.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) {
+                return;
+            }
+            deckSelectionFilterType = resolveCardFilterType(checkedId,
+                    R.id.deckSelectionFilterAll,
+                    R.id.deckSelectionFilterOrange,
+                    R.id.deckSelectionFilterGreen,
+                    R.id.deckSelectionFilterBlue,
+                    R.id.deckSelectionFilterBlack);
+            applyDeckSelectionFilter();
+        });
+        binding.deckSelectionPanel.deckSelectionFilterGroup.check(R.id.deckSelectionFilterAll);
         setButtonClickListener(binding.deckSelectionPanel.deckSelectionBack, this::showDiceSelectionPanel);
         setButtonClickListener(binding.deckSelectionPanel.deckSelectionConfirm, () -> {
             if (deckSelectionAdapter == null) {
@@ -571,6 +599,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             return first.getName().compareToIgnoreCase(second.getName());
         });
         for (Card card : cards) {
+            if (collectionsFilterType != null && card.getType() != collectionsFilterType) {
+                continue;
+            }
             int count = 0;
             if (counts.containsKey(card.getId())) {
                 count = counts.get(card.getId());
@@ -1068,8 +1099,35 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (deckSelectionAdapter != null) {
             deckSelectionAdapter.submitList(selectable);
             deckSelectionAdapter.setInventoryCounts(ownedCounts);
+            applyDeckSelectionFilter();
         }
         updateDeckSelectionScore();
+    }
+
+    private void applyDeckSelectionFilter() {
+        if (deckSelectionAdapter != null) {
+            deckSelectionAdapter.setFilter(deckSelectionFilterType);
+        }
+    }
+
+    private CardType resolveCardFilterType(int checkedId, int allId, int orangeId,
+                                           int greenId, int blueId, int blackId) {
+        if (checkedId == orangeId) {
+            return CardType.CRUSTACEO;
+        }
+        if (checkedId == greenId) {
+            return CardType.PEZ_GRANDE;
+        }
+        if (checkedId == blueId) {
+            return CardType.PEZ;
+        }
+        if (checkedId == blackId) {
+            return CardType.OBJETO;
+        }
+        if (checkedId == allId) {
+            return null;
+        }
+        return null;
     }
 
     private void refreshDeckPresetList() {

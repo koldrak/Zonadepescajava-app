@@ -40,6 +40,61 @@
             android:text="@string/deck_selection_count_placeholder"
             style="@style/App.Text.Title.Ocean.Sub" />
 
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:scrollbars="none">
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/deckSelectionFilterGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:singleSelection="true"
+                app:selectionRequired="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/deckSelectionFilterAll"
+                    style="@style/App.Button.Glass"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_all" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/deckSelectionFilterOrange"
+                    style="@style/App.Button.Glass"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/filter_orange_cards" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/deckSelectionFilterGreen"
+                    style="@style/App.Button.Glass"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/filter_green_cards" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/deckSelectionFilterBlue"
+                    style="@style/App.Button.Glass"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/filter_blue_cards" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/deckSelectionFilterBlack"
+                    style="@style/App.Button.Glass"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/filter_black_cards" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+        </HorizontalScrollView>
+
         <TextView
             android:id="@+id/deckSelectionSavedTitle"
             android:layout_width="match_parent"

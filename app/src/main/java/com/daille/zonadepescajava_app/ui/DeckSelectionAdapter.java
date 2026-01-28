@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.daille.zonadepescajava_app.R;
 import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardId;
+import com.daille.zonadepescajava_app.model.CardType;
 import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 
 import java.util.ArrayList;
@@ -29,7 +30,8 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
 
     private final LayoutInflater inflater;
     private final CardImageResolver imageResolver;
-    private final List<Card> cards = new ArrayList<>();
+    private final List<Card> allCards = new ArrayList<>();
+    private final List<Card> visibleCards = new ArrayList<>();
     private final Map<CardId, Integer> selectionCounts = new EnumMap<>(CardId.class);
     private final Map<CardId, Integer> inventoryCounts = new EnumMap<>(CardId.class);
     private final OnSelectionChangedListener selectionListener;
@@ -50,15 +52,31 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
     }
 
     public void submitList(List<Card> items) {
-        cards.clear();
+        allCards.clear();
         if (items != null) {
-            cards.addAll(items);
+            allCards.addAll(items);
         }
+        visibleCards.clear();
+        visibleCards.addAll(allCards);
         selectionCounts.clear();
         notifyDataSetChanged();
         if (selectionListener != null) {
             selectionListener.onSelectionChanged();
         }
+    }
+
+    public void setFilter(CardType filterType) {
+        visibleCards.clear();
+        if (filterType == null) {
+            visibleCards.addAll(allCards);
+        } else {
+            for (Card card : allCards) {
+                if (card.getType() == filterType) {
+                    visibleCards.add(card);
+                }
+            }
+        }
+        notifyDataSetChanged();
     }
 
     public void setInventoryCounts(Map<CardId, Integer> counts) {
@@ -111,7 +129,7 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
 
     @Override
     public void onBindViewHolder(@NonNull DeckSelectionViewHolder holder, int position) {
-        Card card = cards.get(position);
+        Card card = visibleCards.get(position);
         Bitmap image = imageResolver.getImageFor(card, true);
         if (image == null) {
             image = imageResolver.getCardBack();
@@ -175,12 +193,12 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
 
     @Override
     public int getItemCount() {
-        return cards.size();
+        return visibleCards.size();
     }
 
     public List<Card> getSelectedDeck() {
         List<Card> selected = new ArrayList<>();
-        for (Card card : cards) {
+        for (Card card : allCards) {
             int count = selectionCounts.getOrDefault(card.getId(), 0);
             for (int i = 0; i < count; i++) {
                 selected.add(card);
