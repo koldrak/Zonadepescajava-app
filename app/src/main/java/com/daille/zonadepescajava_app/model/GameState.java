@@ -1240,11 +1240,11 @@ public class GameState {
             if (target.getCard().getType() == CardType.PEZ_GRANDE && target.getDice().size() < 2) {
                 Die moved = origin.removeDie(origin.getDice().size() - 1);
                 target.addDie(moved);
-                log.append(" y movió el dado a ese pez grande.");
+                log.append(" y movió el dado a esa carta verde.");
             } else if (target.getCard().getType() == CardType.OBJETO) {
                 Die lost = origin.removeDie(origin.getDice().size() - 1);
                 lostDice.add(lost);
-                log.append(", era un objeto: el dado se pierde.");
+                log.append(", era una carta negra: el dado se pierde.");
             }
         }
         awaitingLanternChoice = false;
@@ -1573,13 +1573,13 @@ public class GameState {
             return "No hay selección pendiente del Cangrejo decorador.";
         }
         if (index < 0 || index >= pendingDecoradorOptions.size()) {
-            return "Debes elegir un objeto válido del mazo.";
+            return "Debes elegir una carta negra válida del mazo.";
         }
         pendingDecoradorCard = pendingDecoradorOptions.get(index);
         if (!deck.remove(pendingDecoradorCard)) {
             clearDecoradorState();
             shuffleDeck();
-            return "El objeto elegido ya no está disponible en el mazo.";
+            return "La carta negra elegida ya no está disponible en el mazo.";
         }
         pendingDecoradorOptions.clear();
         awaitingDecoradorChoice = false;
@@ -1603,7 +1603,7 @@ public class GameState {
         }
         if (pendingDecoradorCard == null) {
             clearPendingSelection();
-            return "No hay objeto seleccionado para colocar.";
+            return "No hay carta negra seleccionada para colocar.";
         }
         if (slotIndex < 0 || slotIndex >= board.length) {
             return "Selecciona una casilla válida.";
@@ -1625,7 +1625,7 @@ public class GameState {
         clearDecoradorState();
         clearPendingSelection();
         recomputeBottleAdjustments();
-        return "Cangrejo decorador reemplazó una carta boca abajo con un objeto del mazo.";
+        return "Cangrejo decorador reemplazó una carta boca abajo con una carta negra del mazo.";
     }
 
     private void clearDecoradorState() {
@@ -2099,10 +2099,10 @@ public class GameState {
             return "Resuelve la selección del Pez Linterna antes de lanzar otro dado.";
         }
         if (awaitingArenqueChoice) {
-            return "Selecciona primero los peces pequeños del Arenque.";
+            return "Selecciona primero las cartas celestes del Arenque.";
         }
         if (awaitingDecoradorChoice) {
-            return "Elige el objeto del Cangrejo decorador antes de continuar.";
+            return "Elige la carta negra del Cangrejo decorador antes de continuar.";
         }
         if (awaitingViolinistChoice) {
             return "Elige la carta del Cangrejo violinista antes de continuar.";
@@ -2210,10 +2210,10 @@ public class GameState {
             return "Resuelve la acción pendiente antes de colocar otro dado.";
         }
         if (awaitingArenqueChoice) {
-            return "Selecciona los peces pequeños del Arenque antes de colocar otros dados.";
+            return "Selecciona las cartas celestes del Arenque antes de colocar otros dados.";
         }
         if (awaitingDecoradorChoice) {
-            return "Elige el objeto del Cangrejo decorador antes de colocar dados.";
+            return "Elige la carta negra del Cangrejo decorador antes de colocar dados.";
         }
         if (awaitingViolinistChoice) {
             return "Elige la carta del Cangrejo violinista antes de colocar dados.";
@@ -4226,12 +4226,12 @@ public class GameState {
             }
         }
         if (!hasOption) {
-            return "Botella de Plástico: no hay peces pequeños boca arriba adyacentes para marcar.";
+            return "Botella de Plástico: no hay cartas celestes boca arriba adyacentes para marcar.";
         }
         return queueableSelection(
                 PendingSelection.BOTTLE_TARGET,
                 slotIndex,
-                "Botella de Plástico: elige un pez pequeño adyacente boca arriba.");
+                "Botella de Plástico: elige una carta celeste adyacente boca arriba.");
     }
 
     private String startGlassBottleTargetSelection(int slotIndex) {
@@ -4361,12 +4361,12 @@ public class GameState {
 
     private String chooseBottleTarget(int slotIndex) {
         if (!isAdjacentToActor(slotIndex)) {
-            return "Elige un pez pequeño adyacente boca arriba.";
+            return "Elige una carta celeste adyacente boca arriba.";
         }
 
         BoardSlot target = board[slotIndex];
         if (target.getCard() == null || !target.isFaceUp() || target.getCard().getType() != CardType.PEZ) {
-            return "Debes seleccionar un pez pequeño boca arriba.";
+            return "Debes seleccionar una carta celeste boca arriba.";
         }
 
         // Guardamos vínculo (solo para que puedas seguir dibujando la línea si quieres)
@@ -4375,13 +4375,13 @@ public class GameState {
         if (target.getDice().isEmpty()) {
             // No modificamos nada ahora, solo dejamos el efecto activo para futuras colocaciones
             clearPendingSelection();
-            return "Botella de Plástico: objetivo marcado. Cuando coloques dados sobre este pez, se modificarán (+3 con tope).";
+            return "Botella de Plástico: objetivo marcado. Cuando coloques dados sobre esta carta celeste, se modificarán (+3 con tope).";
         }
 
         // Evita aplicar 2 veces sobre el mismo objetivo
         if (target.getStatus() != null && target.getStatus().bottleDieBonus > 0) {
             clearPendingSelection();
-            return "Ese pez ya fue modificado por la Botella de Plástico.";
+            return "Esa carta celeste ya fue modificada por la Botella de Plástico.";
         }
 
         // APLICAR CAMBIO REAL A LOS DADOS (visible porque cambia la imagen del dado)
@@ -4499,7 +4499,7 @@ public class GameState {
         if (target.getCard().getType() == CardType.PEZ && !lostDice.isEmpty() && target.getDice().size() < 2) {
             Die recovered = lostDice.remove(lostDice.size() - 1);
             target.addDie(recovered);
-            log.append(" Colocaste un dado perdido sobre ese pez pequeño.");
+            log.append(" Colocaste un dado perdido sobre esa carta celeste.");
         }
         clearPendingSelection();
         recomputeBottleAdjustments();
@@ -5525,7 +5525,7 @@ public class GameState {
                 adj.setFaceUp(false);
                 adj.setStatus(new SlotStatus());
                 recomputeBottleAdjustments();
-                return "Cangrejo ermitaño reemplazó un objeto adyacente.";
+                return "Cangrejo ermitaño reemplazó una carta negra adyacente.";
             }
         }
         return "";
@@ -5549,11 +5549,11 @@ public class GameState {
             }
         }
         if (pendingDecoradorOptions.isEmpty()) {
-            return "Cangrejo decorador: no hay objetos en el mazo.";
+            return "Cangrejo decorador: no hay cartas negras en el mazo.";
         }
         awaitingDecoradorChoice = true;
         decoradorSlotIndex = slotIndex;
-        return "Cangrejo decorador: elige un objeto del mazo.";
+        return "Cangrejo decorador: elige una carta negra del mazo.";
     }
 
     private String startHorseshoeAdjustment(int slotIndex) {
@@ -5813,7 +5813,7 @@ public class GameState {
             return "La carta seleccionada debe estar boca arriba.";
         }
         if (target.getCard().getType() == CardType.OBJETO) {
-            return "No puedes proteger objetos.";
+            return "No puedes proteger cartas negras.";
         }
         target.getStatus().protectedOnce = true;
         target.getStatus().protectedBySlot = pendingSelectionActor; // <-- clave para dibujar vínculo
@@ -5840,7 +5840,7 @@ public class GameState {
             }
         }
         if (targets.isEmpty()) {
-            return "No hay peces pequeños boca arriba adyacentes para la piraña.";
+            return "No hay cartas celestes boca arriba adyacentes para la piraña.";
         }
         if (targets.size() == 1) {
             return resolvePiranhaBite(slotIndex, targets.get(0));
@@ -5848,16 +5848,16 @@ public class GameState {
         return queueableSelection(
                 PendingSelection.PIRANA_TARGET,
                 slotIndex,
-                "Piraña: elige un pez pequeño adyacente boca arriba para descartarlo.");
+                "Piraña: elige una carta celeste adyacente boca arriba para descartarla.");
     }
 
     private String resolvePiranhaBite(int actorIndex, int targetIndex) {
         if (!adjacentIndices(actorIndex, true).contains(targetIndex)) {
-            return "Elige un pez pequeño adyacente a la piraña.";
+            return "Elige una carta celeste adyacente a la piraña.";
         }
         BoardSlot adj = board[targetIndex];
         if (adj.getCard() == null || !adj.isFaceUp() || adj.getCard().getType() != CardType.PEZ) {
-            return "Debes elegir un pez pequeño boca arriba.";
+            return "Debes elegir una carta celeste boca arriba.";
         }
         Card removed = adj.getCard();
         List<Die> preservedDice = new ArrayList<>(adj.getDice());
@@ -6048,12 +6048,12 @@ public class GameState {
             deck.addAll(remaining);
             arenqueSlotIndex = -1;
             arenquePlacementSlots = 0;
-            return "No hay peces pequeños en el mazo.";
+            return "No hay cartas celestes en el mazo.";
         }
         awaitingArenqueChoice = true;
         return availableSlots == 1
-                ? "Arenque: elige 1 pez pequeño del mazo para colocarlo adyacente."
-                : "Arenque: elige hasta 2 peces pequeños del mazo.";
+                ? "Arenque: elige 1 carta celeste del mazo para colocarla adyacente."
+                : "Arenque: elige hasta 2 cartas celestes del mazo.";
     }
 
     public String chooseArenqueFish(List<Integer> indices) {
@@ -6082,12 +6082,12 @@ public class GameState {
         shuffleDeck();
         if (pendingArenqueChosen.isEmpty()) {
             clearArenqueState();
-            return "No se eligieron peces pequeños.";
+            return "No se eligieron cartas celestes.";
         }
         int remainingSlots = Math.min(arenquePlacementSlots, pendingArenqueChosen.size());
         String message = remainingSlots == 1
-                ? "Coloca el pez pequeño elegido adyacente al Arenque."
-                : "Coloca los 2 peces pequeños adyacentes al Arenque.";
+                ? "Coloca la carta celeste elegida adyacente al Arenque."
+                : "Coloca las 2 cartas celestes adyacentes al Arenque.";
         return queueableSelection(PendingSelection.ARENQUE_DESTINATION, arenqueSlotIndex, message);
     }
 
@@ -6095,7 +6095,7 @@ public class GameState {
         if (pendingArenqueChosen.isEmpty()) {
             clearPendingSelection();
             clearArenqueState();
-            return "No hay peces pequeños por colocar.";
+            return "No hay cartas celestes por colocar.";
         }
         if (!adjacentIndices(pendingSelectionActor, true).contains(slotIndex)) {
             return "Debes elegir una casilla adyacente al Arenque.";
@@ -6118,9 +6118,9 @@ public class GameState {
             clearPendingSelection();
             clearArenqueState();
             shuffleDeck();
-            return "Arenque colocó todos los peces pequeños y barajó el mazo.";
+            return "Arenque colocó todas las cartas celestes y barajó el mazo.";
         }
-        return "Pez pequeño colocado. Elige otra casilla adyacente.";
+        return "Carta celeste colocada. Elige otra casilla adyacente.";
     }
 
     private void recomputeBottleAdjustments() {
@@ -6318,7 +6318,7 @@ public class GameState {
             }
         }
         if (candidates.isEmpty()) {
-            return "No hay peces grandes boca arriba adyacentes para la rémora.";
+            return "No hay cartas verdes boca arriba adyacentes para la rémora.";
         }
         BoardSlot adj = board[candidates.get(0)];
         adj.getStatus().attachedRemoras.add(slot.getCard());
@@ -6329,7 +6329,7 @@ public class GameState {
         slot.setCard(deck.isEmpty() ? null : deck.pop());
         slot.setFaceUp(false);
         slot.setStatus(new SlotStatus());
-        return "Rémora se adhirió a un pez grande.";
+        return "Rémora se adhirió a una carta verde.";
     }
 
     private String attachLampreaToBigFish(int slotIndex) {
@@ -6342,7 +6342,7 @@ public class GameState {
             }
         }
         if (candidates.isEmpty()) {
-            return "No hay peces grandes boca arriba adyacentes para la lamprea.";
+            return "No hay cartas verdes boca arriba adyacentes para la lamprea.";
         }
         BoardSlot adj = board[candidates.get(0)];
         adj.getStatus().attachedRemoras.add(slot.getCard());
@@ -6353,7 +6353,7 @@ public class GameState {
         slot.setCard(deck.isEmpty() ? null : deck.pop());
         slot.setFaceUp(false);
         slot.setStatus(new SlotStatus());
-        return "Lamprea se adhirió a un pez grande.";
+        return "Lamprea se adhirió a una carta verde.";
     }
 
     private String startWhiteSharkSelection(int slotIndex) {

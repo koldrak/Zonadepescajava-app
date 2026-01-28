@@ -4600,7 +4600,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptDecoradorChoice() {
         List<Card> cards = new ArrayList<>(gameState.getPendingDecoradorCards());
         if (cards.isEmpty()) {
-            handleGameResult("Cangrejo decorador: no hay objetos disponibles.");
+            handleGameResult("Cangrejo decorador: no hay cartas negras disponibles.");
             return;
         }
         showSingleCardChoiceDialog(
