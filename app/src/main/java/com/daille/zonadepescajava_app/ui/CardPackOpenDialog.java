@@ -521,7 +521,7 @@ public final class CardPackOpenDialog {
             settle.playTogether(settleScale, settleY);
             all.add(settle);
         }
-
+ //
         AnimatorSet set = new AnimatorSet();
         set.playTogether(all);
         return set;
