@@ -467,7 +467,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                     Toast.makeText(this, "Selecciona cartas antes de guardar el mazo.", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                scoreDatabaseHelper.saveDeckPreset(name, currentSelection);
+                boolean saved = scoreDatabaseHelper.saveDeckPreset(name, currentSelection);
+                if (!saved) {
+                    Toast.makeText(this, "No se pudo guardar el mazo.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 refreshDeckPresetList();
                 Toast.makeText(this, "Mazo guardado.", Toast.LENGTH_SHORT).show();
                 if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 1) {
