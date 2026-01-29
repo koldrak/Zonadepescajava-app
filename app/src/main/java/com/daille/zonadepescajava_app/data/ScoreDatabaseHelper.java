@@ -666,21 +666,31 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         db.insertWithOnConflict(TABLE_AUDIO_SETTINGS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
-    public void saveDeckPreset(String name, Map<CardId, Integer> selectionCounts) {
+    public boolean saveDeckPreset(String name, Map<CardId, Integer> selectionCounts) {
         if (name == null || name.trim().isEmpty() || selectionCounts == null) {
-            return;
+            return false;
         }
         String trimmed = name.trim();
         String serialized = serializeDeckSelection(selectionCounts);
         if (serialized.isEmpty()) {
-            return;
+            return false;
         }
         SQLiteDatabase db = getWritableDatabase();
         ensureDeckPresetTable(db);
         ContentValues values = new ContentValues();
         values.put(COLUMN_DECK_NAME, trimmed);
         values.put(COLUMN_DECK_CARDS, serialized);
-        db.insertWithOnConflict(TABLE_DECK_PRESETS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+        db.beginTransaction();
+        try {
+            long result = db.insertWithOnConflict(TABLE_DECK_PRESETS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
+            if (result == -1) {
+                return false;
+            }
+            db.setTransactionSuccessful();
+            return true;
+        } finally {
+            db.endTransaction();
+        }
     }
 
     public List<String> getDeckPresetNames() {
