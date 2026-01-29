@@ -415,6 +415,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 return;
             }
             List<Card> selected = deckSelectionAdapter.getSelectedDeck();
+            selectedDeck = new ArrayList<>(selected);
             if (selected.size() < MIN_DECK_CARDS || selected.size() > MAX_DECK_CARDS) {
                 Toast.makeText(this, "Selecciona entre 30 y 40 cartas para el mazo.", Toast.LENGTH_SHORT).show();
                 return;
