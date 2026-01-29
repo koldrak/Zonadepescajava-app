@@ -466,9 +466,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                     Toast.makeText(this, "Selecciona cartas antes de guardar el mazo.", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                scoreDatabaseHelper.saveDeckPreset(name, currentSelection);
+                boolean saved = scoreDatabaseHelper.saveDeckPreset(name, currentSelection);
                 refreshDeckPresetList();
-                Toast.makeText(this, "Mazo guardado.", Toast.LENGTH_SHORT).show();
+                if (saved) {
+                    Toast.makeText(this, "Mazo guardado.", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "No se pudo guardar el mazo.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 1) {
                     advanceTutorialStep();
                 }
@@ -1141,6 +1146,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         int totalCards = 0;
         if (deckSelectionAdapter != null) {
             List<Card> selected = deckSelectionAdapter.getSelectedDeck();
+            selectedDeck = new ArrayList<>(selected);
             for (Card card : selected) {
                 totalPoints += card.getPoints();
             }
