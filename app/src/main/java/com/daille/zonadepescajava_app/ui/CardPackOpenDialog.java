@@ -26,6 +26,7 @@ import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.AnticipateOvershootInterpolator;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
+import android.view.animation.PathInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
@@ -56,15 +57,26 @@ public final class CardPackOpenDialog {
 
         ImageView packImageView = dialog.findViewById(R.id.cardPackImage);
         FrameLayout cardsContainer = dialog.findViewById(R.id.cardPackCards);
+        View tearHintLine = dialog.findViewById(R.id.cardPackTearHintLine);
+        View tearHintSwipe = dialog.findViewById(R.id.cardPackSwipeHint);
+
+        View innerGlow = new View(context);
+        innerGlow.setBackgroundResource(R.drawable.pack_inner_glow);
+        innerGlow.setAlpha(0f);
+        cardsContainer.addView(innerGlow, 0, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
 
         StarBurstView starBurstView = new StarBurstView(context);
-        cardsContainer.addView(starBurstView, 0, new FrameLayout.LayoutParams(
+        cardsContainer.addView(starBurstView, 1, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
 
         Bitmap packBitmap = packImage != null ? packImage : resolver.getCardBack();
         packImageView.setImageBitmap(packBitmap);
+        packImageView.setElevation(dpToPx(context, 18));
 
         List<ImageView> cardViews = new ArrayList<>();
 
@@ -112,7 +124,7 @@ public final class CardPackOpenDialog {
                 Bitmap detailBitmap = cardBitmapFinal != null ? cardBitmapFinal : resolver.getCardBack();
                 CardFullscreenDialog.show(context, detailBitmap, overlay, () -> {
                     cardsContainer.removeView(cardView);
-                    if (cardsContainer.getChildCount() <= 1) { // 1 = StarBurstView
+                    if (cardsContainer.getChildCount() <= 2) { // 0 = inner glow, 1 = StarBurstView
 
                         completedAll[0] = true;
                         dialog.dismiss();
@@ -124,9 +136,17 @@ public final class CardPackOpenDialog {
         final List<Animator> running = new ArrayList<>();
         final PackTearViews[] tornHolder = new PackTearViews[1];
 
+        final AnimatorSet[] hintAnimation = new AnimatorSet[1];
+
         dialog.setOnShowListener(dlg -> {
             // Reemplaza el pack por dos mitades + borde rasgado, y lanza animación completa
             packImageView.post(() -> {
+                positionTearHints(packImageView, tearHintLine, tearHintSwipe);
+                hintAnimation[0] = playTearHint(tearHintLine, tearHintSwipe);
+                if (hintAnimation[0] != null) {
+                    hintAnimation[0].start();
+                }
+
                 PackTearViews torn = replacePackWithTornViews(packImageView, packBitmap, context);
                 tornHolder[0] = torn;
 
@@ -145,10 +165,15 @@ public final class CardPackOpenDialog {
                         cardsContainer,
                         starBurstView,
                         startY,
-                        endY
+                        endY,
+                        tearHintLine,
+                        tearHintSwipe,
+                        hintAnimation[0],
+                        innerGlow
                 );
 
                 running.add(full);
+                full.setStartDelay(520);
                 full.start();
             });
         });
@@ -172,6 +197,10 @@ public final class CardPackOpenDialog {
                 if (t.top != null) t.top.animate().cancel();
                 if (t.bottom != null) t.bottom.animate().cancel();
                 if (t.edge != null) t.edge.animate().cancel();
+            }
+
+            if (hintAnimation[0] != null) {
+                hintAnimation[0].cancel();
             }
 
             if (completedAll[0] && onAllCardsViewed != null) {
@@ -232,6 +261,62 @@ public final class CardPackOpenDialog {
         cardView.setTag(null);
     }
 
+    private static void positionTearHints(ImageView packImageView, View line, View swipe) {
+        if (packImageView == null || line == null || swipe == null) return;
+
+        float packX = packImageView.getX();
+        float packY = packImageView.getY();
+        float packW = packImageView.getWidth();
+        float packH = packImageView.getHeight();
+
+        float lineY = packY + packH * 0.22f;
+        float lineX = packX + packW * 0.12f;
+
+        line.setX(lineX);
+        line.setY(lineY);
+
+        swipe.setX(lineX);
+        swipe.setY(lineY - swipe.getHeight() * 0.5f);
+    }
+
+    private static AnimatorSet playTearHint(View line, View swipe) {
+        if (line == null || swipe == null) return null;
+
+        line.setAlpha(0f);
+        swipe.setAlpha(0f);
+
+        ObjectAnimator lineFadeIn = ObjectAnimator.ofFloat(line, View.ALPHA, 0f, 0.85f);
+        lineFadeIn.setDuration(220);
+        lineFadeIn.setInterpolator(new DecelerateInterpolator());
+
+        ObjectAnimator lineGlow = ObjectAnimator.ofFloat(line, View.ALPHA, 0.85f, 0.55f, 0.9f, 0.4f);
+        lineGlow.setDuration(900);
+        lineGlow.setInterpolator(new AccelerateDecelerateInterpolator());
+
+        ObjectAnimator swipeIn = ObjectAnimator.ofFloat(swipe, View.ALPHA, 0f, 0.85f);
+        swipeIn.setDuration(180);
+        swipeIn.setStartDelay(180);
+
+        ObjectAnimator swipeMove = ObjectAnimator.ofFloat(swipe, View.TRANSLATION_X, 0f, dpToPx(swipe.getContext(), 160));
+        swipeMove.setDuration(900);
+        swipeMove.setInterpolator(new DecelerateInterpolator());
+        swipeMove.setStartDelay(220);
+
+        ObjectAnimator swipeFadeOut = ObjectAnimator.ofFloat(swipe, View.ALPHA, 0.85f, 0f);
+        swipeFadeOut.setDuration(260);
+        swipeFadeOut.setStartDelay(980);
+
+        AnimatorSet hint = new AnimatorSet();
+        hint.playTogether(lineFadeIn, lineGlow, swipeIn, swipeMove, swipeFadeOut);
+        hint.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                line.animate().alpha(0f).setDuration(220).start();
+            }
+        });
+        return hint;
+    }
+
     private static AnimatorSet playTearOpenAndReveal(
             PackTearViews torn,
             List<Card> cards,
@@ -239,7 +324,11 @@ public final class CardPackOpenDialog {
             FrameLayout cardsContainer,
             StarBurstView starBurstView,
             int startY,
-            int endY
+            int endY,
+            View tearHintLine,
+            View tearHintSwipe,
+            AnimatorSet hintAnimation,
+            View innerGlow
     ) {
         final float density = cardsContainer.getResources().getDisplayMetrics().density;
 
@@ -270,52 +359,62 @@ public final class CardPackOpenDialog {
         AnimatorSet tension = new AnimatorSet();
         tension.playTogether(preSquashYTop, preSquashYBottom, shakeTop, shakeBottom);
 
-        // --- Stage 2: rasgado (se separan mitades + aparece borde)
+        // --- Stage 2: rasgado progresivo (onda de bisagra local)
         float tearGap = 36f * density;
+        float slideRight = cardsContainer.getWidth() * 0.90f;
 
-        ObjectAnimator edgeIn = ObjectAnimator.ofFloat(torn.edge, View.ALPHA, 0f, 1f);
-        edgeIn.setDuration(120);
-        edgeIn.setInterpolator(new DecelerateInterpolator());
+        float topBaseX = torn.top.getTranslationX();
+        float topBaseY = torn.top.getTranslationY();
+        float bottomBaseY = torn.bottom.getTranslationY();
 
-        float slideRight = cardsContainer.getWidth() * 0.90f; // cuánto se va a la derecha
+        torn.edge.setPivotX(0f);
+        torn.edge.setPivotY(torn.edge.getHeight() * 0.5f);
 
-        ObjectAnimator topUp = ObjectAnimator.ofFloat(
-                torn.top,
-                View.TRANSLATION_Y,
-                torn.top.getTranslationY(),
-                torn.top.getTranslationY() - (tearGap * 0.55f)
-        );
-        topUp.setDuration(260);
-        topUp.setInterpolator(new OvershootInterpolator(1.05f));
+        ValueAnimator tearProgress = ValueAnimator.ofFloat(0f, 1f);
+        tearProgress.setDuration(620);
+        tearProgress.setInterpolator(new PathInterpolator(0.22f, 0.9f, 0.2f, 1f));
+        tearProgress.addUpdateListener(anim -> {
+            float p = (float) anim.getAnimatedValue();
+            float eased = 1f - (1f - p) * (1f - p);
+            float wobble = (float) Math.sin(p * Math.PI) * 0.6f;
 
-        ObjectAnimator topRight = ObjectAnimator.ofFloat(
-                torn.top,
-                View.TRANSLATION_X,
-                torn.top.getTranslationX(),
-                torn.top.getTranslationX() + slideRight
-        );
-        topRight.setDuration(280);
-        topRight.setInterpolator(new OvershootInterpolator(1.05f));
+            torn.edge.setAlpha(Math.min(1f, p * 1.2f));
+            torn.edge.setScaleX(Math.max(0.02f, p));
 
+            torn.top.setTranslationX(topBaseX + slideRight * eased);
+            torn.top.setTranslationY(topBaseY - (tearGap * 0.55f * eased));
+            torn.top.setRotation(-12f * eased + wobble);
+            torn.top.setScaleY(1f - 0.01f * (1f - p));
 
-        ObjectAnimator bottomDown = ObjectAnimator.ofFloat(torn.bottom, View.TRANSLATION_Y, torn.bottom.getTranslationY(), torn.bottom.getTranslationY() + tearGap);
-        bottomDown.setDuration(260);
-        bottomDown.setInterpolator(new OvershootInterpolator(1.05f));
+            torn.bottom.setTranslationY(bottomBaseY + tearGap * eased);
+            torn.bottom.setRotation(3.2f * eased - wobble * 0.35f);
 
-        ObjectAnimator topRot = ObjectAnimator.ofFloat(torn.top, View.ROTATION, 0f, -10f, 3f, 0f);
-        topRot.setDuration(320);
-        topRot.setInterpolator(new DecelerateInterpolator());
+            if (innerGlow != null) {
+                innerGlow.setAlpha(0.28f * eased);
+            }
+        });
 
-        ObjectAnimator bottomRot = ObjectAnimator.ofFloat(torn.bottom, View.ROTATION, 0f, 3.5f, -1.2f, 0f);
-        bottomRot.setDuration(320);
-        bottomRot.setInterpolator(new DecelerateInterpolator());
+        ObjectAnimator snap = ObjectAnimator.ofFloat(torn.top, View.ROTATION, -12f, -9f, -10.5f);
+        snap.setDuration(140);
+        snap.setInterpolator(new OvershootInterpolator(1.1f));
 
         AnimatorSet tear = new AnimatorSet();
-        tear.playTogether(edgeIn, topUp, topRight, bottomDown, topRot, bottomRot);
+        tear.playTogether(tearProgress);
+        tear.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationStart(Animator animation) {
+                if (tearHintLine != null) tearHintLine.animate().alpha(0f).setDuration(160).start();
+                if (tearHintSwipe != null) tearHintSwipe.animate().alpha(0f).setDuration(160).start();
+                if (hintAnimation != null) hintAnimation.cancel();
+            }
+        });
+
+        AnimatorSet tearWithSnap = new AnimatorSet();
+        tearWithSnap.playSequentially(tear, snap);
 
         // --- Stage 3: cartas "aparecen desde el interior" (peek -> pull out)
         AnimatorSet cardsReveal = buildCardsReveal(cards, cardViews, cardsContainer, starBurstView, startY, endY);
-        cardsReveal.setStartDelay(140); // deja que se note el rasgado antes de que asomen
+        cardsReveal.setStartDelay(160); // deja que se note el rasgado antes de que asomen
 
         // --- Stage 4: pack desaparece hacia la zona inferior
         // El pack cae DESPUÉS de que las cartas ya estén visibles.
@@ -334,15 +433,24 @@ public final class CardPackOpenDialog {
         ObjectAnimator topScale = ObjectAnimator.ofFloat(torn.top, View.SCALE_X, 1f, 0.96f);
         ObjectAnimator bottomScale = ObjectAnimator.ofFloat(torn.bottom, View.SCALE_X, 1f, 0.96f);
 
+        ObjectAnimator glowFade = null;
+        if (innerGlow != null) {
+            glowFade = ObjectAnimator.ofFloat(innerGlow, View.ALPHA, innerGlow.getAlpha(), 0f);
+        }
+
         AnimatorSet packDrop = new AnimatorSet();
-        packDrop.playTogether(topDropY, bottomDropY, edgeDropY, topFade, bottomFade, edgeFade, topScale, bottomScale);
+        if (glowFade != null) {
+            packDrop.playTogether(topDropY, bottomDropY, edgeDropY, topFade, bottomFade, edgeFade, topScale, bottomScale, glowFade);
+        } else {
+            packDrop.playTogether(topDropY, bottomDropY, edgeDropY, topFade, bottomFade, edgeFade, topScale, bottomScale);
+        }
         packDrop.setDuration(420);
         packDrop.setInterpolator(new AccelerateDecelerateInterpolator());
         packDrop.setStartDelay(packDropDelay);
 
         // --- Orquestación completa
         AnimatorSet full = new AnimatorSet();
-        full.playSequentially(tension, tear);
+        full.playSequentially(tension, tearWithSnap);
 
         // cards + packDrop van en paralelo tras el rasgado
         AnimatorSet afterTear = new AnimatorSet();
@@ -604,6 +712,7 @@ public final class CardPackOpenDialog {
         bottom.setScaleX(originalPack.getScaleX());
         bottom.setScaleY(originalPack.getScaleY());
         bottom.setAlpha(1f);
+        bottom.setElevation(dpToPx(context, 10));
 
         ImageView edge = new ImageView(context);
         edge.setImageBitmap(torn.edge);
@@ -614,6 +723,7 @@ public final class CardPackOpenDialog {
         edge.setScaleX(originalPack.getScaleX());
         edge.setScaleY(originalPack.getScaleY());
         edge.setAlpha(0f); // aparece al rasgar
+        edge.setElevation(dpToPx(context, 12));
 
         ImageView top = new ImageView(context);
         top.setImageBitmap(torn.top);
@@ -624,6 +734,7 @@ public final class CardPackOpenDialog {
         top.setScaleX(originalPack.getScaleX());
         top.setScaleY(originalPack.getScaleY());
         top.setAlpha(1f);
+        top.setElevation(dpToPx(context, 18));
 
         parent.removeView(originalPack);
         parent.addView(bottom, index);
@@ -730,6 +841,19 @@ public final class CardPackOpenDialog {
         strokeLight.setStrokeWidth(edgeThicknessPx);
         strokeLight.setColor(0xCCFFFFFF);
 
+        ce.drawPath(tearLine, strokeDark);
+        ce.drawPath(tearLine, strokeLight);
+
+        Paint fibers = new Paint(Paint.ANTI_ALIAS_FLAG);
+        fibers.setStyle(Paint.Style.FILL);
+        fibers.setColor(0x88FFFFFF);
+        float fiberRadius = edgeThicknessPx * 0.18f;
+        for (int i = 2; i < points - 2; i++) {
+            if (rng.nextFloat() > 0.35f) continue;
+            float fx = xs[i] + (rng.nextFloat() - 0.5f) * edgeThicknessPx;
+            float fy = ys[i] + (rng.nextFloat() - 0.5f) * edgeThicknessPx;
+            ce.drawCircle(fx, fy, fiberRadius, fibers);
+        }
 
         TearBitmaps out = new TearBitmaps();
         out.top = top;

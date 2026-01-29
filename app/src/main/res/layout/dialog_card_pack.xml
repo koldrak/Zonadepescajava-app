@@ -3,7 +3,7 @@
     android:id="@+id/cardPackRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/fondoabrirsobre">
+    android:background="@drawable/fondoabrirsobre_layer">
 
     <FrameLayout
         android:id="@+id/cardPackCards"
@@ -16,5 +16,21 @@
         android:layout_height="360dp"
         android:layout_gravity="center"
         android:scaleType="fitCenter" />
+
+    <View
+        android:id="@+id/cardPackTearHintLine"
+        android:layout_width="220dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center"
+        android:alpha="0"
+        android:background="@drawable/tear_hint_line" />
+
+    <View
+        android:id="@+id/cardPackSwipeHint"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_gravity="center"
+        android:alpha="0"
+        android:background="@drawable/tear_hint_dot" />
 
 </FrameLayout>
