@@ -455,6 +455,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .create();
         dialog.setOnShowListener(ignored -> {
             Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            attachButtonSound(positiveButton);
+            attachButtonSound(dialog.getButton(AlertDialog.BUTTON_NEGATIVE));
+            attachButtonSound(dialog.getButton(AlertDialog.BUTTON_NEUTRAL));
             positiveButton.setOnClickListener(view -> {
                 String name = nameInput.getText().toString().trim();
                 if (name.isEmpty()) {
@@ -480,7 +483,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 dialog.dismiss();
             });
         });
-        attachDialogButtonSounds(dialog);
         dialog.show();
     }
 

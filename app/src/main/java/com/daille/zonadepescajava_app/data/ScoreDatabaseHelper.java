@@ -684,7 +684,11 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         try {
             long result = db.insertWithOnConflict(TABLE_DECK_PRESETS, null, values, SQLiteDatabase.CONFLICT_REPLACE);
             if (result == -1) {
-                return false;
+                int updated = db.update(TABLE_DECK_PRESETS, values, COLUMN_DECK_NAME + " = ?",
+                        new String[]{trimmed});
+                if (updated <= 0) {
+                    return false;
+                }
             }
             db.setTransactionSuccessful();
             return true;
