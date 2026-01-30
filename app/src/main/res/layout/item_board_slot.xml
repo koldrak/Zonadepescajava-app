@@ -5,8 +5,14 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="2dp"
+    android:rotationX="8"
+    android:rotationY="-10"
+    android:scaleX="0.94"
+    android:scaleY="0.98"
     app:cardElevation="2dp"
-    app:cardUseCompatPadding="false">
+    app:cardUseCompatPadding="false"
+    app:strokeColor="#CCFFFFFF"
+    app:strokeWidth="1.5dp">
 
     <FrameLayout
         android:layout_width="match_parent"
@@ -19,6 +25,16 @@
             android:contentDescription="@string/card_image_content_description"
             android:scaleType="centerCrop"
             tools:src="@drawable/mazocardumen" />
+
+        <ImageView
+            android:id="@+id/cardPerspectiveOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0.6"
+            android:contentDescription="@null"
+            android:scaleType="fitXY"
+            android:translationY="-2dp"
+            android:src="@drawable/board_card_perspective_overlay" />
 
         <LinearLayout
             android:id="@+id/cardDiceContainer"
