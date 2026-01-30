@@ -16,27 +16,34 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/menu_glass_panel"
-        android:elevation="6dp"
-        android:padding="20dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="16dp"
         android:orientation="vertical">
 
         <LinearLayout
-            android:id="@+id/gameHeader"
+            android:id="@+id/gameHeaderPanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/action_bar_bg"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="12dp">
+            android:background="@drawable/menu_glass_panel"
+            android:elevation="6dp"
+            android:padding="16dp">
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:id="@+id/gameHeader"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center_horizontal"
-                android:orientation="vertical">
+                android:background="@drawable/action_bar_bg"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/cardumenDeckLabel"
@@ -123,14 +130,14 @@
                         android:textStyle="bold"
                         tools:text="22" />
                 </FrameLayout>
-            </LinearLayout>
+                </LinearLayout>
 
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:orientation="vertical">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/scoreLabel"
@@ -153,15 +160,15 @@
                     android:layout_height="wrap_content"
                     android:textAppearance="@style/TextAppearance.Material3.BodySmall"
                     tools:text="Capturas: 0" />
-            </LinearLayout>
+                </LinearLayout>
 
-            <LinearLayout
-                android:id="@+id/discardPileArea"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center_horizontal"
-                android:orientation="vertical">
+                <LinearLayout
+                    android:id="@+id/discardPileArea"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/discardPileLabel"
@@ -235,21 +242,13 @@
                         android:scaleType="fitCenter"
                         android:src="@drawable/mazocardumen" />
                 </FrameLayout>
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
 
         <View
             android:layout_width="match_parent"
             android:layout_height="10dp" />
-
-        <TextView
-            android:id="@+id/log"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-            android:textColor="@android:color/black"
-            tools:text="Lanzaste D4=3" />
 
         <FrameLayout
             android:id="@+id/fishingZoneContainer"
@@ -277,100 +276,116 @@
         </FrameLayout>
 
         <LinearLayout
-            android:id="@+id/actionBar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/action_bar_bg"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="8dp">
-
-            <TextView
-                android:id="@+id/selection"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                tools:text="Dado preparado: D4=3" />
-
-            <ImageView
-                android:id="@+id/selectedDieImage"
-                android:layout_width="72dp"
-                android:layout_height="72dp"
-                android:contentDescription="@string/description"
-                android:padding="8dp"
-                android:visibility="gone"
-                tools:src="@drawable/ic_launcher_foreground"
-                tools:visibility="visible" />
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="10dp" />
-
-        <HorizontalScrollView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:scrollbars="none">
-
-            <LinearLayout
-                android:id="@+id/reserveDiceContainer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingVertical="4dp" />
-        </HorizontalScrollView>
-
-        <TextView
-            android:id="@+id/lost"
+            android:id="@+id/bottomPanel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            style="@style/App.Text.Title.Ocean.Sub"
-            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-            tools:text="Perdidos: 0" />
+            android:background="@drawable/menu_glass_panel"
+            android:elevation="6dp"
+            android:orientation="vertical"
+            android:padding="16dp">
 
-        <HorizontalScrollView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:scrollbars="none">
-
-            <LinearLayout
-                android:id="@+id/lostDiceContainer"
-                android:layout_width="wrap_content"
+            <TextView
+                android:id="@+id/log"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingVertical="4dp" />
-        </HorizontalScrollView>
-
-        <TextView
-            android:id="@+id/captureZoneTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="zona de capturas"
-            style="@style/App.Text.Title.Ocean.Sub" />
-
-        <HorizontalScrollView
-            android:id="@+id/captureScroll"
-            android:layout_width="match_parent"
-            android:layout_height="120dp"
-            android:layout_marginTop="4dp"
-            android:background="@drawable/section_panel"
-            android:scrollbars="none"
-            android:fillViewport="true">
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="@android:color/black"
+                tools:text="Lanzaste D4=3" />
 
             <LinearLayout
-                android:id="@+id/captureCardsContainer"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
+                android:id="@+id/actionBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/action_bar_bg"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingVertical="4dp" />
-        </HorizontalScrollView>
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="8dp">
+
+                <TextView
+                    android:id="@+id/selection"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                    tools:text="Dado preparado: D4=3" />
+
+                <ImageView
+                    android:id="@+id/selectedDieImage"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:contentDescription="@string/description"
+                    android:padding="8dp"
+                    android:visibility="gone"
+                    tools:src="@drawable/ic_launcher_foreground"
+                    tools:visibility="visible" />
+            </LinearLayout>
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/reserveDiceContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingVertical="4dp" />
+            </HorizontalScrollView>
+
+            <TextView
+                android:id="@+id/lost"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                style="@style/App.Text.Title.Ocean.Sub"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                tools:text="Perdidos: 0" />
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/lostDiceContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingVertical="4dp" />
+            </HorizontalScrollView>
+
+            <TextView
+                android:id="@+id/captureZoneTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="zona de capturas"
+                style="@style/App.Text.Title.Ocean.Sub" />
+
+            <HorizontalScrollView
+                android:id="@+id/captureScroll"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/section_panel"
+                android:scrollbars="none"
+                android:fillViewport="true">
+
+                <LinearLayout
+                    android:id="@+id/captureCardsContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingVertical="4dp" />
+            </HorizontalScrollView>
+        </LinearLayout>
 
 
     </LinearLayout>
