@@ -295,9 +295,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void setupBoard() {
-        adapter = new BoardSlotAdapter(this, Arrays.asList(gameState.getBoard()), this);
+        float[] boardRowScale = new float[] {0.82f, 0.92f, 1.0f};
+        adapter = new BoardSlotAdapter(this, Arrays.asList(gameState.getBoard()), this, boardRowScale);
         binding.gamePanel.boardRecycler.setLayoutManager(
-                new PerspectiveBoardLayoutManager(new float[] {0.82f, 0.92f, 1.0f})
+                new PerspectiveBoardLayoutManager(boardRowScale)
         );
         binding.gamePanel.boardRecycler.setAdapter(adapter);
 
