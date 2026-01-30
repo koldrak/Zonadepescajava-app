@@ -237,15 +237,12 @@
             </LinearLayout>
         </LinearLayout>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="10dp" />
-
         <TextView
             android:id="@+id/log"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginBottom="8dp"
+            android:layout_marginTop="-4dp"
             android:textAppearance="@style/TextAppearance.Material3.BodySmall"
             android:textColor="@android:color/black"
             tools:text="Lanzaste D4=3" />
