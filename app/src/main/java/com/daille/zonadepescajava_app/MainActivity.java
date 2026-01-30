@@ -67,6 +67,7 @@ import com.daille.zonadepescajava_app.ui.CardPackOpenDialog;
 import com.daille.zonadepescajava_app.ui.CollectionCardAdapter;
 import com.daille.zonadepescajava_app.ui.DeckSelectionAdapter;
 import com.daille.zonadepescajava_app.ui.DiceImageResolver;
+import com.daille.zonadepescajava_app.ui.PerspectiveBoardLayoutManager;
 import com.daille.zonadepescajava_app.ui.TideParticlesView;
 import com.google.android.material.card.MaterialCardView;
 import android.view.animation.DecelerateInterpolator;
@@ -295,8 +296,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void setupBoard() {
-        adapter = new BoardSlotAdapter(this, Arrays.asList(gameState.getBoard()), this);
-        binding.gamePanel.boardRecycler.setLayoutManager(new GridLayoutManager(this, 3));
+        float[] boardRowScale = new float[] {0.82f, 0.92f, 1.0f};
+        adapter = new BoardSlotAdapter(this, Arrays.asList(gameState.getBoard()), this, boardRowScale);
+        binding.gamePanel.boardRecycler.setLayoutManager(
+                new PerspectiveBoardLayoutManager(boardRowScale)
+        );
         binding.gamePanel.boardRecycler.setAdapter(adapter);
 
         // ✅ Instalar decoration UNA vez
