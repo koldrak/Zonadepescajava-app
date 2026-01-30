@@ -255,7 +255,6 @@
             android:id="@+id/fishingZoneContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/section_panel"
             android:layout_marginTop="12dp"
             android:layout_marginBottom="16dp">
 
