@@ -1196,7 +1196,9 @@ public class GameState {
                 break;
             case HORSESHOE_DIE:
                 for (int i = 0; i < board.length; i++) {
-                    if (!board[i].getDice().isEmpty()) {
+                    BoardSlot s = board[i];
+                    if (!s.getDice().isEmpty() && s.getCard() != null
+                            && s.getCard().getType() == CardType.CRUSTACEO) {
                         highlight.add(i);
                     }
                 }
