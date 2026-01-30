@@ -118,7 +118,7 @@
                         android:background="@drawable/menu_glass_panel"
                         android:paddingHorizontal="6dp"
                         android:paddingVertical="2dp"
-                        android:textColor="@android:color/white"
+                        android:textColor="@android:color/black"
                         android:textSize="12sp"
                         android:textStyle="bold"
                         tools:text="22" />
