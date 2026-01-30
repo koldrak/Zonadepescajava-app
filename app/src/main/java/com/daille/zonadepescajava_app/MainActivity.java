@@ -3357,28 +3357,39 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
         // Espera a que la zona de capturas tenga tamaño real
         binding.gamePanel.captureScroll.post(() -> {
-            int zoneH = binding.gamePanel.captureScroll.getHeight();
-            if (zoneH <= 0) return;
+            int cardWidth = 0;
+            int cardHeight = 0;
+            RecyclerView.LayoutManager lm = binding.gamePanel.boardRecycler.getLayoutManager();
+            if (lm != null) {
+                View sample = lm.findViewByPosition(0);
+                if (sample != null) {
+                    cardWidth = sample.getWidth();
+                    cardHeight = sample.getHeight();
+                }
+            }
+            if (cardWidth <= 0 || cardHeight <= 0) {
+                int zoneH = binding.gamePanel.captureScroll.getHeight();
+                if (zoneH <= 0) return;
+                int innerPadding = dpToPx(8);
+                cardHeight = Math.max(1, zoneH - innerPadding);
+                cardWidth = cardHeight;
+            }
 
             int margin = dpToPx(6);
+            int overlap = Math.round(cardWidth * 0.5f);
 
-            // Queremos que la carta use, por ejemplo, 80% del alto de la zona.
-            float heightFactor = 0.80f;
-
-            // Resta un poco por padding interno (lo tienes en el contenedor: paddingVertical=4dp)
-            int innerPadding = dpToPx(8);
-            int cardHeight = Math.round((zoneH - innerPadding) * heightFactor);
-
-            // Mantén proporción 120x170 (tu proporción actual)
-            int cardWidth = Math.round(cardHeight * (120f / 170f));
-
+            int index = 0;
             for (Card card : gameState.getCaptures()) {
                 Bitmap image = cardImageResolver.getImageFor(card, true);
                 if (image == null) image = cardImageResolver.getCardBack();
 
                 ImageView cardView = new ImageView(this);
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(cardWidth, cardHeight);
-                params.setMargins(margin, 0, margin, 0);
+                if (index == 0) {
+                    params.setMargins(margin, 0, margin, 0);
+                } else {
+                    params.setMargins(-overlap + margin, 0, margin, 0);
+                }
                 cardView.setLayoutParams(params);
 
                 // Elige cómo se ajusta la imagen dentro del rectángulo:
@@ -3424,6 +3435,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 });
 
                 container.addView(cardView);
+                index++;
             }
         });
     }
