@@ -21,9 +21,6 @@ import java.util.List;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.widget.ImageView;
-import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
-import android.widget.ImageView;
 
 public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.SlotViewHolder> {
 
@@ -38,6 +35,7 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
     private final CardImageResolver imageResolver;
     private final DiceImageResolver diceImageResolver;
     private final Context context;
+    private final float[] rowScale;
     private final List<Integer> highlighted = new ArrayList<>();
     private final List<Integer> remoraBorderSlots = new ArrayList<>();
     private final List<Integer> botaViejaPenaltySlots = new ArrayList<>();
@@ -45,12 +43,14 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
     private final List<Integer> bettaRowSlots = new ArrayList<>();
 
 
-    public BoardSlotAdapter(Context context, List<BoardSlot> data, OnSlotInteractionListener listener) {
+    public BoardSlotAdapter(Context context, List<BoardSlot> data, OnSlotInteractionListener listener,
+                            float[] rowScale) {
         this.context = context;
         slots.addAll(data);
         this.listener = listener;
         this.imageResolver = new CardImageResolver(context);
         this.diceImageResolver = new DiceImageResolver(context);
+        this.rowScale = rowScale != null ? rowScale.clone() : new float[] {1f, 1f, 1f};
     }
 
     @NonNull
@@ -66,6 +66,12 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
         if (!holder.itemView.hasTransientState()) {
             holder.itemView.setRotationY(0f);
             holder.itemView.setHasTransientState(false);
+        }
+        int row = position / 3;
+        float scale = rowScale[Math.min(row, rowScale.length - 1)];
+        if (holder.getBinding().getRoot() instanceof TrapezoidCardView) {
+            ((TrapezoidCardView) holder.getBinding().getRoot())
+                    .setTopInsetFraction((1f - scale) / 2f);
         }
         holder.bind(
                 slots.get(position),
@@ -152,6 +158,10 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
                 this.listener.onSlotLongPressed(getBindingAdapterPosition());
                 return true;
             });
+        }
+
+        ItemBoardSlotBinding getBinding() {
+            return binding;
         }
         private void applyBottleHalo(ImageView view, boolean on) {
             if (view == null) return;
