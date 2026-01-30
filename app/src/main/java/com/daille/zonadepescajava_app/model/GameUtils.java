@@ -154,7 +154,7 @@ public final class GameUtils {
                 condSumRange(13, 15),
                 "Elige una carta descartada por fallo y captúrala directamente.", "", ""));
 
-        cards.add(new Card(CardId.FOCA_MOTEADA, "Foca moteada", CardType.CRUSTACEO, 2,
+        cards.add(new Card(CardId.FOCA_MOTEADA, "Foca moteada", CardType.PEZ_GRANDE, 2,
                 condSumAtLeast(10),
                 "Tras tu próximo lanzamiento, si colocas el dado en una carta verde, puedes elegir su valor.",
                 "", ""));
