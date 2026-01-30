@@ -624,14 +624,54 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         collectionCardAdapter.submitList(entries, ownedCounts);
     }
 
+    private void refreshStartMenuHeader() {
+        android.content.SharedPreferences sp = getSharedPreferences(PREF_RANKING, MODE_PRIVATE);
+        String nombre = sp.getString(KEY_PLAYER_NAME, "");
+        if (nombre == null || nombre.trim().isEmpty()) {
+            nombre = getString(R.string.start_menu_user_name_placeholder);
+        }
+        binding.startMenu.startMenuUserNameValue.setText(nombre);
+
+        int availablePoints = scoreDatabaseHelper.getAvailablePoints();
+        binding.startMenu.startMenuUserPointsValue.setText(
+                getString(R.string.start_menu_points_format, availablePoints));
+
+        binding.startMenu.startMenuGlobalRecordValue.setText(
+                getString(R.string.start_menu_global_record_placeholder));
+        refreshGlobalRecord();
+    }
+
+    private void refreshGlobalRecord() {
+        if (!RankingApiClient.hasInternet(this)) {
+            binding.startMenu.startMenuGlobalRecordValue.setText(
+                    getString(R.string.start_menu_global_record_placeholder));
+            return;
+        }
+
+        RankingApiClient.fetchTopAsync(1, (top, err) -> {
+            if (err != null || top == null || top.isEmpty()) {
+                binding.startMenu.startMenuGlobalRecordValue.setText(
+                        getString(R.string.start_menu_global_record_placeholder));
+                return;
+            }
+            RankingApiClient.RemoteScore record = top.get(0);
+            binding.startMenu.startMenuGlobalRecordValue.setText(
+                    getString(R.string.start_menu_global_record_format, record.nombre, record.puntaje));
+        });
+    }
+
     private void refreshScoreRecords() {
         // ===== 1) TOP PERSONAL (local) =====
-        List<ScoreRecord> records = scoreDatabaseHelper.getTopScores(5);
+        List<ScoreRecord> records = scoreDatabaseHelper.getTopScores(3);
         List<String> labels = new ArrayList<>();
 
-        labels.add("🏠 TOP PERSONAL");
         if (records == null || records.isEmpty()) {
-            labels.add("— Sin registros todavía —");
+            scoreRecordsAdapter.clear();
+            scoreRecordsAdapter.notifyDataSetChanged();
+            binding.startMenu.scoreRecordsList.post(() ->
+                    setListViewHeightBasedOnChildren(binding.startMenu.scoreRecordsList)
+            );
+            return;
         } else {
             DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault());
             for (int i = 0; i < records.size(); i++) {
@@ -642,86 +682,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
         }
 
-        // ===== 2) Separador TOP GLOBAL =====
-        labels.add(""); // espacio visual
-        labels.add("🌐 TOP GLOBAL (online)");
-
-        // Mensaje inicial (se reemplaza si hay internet y llega data)
-        if (!RankingApiClient.hasInternet(this)) {
-            labels.add("— Sin conexión —");
-            scoreRecordsAdapter.clear();
-            scoreRecordsAdapter.addAll(labels);
-            scoreRecordsAdapter.notifyDataSetChanged();
-            binding.startMenu.scoreRecordsList.post(() ->
-                    setListViewHeightBasedOnChildren(binding.startMenu.scoreRecordsList)
-            );
-            return;
-        } else {
-            labels.add("Cargando...");
-            scoreRecordsAdapter.clear();
-            scoreRecordsAdapter.addAll(labels);
-            scoreRecordsAdapter.notifyDataSetChanged();
-            binding.startMenu.scoreRecordsList.post(() ->
-                    setListViewHeightBasedOnChildren(binding.startMenu.scoreRecordsList)
-            );
-        }
-
-        // ===== 3) Pedir TOP GLOBAL (10) =====
-        RankingApiClient.fetchTopAsync(10, (top, err) -> {
-            // Volvemos a construir la lista completa: local + global real
-            List<String> merged = new ArrayList<>();
-
-            // (A) Local otra vez (para mantenerlo estable)
-            merged.add("🏠 TOP PERSONAL");
-            if (records == null || records.isEmpty()) {
-                merged.add("— Sin registros todavía —");
-            } else {
-                DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault());
-                for (int i = 0; i < records.size(); i++) {
-                    ScoreRecord r = records.get(i);
-                    String date = dateFormat.format(new Date(r.getCreatedAt()));
-                    merged.add(String.format(Locale.getDefault(),
-                            "#%d • %d puntos (%s)", i + 1, r.getScore(), date));
-                }
-            }
-
-            merged.add("");
-            merged.add("🌐 TOP GLOBAL (online)");
-
-            // (B) Global
-            if (err != null || top == null || top.isEmpty()) {
-                merged.add("— No disponible —");
-            } else {
-                for (int i = 0; i < top.size(); i++) {
-                    RankingApiClient.RemoteScore r = top.get(i);
-
-                    // r.fecha viene como "YYYY-MM-DD" desde tu Worker
-                    merged.add(String.format(Locale.getDefault(),
-                            "#%d • %s %s — %d (%s)",
-                            i + 1,
-                            r.nombre,
-                            countryCodeToFlag(r.pais),
-                            r.puntaje,
-                            r.fecha
-                    ));
-                }
-            }
-
-            scoreRecordsAdapter.clear();
-            scoreRecordsAdapter.addAll(merged);
-            scoreRecordsAdapter.notifyDataSetChanged();
-            binding.startMenu.scoreRecordsList.post(() ->
-                    setListViewHeightBasedOnChildren(binding.startMenu.scoreRecordsList)
-            );
-        });
-
-
-
         scoreRecordsAdapter.clear();
         scoreRecordsAdapter.addAll(labels);
         scoreRecordsAdapter.notifyDataSetChanged();
 
-        // ✅ CLAVE: ListView dentro de ScrollView => fijar altura
+        // Ajusta altura para mostrar todos los registros visibles.
         binding.startMenu.scoreRecordsList.post(() ->
                 setListViewHeightBasedOnChildren(binding.startMenu.scoreRecordsList)
         );
@@ -970,6 +935,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
         binding.rankingPanel.getRoot().setVisibility(View.GONE);
         updateAmbientMusic("ambientalplaya");
+        refreshStartMenuHeader();
         refreshScoreRecords(); // ✅ asegura recarga al mostrar menú
     }
 
