@@ -23,6 +23,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.widget.ImageView;
 
 public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.SlotViewHolder> {
+    private static final float[] ROW_SCALE = {0.84f, 0.92f, 1.0f};
 
     public interface OnSlotInteractionListener {
         void onSlotTapped(int position);
@@ -88,6 +89,17 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
     @Override
     public int getItemCount() {
         return slots.size();
+    }
+
+    private void applyPerspectiveTransform(View itemView, int position) {
+        int row = position / 3;
+        float scale = ROW_SCALE[Math.min(row, ROW_SCALE.length - 1)];
+        itemView.post(() -> {
+            itemView.setPivotX(itemView.getWidth() / 2f);
+            itemView.setPivotY(0f);
+            itemView.setScaleX(scale);
+            itemView.setScaleY(scale);
+        });
     }
 
     public void update(List<BoardSlot> updated, List<Integer> highlights) {
