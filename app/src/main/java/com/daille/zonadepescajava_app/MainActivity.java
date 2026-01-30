@@ -624,6 +624,28 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         collectionCardAdapter.submitList(entries, ownedCounts);
     }
 
+    private void refreshStartMenuHeader() {
+        android.content.SharedPreferences sp = getSharedPreferences(PREF_RANKING, MODE_PRIVATE);
+        String nombre = sp.getString(KEY_PLAYER_NAME, "");
+        if (nombre == null || nombre.trim().isEmpty()) {
+            nombre = getString(R.string.start_menu_user_name_placeholder);
+        }
+        binding.startMenu.startMenuUserNameValue.setText(nombre);
+
+        int availablePoints = scoreDatabaseHelper.getAvailablePoints();
+        binding.startMenu.startMenuUserPointsValue.setText(
+                getString(R.string.start_menu_points_format, availablePoints));
+
+        int bestScore = scoreDatabaseHelper.getHighestScore();
+        if (bestScore > 0) {
+            binding.startMenu.startMenuGlobalRecordValue.setText(
+                    getString(R.string.start_menu_points_format, bestScore));
+        } else {
+            binding.startMenu.startMenuGlobalRecordValue.setText(
+                    getString(R.string.start_menu_global_record_placeholder));
+        }
+    }
+
     private void refreshScoreRecords() {
         // ===== 1) TOP PERSONAL (local) =====
         List<ScoreRecord> records = scoreDatabaseHelper.getTopScores(5);
@@ -970,6 +992,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.settingsPanel.getRoot().setVisibility(View.GONE);
         binding.rankingPanel.getRoot().setVisibility(View.GONE);
         updateAmbientMusic("ambientalplaya");
+        refreshStartMenuHeader();
         refreshScoreRecords(); // ✅ asegura recarga al mostrar menú
     }
 
