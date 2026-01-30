@@ -307,8 +307,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void setupGamePanel() {
-        View discardArea = binding.gamePanel.discardPileArea;
-        discardArea.setOnClickListener(view -> showDiscardPileDialog());
+        View discardPile = binding.gamePanel.discardPileContainer;
+        discardPile.setOnClickListener(view -> showDiscardPileDialog());
     }
 
     private void setupTideAnimationOverlay() {
@@ -2267,7 +2267,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
 
         binding.gamePanel.scoreValue.setText(String.format(Locale.getDefault(), "%d", gameState.getScore()));
-        binding.gamePanel.deckInfo.setText(String.format(Locale.getDefault(), "Mazo restante: %d", gameState.getDeckSize()));
+        binding.gamePanel.deckRemainingCount.setText(String.format(Locale.getDefault(), "%d", gameState.getDeckSize()));
         binding.gamePanel.captures.setText(String.format(Locale.getDefault(), "Capturas: %d", gameState.getCaptures().size()));
 
         binding.gamePanel.selection.setText(gameState.getSelectedDie() == null

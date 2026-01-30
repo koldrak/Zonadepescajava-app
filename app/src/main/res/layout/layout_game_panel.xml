@@ -108,14 +108,21 @@
                         android:scaleY="0.96"
                         android:scaleType="centerCrop"
                         android:src="@drawable/mazocardumen" />
-                </FrameLayout>
 
-                <TextView
-                    android:id="@+id/deckInfo"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                    tools:text="Mazo restante: 22" />
+                    <TextView
+                        android:id="@+id/deckRemainingCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="top|end"
+                        android:layout_margin="6dp"
+                        android:background="@drawable/menu_glass_panel"
+                        android:paddingHorizontal="6dp"
+                        android:paddingVertical="2dp"
+                        android:textColor="@android:color/white"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        tools:text="22" />
+                </FrameLayout>
             </LinearLayout>
 
             <LinearLayout
