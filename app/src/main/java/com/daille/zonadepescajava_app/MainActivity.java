@@ -245,6 +245,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setupDiceShopPanel();
         setupCardSellPanel();
         setupTideAnimationOverlay();
+        setupGamePanel();
         setupCollectionsPanel();
         setupSettingsPanel();
         setupRankingPanel();
@@ -303,6 +304,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             boardLinksDecoration = new BoardLinksDecoration(this);
             binding.gamePanel.boardRecycler.addItemDecoration(boardLinksDecoration);
         }
+    }
+
+    private void setupGamePanel() {
+        View discardArea = binding.gamePanel.discardPileArea;
+        discardArea.setOnClickListener(view -> showDiscardPileDialog());
     }
 
     private void setupTideAnimationOverlay() {
@@ -2260,7 +2266,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             binding.gamePanel.boardRecycler.postInvalidateOnAnimation();
         }
 
-        binding.gamePanel.score.setText(String.format(Locale.getDefault(), "Puntaje: %d", gameState.getScore()));
+        binding.gamePanel.scoreValue.setText(String.format(Locale.getDefault(), "%d", gameState.getScore()));
         binding.gamePanel.deckInfo.setText(String.format(Locale.getDefault(), "Mazo restante: %d", gameState.getDeckSize()));
         binding.gamePanel.captures.setText(String.format(Locale.getDefault(), "Capturas: %d", gameState.getCaptures().size()));
 
@@ -2279,6 +2285,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         binding.gamePanel.log.setText(log);
         triggerTideAnimationIfNeeded();
+        updateDiscardPile();
         renderCapturedCards();
         binding.getRoot().post(() -> {
             hideRefillSlots(refillSlots);
@@ -2306,6 +2313,48 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         showRevealedCardsSequential(new ArrayList<>(revealed), afterReveals);
 
+    }
+
+    private void updateDiscardPile() {
+        List<Card> discards = gameState.getFailedDiscardCards();
+        ImageView discardImage = binding.gamePanel.discardPileImage;
+        if (discards.isEmpty()) {
+            discardImage.setImageBitmap(cardImageResolver.getCardBack());
+            discardImage.setAlpha(0.35f);
+            discardImage.setContentDescription(getString(R.string.discard_pile_label));
+            return;
+        }
+        Card lastDiscard = discards.get(discards.size() - 1);
+        Bitmap image = cardImageResolver.getImageFor(lastDiscard, true);
+        if (image == null) {
+            image = cardImageResolver.getCardBack();
+        }
+        discardImage.setImageBitmap(image);
+        discardImage.setAlpha(1f);
+        discardImage.setContentDescription(lastDiscard.getName());
+    }
+
+    private void showDiscardPileDialog() {
+        List<Card> discards = gameState.getFailedDiscardCards();
+        if (discards.isEmpty()) {
+            Toast.makeText(this, R.string.discard_pile_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Dialog dialog = new Dialog(this);
+        dialog.setContentView(R.layout.dialog_acquired_cards);
+        TextView title = dialog.findViewById(R.id.acquiredCardsTitle);
+        title.setText(R.string.discard_pile_title);
+        RecyclerView recyclerView = dialog.findViewById(R.id.acquiredCardsRecycler);
+        recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
+        AcquiredCardsAdapter adapter = new AcquiredCardsAdapter(this);
+        List<Card> sorted = new ArrayList<>(discards);
+        Collections.reverse(sorted);
+        adapter.submitList(sorted);
+        recyclerView.setAdapter(adapter);
+        Button continueButton = dialog.findViewById(R.id.acquiredCardsContinue);
+        continueButton.setText(R.string.close);
+        continueButton.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
     }
 
     private void runPendingCurrentsSequence(String baseMessage, Runnable onComplete) {

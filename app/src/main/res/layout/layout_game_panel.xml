@@ -28,120 +28,212 @@
             android:background="@drawable/action_bar_bg"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingHorizontal="16dp"
+            android:paddingHorizontal="12dp"
             android:paddingVertical="12dp">
 
-            <TextView
-                android:id="@+id/score"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                style="@style/App.Text.Title.Ocean.Sub"
-                android:paddingEnd="16dp"
-                tools:text="Puntaje: 0" />
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/captures"
-                android:layout_width="wrap_content"
+                <TextView
+                    android:id="@+id/cardumenDeckLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp"
+                    android:text="@string/cardumen_deck_label"
+                    android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+
+                <FrameLayout
+                    android:layout_width="92dp"
+                    android:layout_height="92dp"
+                    android:layout_marginBottom="6dp">
+
+                    <ImageView
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:layout_gravity="center"
+                        android:alpha="0.35"
+                        android:contentDescription="@string/description"
+                        android:rotationX="6"
+                        android:rotationY="14"
+                        android:scaleX="1.04"
+                        android:scaleY="0.96"
+                        android:translationX="-6dp"
+                        android:translationY="-6dp"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/mazocardumen" />
+
+                    <ImageView
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:layout_gravity="center"
+                        android:alpha="0.5"
+                        android:contentDescription="@string/description"
+                        android:rotationX="6"
+                        android:rotationY="14"
+                        android:scaleX="1.04"
+                        android:scaleY="0.96"
+                        android:translationX="-3dp"
+                        android:translationY="-3dp"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/mazocardumen" />
+
+                    <ImageView
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:layout_gravity="center"
+                        android:alpha="0.7"
+                        android:contentDescription="@string/description"
+                        android:rotationX="6"
+                        android:rotationY="14"
+                        android:scaleX="1.04"
+                        android:scaleY="0.96"
+                        android:translationX="0dp"
+                        android:translationY="0dp"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/mazocardumen" />
+
+                    <ImageView
+                        android:id="@+id/cardumenDeckImage"
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@string/description"
+                        android:rotationX="6"
+                        android:rotationY="14"
+                        android:scaleX="1.04"
+                        android:scaleY="0.96"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/mazocardumen" />
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/deckInfo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                    tools:text="Mazo restante: 22" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                android:paddingStart="12dp"
-                tools:text="Capturas: 0" />
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/scoreLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/score_label"
+                    android:textAppearance="@style/App.Text.Title.Ocean.Sub" />
+
+                <TextView
+                    android:id="@+id/scoreValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/App.Text.Title.Ocean"
+                    android:textSize="36sp"
+                    tools:text="50" />
+
+                <TextView
+                    android:id="@+id/captures"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                    tools:text="Capturas: 0" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/discardPileArea"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/discardPileLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="6dp"
+                    android:text="@string/discard_pile_label"
+                    android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+
+                <FrameLayout
+                    android:id="@+id/discardPileContainer"
+                    android:layout_width="92dp"
+                    android:layout_height="92dp"
+                    android:layout_marginBottom="6dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <ImageView
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:layout_gravity="center"
+                        android:alpha="0.35"
+                        android:contentDescription="@string/description"
+                        android:rotationX="6"
+                        android:rotationY="-14"
+                        android:scaleX="1.04"
+                        android:scaleY="0.96"
+                        android:translationX="6dp"
+                        android:translationY="-6dp"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/mazocardumen" />
+
+                    <ImageView
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:layout_gravity="center"
+                        android:alpha="0.5"
+                        android:contentDescription="@string/description"
+                        android:rotationX="6"
+                        android:rotationY="-14"
+                        android:scaleX="1.04"
+                        android:scaleY="0.96"
+                        android:translationX="3dp"
+                        android:translationY="-3dp"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/mazocardumen" />
+
+                    <ImageView
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:layout_gravity="center"
+                        android:alpha="0.7"
+                        android:contentDescription="@string/description"
+                        android:rotationX="6"
+                        android:rotationY="-14"
+                        android:scaleX="1.04"
+                        android:scaleY="0.96"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/mazocardumen" />
+
+                    <ImageView
+                        android:id="@+id/discardPileImage"
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@string/description"
+                        android:rotationX="6"
+                        android:rotationY="-14"
+                        android:scaleX="1.04"
+                        android:scaleY="0.96"
+                        android:scaleType="fitCenter"
+                        android:src="@drawable/mazocardumen" />
+                </FrameLayout>
+            </LinearLayout>
         </LinearLayout>
 
         <View
             android:layout_width="match_parent"
             android:layout_height="10dp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingVertical="8dp">
-
-            <FrameLayout
-                android:layout_width="92dp"
-                android:layout_height="92dp"
-                android:layout_marginEnd="4dp">
-
-                <ImageView
-                    android:layout_width="80dp"
-                    android:layout_height="80dp"
-                    android:layout_gravity="center"
-                    android:alpha="0.35"
-                    android:contentDescription="@string/description"
-                    android:rotationX="6"
-                    android:rotationY="14"
-                    android:scaleX="1.04"
-                    android:scaleY="0.96"
-                    android:translationX="-6dp"
-                    android:translationY="-6dp"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/mazocardumen" />
-
-                <ImageView
-                    android:layout_width="80dp"
-                    android:layout_height="80dp"
-                    android:layout_gravity="center"
-                    android:alpha="0.5"
-                    android:contentDescription="@string/description"
-                    android:rotationX="6"
-                    android:rotationY="14"
-                    android:scaleX="1.04"
-                    android:scaleY="0.96"
-                    android:translationX="-3dp"
-                    android:translationY="-3dp"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/mazocardumen" />
-
-                <ImageView
-                    android:layout_width="80dp"
-                    android:layout_height="80dp"
-                    android:layout_gravity="center"
-                    android:alpha="0.7"
-                    android:contentDescription="@string/description"
-                    android:rotationX="6"
-                    android:rotationY="14"
-                    android:scaleX="1.04"
-                    android:scaleY="0.96"
-                    android:translationX="0dp"
-                    android:translationY="0dp"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/mazocardumen" />
-
-                <ImageView
-                    android:id="@+id/cardumenDeckImage"
-                    android:layout_width="80dp"
-                    android:layout_height="80dp"
-                    android:layout_gravity="center"
-                    android:contentDescription="@string/description"
-                    android:rotationX="6"
-                    android:rotationY="14"
-                    android:scaleX="1.04"
-                    android:scaleY="0.96"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/mazocardumen" />
-            </FrameLayout>
-
-            <TextView
-                android:id="@+id/cardumenDeckLabel"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_weight="1"
-                android:text="Mazo de cardumen"
-                android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
-            <TextView
-                android:id="@+id/deckInfo"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_weight="1"
-                android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                tools:text="Mazo restante: 22" />
-
-
-        </LinearLayout>
 
         <TextView
             android:id="@+id/log"
