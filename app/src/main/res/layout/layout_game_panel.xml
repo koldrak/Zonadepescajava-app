@@ -26,9 +26,16 @@
             android:layout_marginBottom="12dp"
             android:background="@drawable/menu_glass_panel"
             android:gravity="center_vertical"
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:paddingHorizontal="16dp"
             android:paddingVertical="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center_horizontal"
+                android:orientation="horizontal">
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -41,6 +48,7 @@
                     android:id="@+id/cardumenDeckLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:gravity="center_horizontal"
                     android:layout_marginBottom="6dp"
                     android:text="@string/cardumen_deck_label"
                     android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
@@ -130,7 +138,12 @@
                 android:layout_weight="1"
                 android:gravity="center"
                 android:orientation="vertical">
-
+                <TextView
+                    android:id="@+id/spacio"
+                    android:layout_width="wrap_content"
+                    android:layout_height="15pt"
+                    android:text=" "
+                    android:textAppearance="@style/App.Text.Title.Ocean.Sub" />
                 <TextView
                     android:id="@+id/scoreLabel"
                     android:layout_width="wrap_content"
@@ -235,17 +248,19 @@
                         android:src="@drawable/mazocardumen" />
                 </FrameLayout>
             </LinearLayout>
+            </LinearLayout>
+            <TextView
+                android:id="@+id/log"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:layout_marginTop="-4dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                android:textColor="@android:color/black"
+                tools:text="Lanzaste D4=3" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/log"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:layout_marginTop="-4dp"
-            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-            android:textColor="@android:color/black"
-            tools:text="Lanzaste D4=3" />
+
 
         <FrameLayout
             android:id="@+id/fishingZoneContainer"
@@ -349,16 +364,6 @@
                     android:orientation="horizontal"
                     android:paddingVertical="4dp" />
             </HorizontalScrollView>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/capturePanel"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:background="@drawable/menu_glass_panel"
-            android:orientation="vertical"
-            android:padding="16dp">
 
             <TextView
                 android:id="@+id/captureZoneTitle"
@@ -371,17 +376,17 @@
                 android:id="@+id/captureScroll"
                 android:layout_width="match_parent"
                 android:layout_height="120dp"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="0dp"
                 android:scrollbars="none"
                 android:fillViewport="true">
 
                 <LinearLayout
                     android:id="@+id/captureCardsContainer"
                     android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
+                    android:layout_height="wrap_content"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:paddingVertical="4dp" />
+                    android:paddingVertical="1dp" />
             </HorizontalScrollView>
         </LinearLayout>
 
