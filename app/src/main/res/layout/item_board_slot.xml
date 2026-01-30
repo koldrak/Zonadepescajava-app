@@ -23,6 +23,10 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:contentDescription="@string/card_image_content_description"
+            android:rotationX="6"
+            android:rotationY="-6"
+            android:scaleX="0.98"
+            android:scaleY="0.98"
             android:scaleType="centerCrop"
             tools:src="@drawable/mazocardumen" />
 
