@@ -3402,7 +3402,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 FrameLayout cardWrapper = new FrameLayout(this);
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(cardWidth, cardHeight);
                 if (index == 0) {
-                    params.setMargins(margin, 0, margin, 0);
+                    params.setMargins(margin, 0, -overlap + margin, 0);
                 } else {
                     params.setMargins(-overlap + margin, 0, margin, 0);
                 }
