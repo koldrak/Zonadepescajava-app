@@ -2275,6 +2275,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 : "Dado preparado: " + gameState.getSelectedDie().getLabel());
 
         updateSelectedDiePreview();
+        updateCaptureComboLabel();
         renderDiceCollection(binding.gamePanel.reserveDiceContainer, gameState.getReserve(), true);
         renderDiceCollection(binding.gamePanel.lostDiceContainer, gameState.getLostDice(), false);
 
@@ -2801,6 +2802,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         if (preview == null) {
             binding.gamePanel.selectedDieImage.setVisibility(View.GONE);
+            updateCaptureComboLabel();
             return;
         }
 
@@ -2810,6 +2812,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             binding.gamePanel.selectedDieImage.setImageBitmap(face);
         } else {
             binding.gamePanel.selectedDieImage.setVisibility(View.GONE);
+        }
+        updateCaptureComboLabel();
+    }
+
+    private void updateCaptureComboLabel() {
+        int multiplier = gameState.getCaptureComboMultiplier();
+        boolean shouldShow = multiplier > 1 && binding.gamePanel.selectedDieImage.getVisibility() == View.VISIBLE;
+        if (shouldShow) {
+            binding.gamePanel.captureComboLabel.setText("Captura x" + multiplier);
+            binding.gamePanel.captureComboLabel.setVisibility(View.VISIBLE);
+        } else {
+            binding.gamePanel.captureComboLabel.setVisibility(View.GONE);
         }
     }
 
