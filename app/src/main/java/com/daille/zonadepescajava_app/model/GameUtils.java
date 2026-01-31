@@ -802,59 +802,59 @@ public final class GameUtils {
     }
 
     public static Condition condSumRange(int min, int max) {
-        return (slotIndex, g) -> {
+        return new ConditionInfo(ConditionInfo.Type.SUM_RANGE, min, max, (slotIndex, g) -> {
             int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
             int s = sumWithModifiers(slotIndex, g);
             return s >= (min + shift) && s <= (max + shift);
-        };
+        });
     }
 
     public static Condition condSumExact(int value) {
-        return (slotIndex, g) -> {
+        return new ConditionInfo(ConditionInfo.Type.SUM_EXACT, value, value, (slotIndex, g) -> {
             int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
             int s = sumWithModifiers(slotIndex, g);
             return s == (value + shift);
-        };
+        });
     }
 
     public static Condition condSumAtLeast(int min) {
-        return (slotIndex, g) -> {
+        return new ConditionInfo(ConditionInfo.Type.SUM_AT_LEAST, min, 0, (slotIndex, g) -> {
             int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
             int s = sumWithModifiers(slotIndex, g);
             return s >= (min + shift);
-        };
+        });
     }
 
     public static Condition condSumGreaterThan(int v) {
-        return (slotIndex, g) -> {
+        return new ConditionInfo(ConditionInfo.Type.SUM_GREATER_THAN, v, 0, (slotIndex, g) -> {
             int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
             int s = sumWithModifiers(slotIndex, g);
             return s > (v + shift);
-        };
+        });
     }
 
     public static Condition condSumLessOrEqual(int v) {
-        return (slotIndex, g) -> {
+        return new ConditionInfo(ConditionInfo.Type.SUM_LESS_OR_EQUAL, v, 0, (slotIndex, g) -> {
             int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
             int s = sumWithModifiers(slotIndex, g);
             return s <= (v + shift);
-        };
+        });
     }
 
     public static Condition condSumLessThan(int value) {
-        return (slotIndex, g) -> {
+        return new ConditionInfo(ConditionInfo.Type.SUM_LESS_THAN, value, 0, (slotIndex, g) -> {
             int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
             int s = sumWithModifiers(slotIndex, g);
             return s < (value + shift);
-        };
+        });
     }
 
     public static Condition differenceAtLeast(int diff) {
-        return (slotIndex, state) -> {
+        return new ConditionInfo(ConditionInfo.Type.DIFFERENCE_AT_LEAST, diff, 0, (slotIndex, state) -> {
             int[] values = adjustedDiceValues(slotIndex, state);
             if (values.length != 2) return false;
             return Math.abs(values[0] - values[1]) >= diff;
-        };
+        });
     }
 
     public static boolean diceConsecutive(int slotIndex, GameState g) {
