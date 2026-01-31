@@ -2747,6 +2747,7 @@ public class GameState {
         // 1) Resolver captura/fallo ANTES de corrientes (para que slotIndex sea consistente)
         String coreResult;
         if (slot.getCard().getCondition().isSatisfied(slotIndex, this)) {
+            updateCaptureComboOnSuccess();
             String onCaptureLog = capture(slotIndex);
             coreResult = "¡Captura exitosa!" + onCaptureLog;
         } else if (slot.getStatus().protectedOnce) {
