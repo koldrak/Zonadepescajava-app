@@ -28,16 +28,23 @@ import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import com.daille.zonadepescajava_app.R;
+import com.daille.zonadepescajava_app.data.ScoreDatabaseHelper;
 import com.daille.zonadepescajava_app.model.Card;
+import com.daille.zonadepescajava_app.model.CardId;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import android.os.SystemClock;
 
 public final class CardPackOpenDialog {
+    private static final int CARD_SELL_MULTIPLIER = 6;
+    private static final int MIN_DECK_CARDS = 30;
+
     private CardPackOpenDialog() {
     }
 
@@ -76,6 +83,7 @@ public final class CardPackOpenDialog {
         int endY = dpToPx(context, -190);      // arriba de la pantalla
 
         final boolean[] completedAll = {false};
+        ScoreDatabaseHelper scoreDatabaseHelper = new ScoreDatabaseHelper(context);
         for (int i = 0; i < cards.size(); i++) {
             Card card = cards.get(i);
             Bitmap cardBitmap = resolver.getImageFor(card, true);
@@ -110,14 +118,24 @@ public final class CardPackOpenDialog {
                 stopTrailEmitter(cardView); // corta el emisor cuando entra al detalle
                 String overlay = context.getString(R.string.card_pack_reward_detail, cardFinal.getName());
                 Bitmap detailBitmap = cardBitmapFinal != null ? cardBitmapFinal : resolver.getCardBack();
-                CardFullscreenDialog.show(context, detailBitmap, overlay, () -> {
+                int ownedCopies = getOwnedCopies(scoreDatabaseHelper, cardFinal.getId());
+                int sellPrice = cardFinal.getPoints() * CARD_SELL_MULTIPLIER;
+                CardFullscreenDialog.showWithSellOption(
+                        context,
+                        detailBitmap,
+                        cardFinal,
+                        overlay,
+                        ownedCopies,
+                        sellPrice,
+                        () -> sellSingleCopy(context, scoreDatabaseHelper, cardFinal.getId(), sellPrice),
+                        () -> {
                     cardsContainer.removeView(cardView);
                     if (cardsContainer.getChildCount() <= 1) { // 1 = StarBurstView
 
                         completedAll[0] = true;
                         dialog.dismiss();
                     }
-                });
+                        });
             });
         }
 
@@ -230,6 +248,38 @@ public final class CardPackOpenDialog {
         }
         // Limpia el tag por si lo reutilizas
         cardView.setTag(null);
+    }
+
+    private static int getOwnedCopies(ScoreDatabaseHelper databaseHelper, CardId cardId) {
+        if (databaseHelper == null || cardId == null) {
+            return 0;
+        }
+        Map<CardId, Integer> counts = databaseHelper.getCardInventoryCounts();
+        Integer count = counts.get(cardId);
+        return count != null ? count : 0;
+    }
+
+    private static int sellSingleCopy(Context context, ScoreDatabaseHelper databaseHelper, CardId cardId, int sellPrice) {
+        if (databaseHelper == null || cardId == null) {
+            return -1;
+        }
+        Map<CardId, Integer> ownedCounts = databaseHelper.getCardInventoryCounts();
+        int totalOwned = 0;
+        for (Integer count : ownedCounts.values()) {
+            totalOwned += count == null ? 0 : count;
+        }
+        int currentCount = ownedCounts.getOrDefault(cardId, 0);
+        if (currentCount <= 0) {
+            return -1;
+        }
+        if (totalOwned - 1 < MIN_DECK_CARDS) {
+            Toast.makeText(context, context.getString(R.string.card_sell_minimum_warning), Toast.LENGTH_SHORT).show();
+            return -1;
+        }
+        databaseHelper.removeCardCopies(cardId, 1);
+        databaseHelper.addBonusPoints(sellPrice);
+        Toast.makeText(context, "Venta completada: +" + sellPrice + " puntos.", Toast.LENGTH_SHORT).show();
+        return currentCount - 1;
     }
 
     private static AnimatorSet playTearOpenAndReveal(

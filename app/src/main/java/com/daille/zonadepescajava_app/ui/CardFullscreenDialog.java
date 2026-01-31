@@ -12,6 +12,8 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.google.android.material.button.MaterialButton;
+
 import com.daille.zonadepescajava_app.R;
 import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardType;
@@ -19,22 +21,37 @@ import com.daille.zonadepescajava_app.model.Condition;
 import com.daille.zonadepescajava_app.model.ConditionInfo;
 
 public final class CardFullscreenDialog {
+    public interface SellAction {
+        int onSell();
+    }
+
     private CardFullscreenDialog() {
     }
 
     public static void show(Context context, Bitmap image) {
-        show(context, image, null, null, null);
+        show(context, image, null, null, null, null, null, null);
     }
 
     public static void show(Context context, Bitmap image, String overlayText, Runnable onDismiss) {
-        show(context, image, null, overlayText, onDismiss);
+        show(context, image, null, overlayText, onDismiss, null, null, null);
     }
 
     public static void show(Context context, Bitmap image, Card card) {
-        show(context, image, card, null, null);
+        show(context, image, card, null, null, null, null, null);
+    }
+
+    public static void showWithSellOption(Context context, Bitmap image, Card card, String overlayText,
+                                          int ownedCopies, int sellPrice, SellAction sellAction,
+                                          Runnable onDismiss) {
+        show(context, image, card, overlayText, onDismiss, ownedCopies, sellPrice, sellAction);
     }
 
     public static void show(Context context, Bitmap image, Card card, String overlayText, Runnable onDismiss) {
+        show(context, image, card, overlayText, onDismiss, null, null, null);
+    }
+
+    private static void show(Context context, Bitmap image, Card card, String overlayText, Runnable onDismiss,
+                             Integer ownedCopies, Integer sellPrice, SellAction sellAction) {
         if (image == null) {
             return;
         }
@@ -59,12 +76,20 @@ public final class CardFullscreenDialog {
 
         TextView topInfo = dialog.findViewById(R.id.fullscreenTopInfo);
         TextView bottomInfo = dialog.findViewById(R.id.fullscreenBottomInfo);
+        TextView copiesInfo = dialog.findViewById(R.id.fullscreenCopies);
+        MaterialButton sellButton = dialog.findViewById(R.id.fullscreenSellButton);
         if (card == null) {
             if (topInfo != null) {
                 topInfo.setVisibility(android.view.View.GONE);
             }
             if (bottomInfo != null) {
                 bottomInfo.setVisibility(android.view.View.GONE);
+            }
+            if (copiesInfo != null) {
+                copiesInfo.setVisibility(android.view.View.GONE);
+            }
+            if (sellButton != null) {
+                sellButton.setVisibility(android.view.View.GONE);
             }
         } else {
             if (topInfo != null) {
@@ -90,6 +115,39 @@ public final class CardFullscreenDialog {
                 bottomInfo.setText(bottomText);
                 bottomInfo.setVisibility(android.view.View.VISIBLE);
                 bottomInfo.setOnClickListener(v -> dialog.dismiss());
+            }
+        }
+
+        if (copiesInfo != null) {
+            if (ownedCopies != null) {
+                copiesInfo.setText(context.getString(R.string.card_detail_copies_format, ownedCopies));
+                copiesInfo.setVisibility(android.view.View.VISIBLE);
+                copiesInfo.setOnClickListener(v -> dialog.dismiss());
+            } else {
+                copiesInfo.setVisibility(android.view.View.GONE);
+            }
+        }
+
+        if (sellButton != null) {
+            if (sellAction != null && ownedCopies != null && sellPrice != null) {
+                sellButton.setText(context.getString(R.string.card_detail_sell_button_format, sellPrice));
+                sellButton.setVisibility(android.view.View.VISIBLE);
+                sellButton.setEnabled(ownedCopies > 0);
+                sellButton.setAlpha(ownedCopies > 0 ? 1f : 0.6f);
+                sellButton.setOnClickListener(v -> {
+                    int updatedCount = sellAction.onSell();
+                    if (updatedCount >= 0) {
+                        if (copiesInfo != null) {
+                            copiesInfo.setText(context.getString(
+                                    R.string.card_detail_copies_format, updatedCount));
+                        }
+                        boolean canSell = updatedCount > 0;
+                        sellButton.setEnabled(canSell);
+                        sellButton.setAlpha(canSell ? 1f : 0.6f);
+                    }
+                });
+            } else {
+                sellButton.setVisibility(android.view.View.GONE);
             }
         }
 
