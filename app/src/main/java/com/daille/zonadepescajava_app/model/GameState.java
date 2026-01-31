@@ -2264,6 +2264,9 @@ public class GameState {
         if (gameOver) {
             return "La partida ha terminado";
         }
+        if (!lastTurnCaptured) {
+            resetCaptureCombo();
+        }
         if (awaitingSepiaChoice) {
             return "Resuelve primero la captura de la Sepia.";
         }
