@@ -2721,6 +2721,8 @@ public class GameState {
     private void resetCaptureCombo() {
         captureComboMultiplier = 0;
         currentCaptureMultiplier = 1;
+        captureOccurredThisTurn = false;
+        lastTurnCaptured = false;
     }
 
     private void addCapture(Card card) {
