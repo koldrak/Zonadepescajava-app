@@ -2459,7 +2459,7 @@ public class GameState {
             }
         }
 
-        if (placedDie.getType() == DieType.D20 && placedValue == 20 && !slot.isFaceUp()) {
+        if (placedDie.getType() == DieType.D20 && placedValue == 20) {
             return startD20CriticalAdjustment(slotIndex);
         }
 
