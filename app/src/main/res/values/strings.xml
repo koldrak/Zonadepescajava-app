@@ -17,10 +17,10 @@
     <string name="card_condition_sum_less_than_format">Suma menor a %1$d</string>
     <string name="card_condition_difference_at_least_format">Diferencia mínima de %1$d</string>
     <string name="card_condition_special">Condición especial</string>
-    <string name="card_type_crustaceo">Crustáceo</string>
-    <string name="card_type_pez">Pez</string>
-    <string name="card_type_pez_grande">Pez grande</string>
-    <string name="card_type_objeto">Objeto</string>
+    <string name="card_type_orange">Carta naranja</string>
+    <string name="card_type_green">Carta verde</string>
+    <string name="card_type_celeste">Carta celeste</string>
+    <string name="card_type_black">Carta negra</string>
     <string name="collections_title">Colecciones</string>
     <string name="close">Cerrar</string>
     <string name="collection_capture_count">%1$d capturas</string>

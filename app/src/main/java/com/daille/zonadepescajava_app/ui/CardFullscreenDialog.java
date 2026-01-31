@@ -123,13 +123,13 @@ public final class CardFullscreenDialog {
         }
         switch (type) {
             case CRUSTACEO:
-                return context.getString(R.string.card_type_crustaceo);
+                return context.getString(R.string.card_type_orange);
             case PEZ:
-                return context.getString(R.string.card_type_pez);
+                return context.getString(R.string.card_type_celeste);
             case PEZ_GRANDE:
-                return context.getString(R.string.card_type_pez_grande);
+                return context.getString(R.string.card_type_green);
             case OBJETO:
-                return context.getString(R.string.card_type_objeto);
+                return context.getString(R.string.card_type_black);
             default:
                 return context.getString(R.string.card_detail_type_unknown);
         }
