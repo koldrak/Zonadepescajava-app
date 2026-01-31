@@ -2788,7 +2788,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (image == null) {
             image = cardImageResolver.getCardBack();
         }
-        CardFullscreenDialog.show(this, image);
+        CardFullscreenDialog.show(this, image, slot.getCard());
         if (activeTutorial == TutorialType.GAME_LOOP && tutorialStepIndex == 3) {
             advanceTutorialStep();
         }
@@ -3430,7 +3430,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                     if (fullImage == null) {
                         fullImage = cardImageResolver.getCardBack();
                     }
-                    CardFullscreenDialog.show(this, fullImage);
+                    CardFullscreenDialog.show(this, fullImage, card);
                     return true;
                 });
 
@@ -4141,7 +4141,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             if (fullImage == null) {
                 fullImage = cardImageResolver.getCardBack();
             }
-            CardFullscreenDialog.show(this, fullImage);
+            CardFullscreenDialog.show(this, fullImage, card);
             return true;
         });
 
@@ -4195,7 +4195,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             if (fullImage == null) {
                 fullImage = cardImageResolver.getCardBack();
             }
-            CardFullscreenDialog.show(this, fullImage);
+            CardFullscreenDialog.show(this, fullImage, card);
             return true;
         });
 
