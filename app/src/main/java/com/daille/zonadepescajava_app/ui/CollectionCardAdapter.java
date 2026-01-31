@@ -17,6 +17,7 @@ import com.daille.zonadepescajava_app.R;
 import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardId;
 import com.daille.zonadepescajava_app.model.GameUtils;
+import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -109,6 +110,14 @@ public class CollectionCardAdapter extends RecyclerView.Adapter<CollectionCardAd
             holder.cardImage.setColorFilter(null);
             holder.cardImage.setAlpha(1f);
         }
+
+        holder.itemView.setOnClickListener(v -> {
+            Bitmap fullImage = imageResolver.getImageFor(card, true);
+            if (fullImage == null) {
+                fullImage = imageResolver.getCardBack();
+            }
+            CardFullscreenDialog.show(holder.itemView.getContext(), fullImage);
+        });
     }
 
     @Override
