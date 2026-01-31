@@ -4,6 +4,10 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Bitmap;
+import android.graphics.Typeface;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.StyleSpan;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -65,9 +69,13 @@ public final class CardFullscreenDialog {
         } else {
             if (topInfo != null) {
                 String conditionText = formatCondition(context, card.getCondition());
-                String topText = context.getString(R.string.card_detail_name_format, card.getName())
-                        + "\n" + context.getString(R.string.card_detail_condition_format, conditionText)
-                        + "\n" + context.getString(R.string.card_detail_points_format, card.getPoints());
+                SpannableStringBuilder topText = new SpannableStringBuilder();
+                appendLabeledText(topText, context.getString(R.string.card_detail_name_label), card.getName());
+                topText.append("\n");
+                appendLabeledText(topText, context.getString(R.string.card_detail_condition_label), conditionText);
+                topText.append("\n");
+                appendLabeledText(topText, context.getString(R.string.card_detail_points_label),
+                        String.valueOf(card.getPoints()));
                 topInfo.setText(topText);
                 topInfo.setVisibility(android.view.View.VISIBLE);
                 topInfo.setOnClickListener(v -> dialog.dismiss());
@@ -75,8 +83,10 @@ public final class CardFullscreenDialog {
             if (bottomInfo != null) {
                 String abilityText = buildAbilityText(context, card);
                 String typeText = formatType(context, card.getType());
-                String bottomText = context.getString(R.string.card_detail_ability_format, abilityText)
-                        + "\n" + context.getString(R.string.card_detail_type_format, typeText);
+                SpannableStringBuilder bottomText = new SpannableStringBuilder();
+                appendLabeledText(bottomText, context.getString(R.string.card_detail_ability_label), abilityText);
+                bottomText.append("\n");
+                appendLabeledText(bottomText, context.getString(R.string.card_detail_type_label), typeText);
                 bottomInfo.setText(bottomText);
                 bottomInfo.setVisibility(android.view.View.VISIBLE);
                 bottomInfo.setOnClickListener(v -> dialog.dismiss());
@@ -148,5 +158,13 @@ public final class CardFullscreenDialog {
             }
         }
         return context.getString(R.string.card_condition_special);
+    }
+
+    private static void appendLabeledText(SpannableStringBuilder builder, String label, String value) {
+        int start = builder.length();
+        builder.append(label);
+        int end = builder.length();
+        builder.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        builder.append(" ").append(value);
     }
 }

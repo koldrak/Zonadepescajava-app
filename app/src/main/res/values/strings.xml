@@ -2,11 +2,11 @@
     <string name="app_name">PezCard</string>
     <string name="description">Emulación móvil de Zona de Pesca: lanza dados desde la reserva, tócalos sobre las cartas para intentar la captura y usa pulsación prolongada para voltear cartas boca arriba o abajo.</string>
     <string name="card_image_content_description">Imagen de la carta</string>
-    <string name="card_detail_name_format">Nombre: %1$s</string>
-    <string name="card_detail_condition_format">Condición de captura: %1$s</string>
-    <string name="card_detail_points_format">Puntaje: %1$d</string>
-    <string name="card_detail_ability_format">Habilidad: %1$s</string>
-    <string name="card_detail_type_format">Tipo de carta: %1$s</string>
+    <string name="card_detail_name_label">Nombre:</string>
+    <string name="card_detail_condition_label">Condición de captura:</string>
+    <string name="card_detail_points_label">Puntaje:</string>
+    <string name="card_detail_ability_label">Habilidad:</string>
+    <string name="card_detail_type_label">Tipo de carta:</string>
     <string name="card_detail_ability_default">Habilidad especial lista para activarse.</string>
     <string name="card_detail_type_unknown">Tipo desconocido</string>
     <string name="card_condition_sum_range_format">Suma entre %1$d y %2$d</string>

@@ -9,11 +9,11 @@
         android:id="@+id/fullscreenTopInfo"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center"
+        android:gravity="end"
         android:padding="16dp"
+        android:textAlignment="viewEnd"
         android:textColor="@android:color/white"
         android:textSize="18sp"
-        android:textStyle="bold"
         android:visibility="gone" />
 
     <FrameLayout
@@ -45,8 +45,9 @@
         android:id="@+id/fullscreenBottomInfo"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center"
+        android:gravity="end"
         android:padding="16dp"
+        android:textAlignment="viewEnd"
         android:textColor="@android:color/white"
         android:textSize="16sp"
         android:visibility="gone" />
