@@ -2709,13 +2709,20 @@ public class GameState {
     }
 
     private void updateCaptureComboOnSuccess() {
-        captureComboMultiplier = captureComboMultiplier == 0 ? 1 : captureComboMultiplier + 1;
-        currentCaptureMultiplier = captureComboMultiplier;
+        if (captureComboMultiplier == 0) {
+            currentCaptureMultiplier = 1;
+            captureComboMultiplier = 2;
+        } else {
+            currentCaptureMultiplier = captureComboMultiplier;
+            captureComboMultiplier += 1;
+        }
     }
 
     private void resetCaptureCombo() {
         captureComboMultiplier = 0;
         currentCaptureMultiplier = 1;
+        captureOccurredThisTurn = false;
+        lastTurnCaptured = false;
     }
 
     private void addCapture(Card card) {
@@ -2747,7 +2754,6 @@ public class GameState {
         // 1) Resolver captura/fallo ANTES de corrientes (para que slotIndex sea consistente)
         String coreResult;
         if (slot.getCard().getCondition().isSatisfied(slotIndex, this)) {
-            updateCaptureComboOnSuccess();
             String onCaptureLog = capture(slotIndex);
             coreResult = "¡Captura exitosa!" + onCaptureLog;
         } else if (slot.getStatus().protectedOnce) {
