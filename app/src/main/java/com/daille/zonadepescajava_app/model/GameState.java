@@ -2254,6 +2254,7 @@ public class GameState {
         if (!endTurn.isEmpty()) {
             msg = msg.isEmpty() ? endTurn : msg + " " + endTurn;
         }
+        resetCaptureCombo();
         return msg;
 
     }
