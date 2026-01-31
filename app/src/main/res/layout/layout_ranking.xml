@@ -30,12 +30,19 @@
                 android:text="@string/ranking_title"
                 style="@style/App.Text.Title.Ocean" />
 
-            <com.google.android.material.button.MaterialButton
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/rankingBack"
-                style="@style/App.Button.Watercolor"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/back" />
+                android:layout_width="150dp"
+                android:layout_height="60dp"
+                android:layout_marginTop="0dp"
+                android:background="@drawable/botonvolver"
+                android:gravity="center_vertical"
+                android:padding="10dp"
+                android:text="    Volver"
+                android:textAllCaps="false"
+                android:textColor="@android:color/black"
+                android:textSize="18sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <ListView

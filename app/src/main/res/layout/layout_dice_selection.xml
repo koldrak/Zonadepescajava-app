@@ -7,6 +7,12 @@
     android:padding="24dp"
     android:background="@drawable/menu_background_dice_selection"
     tools:context=".MainActivity">
+    <ScrollView
+        android:id="@+id/dadosScroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingTop="24dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -28,7 +34,7 @@
     <FrameLayout
         android:id="@+id/diceSelectionZone"
         android:layout_width="match_parent"
-        android:layout_height="150dp"
+        android:layout_height="180dp"
         android:layout_marginBottom="12dp"
         android:background="@drawable/dice_selection_zone_background"
         android:padding="12dp">
@@ -68,55 +74,68 @@
         android:text="@string/dice_selection_counter_placeholder"
         android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
 
-    <FrameLayout
-        android:id="@+id/diceWarehouseZone"
-        android:layout_width="match_parent"
-        android:layout_height="290dp"
-        android:layout_marginBottom="20dp"
-        android:background="@drawable/dice_warehouse_zone_background"
-        android:padding="12dp">
-
-        <ScrollView
-            android:id="@+id/diceWarehouseScroll"
+        <FrameLayout
+            android:id="@+id/diceWarehouseZone"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:paddingTop="24dp"
-            android:clipToPadding="false">
+            android:layout_height="180dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/dice_warehouse_zone_background"
+            android:padding="12dp">
 
-            <GridLayout
-                android:id="@+id/diceWarehouseGrid"
+            <ScrollView
+                android:id="@+id/diceWarehouseScroll"
                 android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingTop="24dp">
+
+                <GridLayout
+                    android:id="@+id/diceWarehouseGrid"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:columnCount="4" />
+            </ScrollView>
+
+            <TextView
+                android:id="@+id/diceWarehouseLabel"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:columnCount="4" />
-        </ScrollView>
+                android:layout_gravity="start|top"
+                android:layout_margin="8dp"
+                android:background="@drawable/dice_zone_label_background"
+                android:text="@string/dice_warehouse_zone_label"
+                android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+                android:textColor="@color/marine_deep" />
+        </FrameLayout>
 
-        <TextView
-            android:id="@+id/diceWarehouseLabel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="start|top"
-            android:layout_margin="8dp"
-            android:background="@drawable/dice_zone_label_background"
-            android:text="@string/dice_warehouse_zone_label"
-            android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
-            android:textColor="@color/marine_deep" />
-    </FrameLayout>
-
-    <com.google.android.material.button.MaterialButton
+        <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/openDeckSelection"
-        style="@style/App.Button.Glass"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        android:text="@string/deck_selection_button" />
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:layout_marginTop="1dp"
+            android:background="@drawable/botoncrearmazo"
+            android:text="              Crear mazo"
+            android:textAllCaps="false"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:textColor="@android:color/black"
+            android:gravity= "fill_vertical"
+            android:padding="0dp"/>
 
-    <com.google.android.material.button.MaterialButton
+        <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/confirmDiceSelection"
-        style="@style/App.Button.Watercolor"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Iniciar partida" />
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:layout_marginTop="1dp"
+            android:background="@drawable/botonnuevojuego"
+            android:text="            Iniciar Partida"
+            android:textAllCaps="false"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:textColor="@android:color/black"
+            android:gravity="fill_vertical"
+            android:padding="0dp"/>
 
     </LinearLayout>
-
+    </ScrollView>
 </LinearLayout>
