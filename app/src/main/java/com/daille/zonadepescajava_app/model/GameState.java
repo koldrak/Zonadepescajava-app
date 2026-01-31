@@ -21,6 +21,8 @@ public class GameState {
     private final List<Card> failedDiscards = new ArrayList<>();
     private int captureComboMultiplier = 0;
     private int currentCaptureMultiplier = 1;
+    private boolean captureOccurredThisTurn = false;
+    private boolean lastTurnCaptured = false;
     private Die selectedDie;
     private boolean lastDiePlaced = false;
     private boolean gameOver = false;
@@ -279,6 +281,8 @@ public class GameState {
         reserve.clear();
         captureComboMultiplier = 0;
         currentCaptureMultiplier = 1;
+        captureOccurredThisTurn = false;
+        lastTurnCaptured = false;
         selectedDie = null;
         gameOver = false;
         pendingDieLossSlot = null;
@@ -438,6 +442,11 @@ public class GameState {
 
     public int getCaptureComboMultiplier() {
         return captureComboMultiplier;
+    }
+
+    public int getCaptureMultiplierFor(Card card) {
+        if (card == null) return 1;
+        return captureMultipliers.getOrDefault(card, 1);
     }
 
     public int getDeckSize() {
@@ -2485,6 +2494,11 @@ public class GameState {
             selectedDie = null;
             return "Una carta no puede tener más de 2 dados.";
         }
+        if (!lastTurnCaptured) {
+            resetCaptureCombo();
+        }
+        captureOccurredThisTurn = false;
+        lastTurnCaptured = false;
         Die placedDie = selectedDie;
         slot.addDie(placedDie);
         lastDiePlaced = true;
@@ -2511,7 +2525,9 @@ public class GameState {
 
         String cocoLoss = applyCoconutCrabLoss(slotIndex, placedValue);
         String baseLog = cocoLoss.isEmpty() ? "" : cocoLoss;
-        return resolvePlacementAfterValue(slotIndex, placedValue, baseLog);
+        String outcome = resolvePlacementAfterValue(slotIndex, placedValue, baseLog);
+        lastTurnCaptured = captureOccurredThisTurn;
+        return outcome;
     }
 
     public boolean consumeLastDiePlaced() {
@@ -2574,9 +2590,13 @@ public class GameState {
             if (!corrientes.isEmpty()) {
                 msg += " " + corrientes;
             }
-            return checkDefeatOrContinue(msg);
+            String outcome = checkDefeatOrContinue(msg);
+            lastTurnCaptured = captureOccurredThisTurn;
+            return outcome;
         }
-        return resolveFishingOutcome(slotIndex, placedValue, "", true);
+        String outcome = resolveFishingOutcome(slotIndex, placedValue, "", true);
+        lastTurnCaptured = captureOccurredThisTurn;
+        return outcome;
     }
 
     private String addDieToSlot(int slotIndex, Die die) {
@@ -2700,6 +2720,11 @@ public class GameState {
 
     private void addCapture(Card card) {
         if (card == null) return;
+        if (!captureOccurredThisTurn) {
+            updateCaptureComboOnSuccess();
+        }
+        captureOccurredThisTurn = true;
+        lastTurnCaptured = true;
         captures.add(card);
         captureMultipliers.put(card, currentCaptureMultiplier);
     }

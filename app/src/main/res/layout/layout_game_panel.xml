@@ -300,6 +300,8 @@
                 android:id="@+id/actionBar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingHorizontal="8dp"
@@ -314,14 +316,19 @@
                     tools:text="Dado preparado: D4=3" />
 
                 <FrameLayout
-                    android:layout_width="72dp"
-                    android:layout_height="72dp">
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
+                    android:minWidth="72dp"
+                    android:minHeight="72dp">
 
                     <ImageView
                         android:id="@+id/selectedDieImage"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
+                        android:layout_width="72dp"
+                        android:layout_height="72dp"
                         android:contentDescription="@string/description"
+                        android:layout_gravity="center"
                         android:padding="8dp"
                         android:visibility="gone"
                         tools:src="@drawable/ic_launcher_foreground"
