@@ -2536,6 +2536,9 @@ public class GameState {
         if (!bottleLog.isEmpty()) {
             extraLog.append(" ").append(bottleLog);
         }
+        if (awaitingValueAdjustment) {
+            return checkDefeatOrContinue(extraLog.toString().trim());
+        }
 
         if (slot.getDice().size() < 2) {
             String msg = "Necesitas otro dado para intentar la pesca.";
@@ -2547,6 +2550,22 @@ public class GameState {
         }
 
         return resolveFishingOutcome(slotIndex, placedValue, extraLog.toString(), true);
+    }
+
+    private String resolvePlacementAfterAdjustment(int slotIndex, int placedValue) {
+        if (slotIndex < 0 || slotIndex >= board.length) {
+            return "";
+        }
+        BoardSlot slot = board[slotIndex];
+        if (slot.getDice().size() < 2) {
+            String msg = "Necesitas otro dado para intentar la pesca.";
+            String corrientes = buildCurrentsLog(placedValue);
+            if (!corrientes.isEmpty()) {
+                msg += " " + corrientes;
+            }
+            return checkDefeatOrContinue(msg);
+        }
+        return resolveFishingOutcome(slotIndex, placedValue, "", true);
     }
 
     private String addDieToSlot(int slotIndex, Die die) {
@@ -6139,7 +6158,11 @@ public class GameState {
             actor = "Jaiba azul";
         }
         boolean fromNautilus = adjustmentSource == CardId.NAUTILUS;
+        boolean fromLamprea = adjustmentSource == CardId.LAMPREA;
         String result = actor + " ajustó el dado a " + newVal + ".";
+        String placementResult = fromLamprea
+                ? resolvePlacementAfterAdjustment(adjustmentSlotIndex, newVal)
+                : "";
 
         awaitingValueAdjustment = false;
 
@@ -6188,6 +6211,9 @@ public class GameState {
 
 // ✅ Reanudar cadena de revelaciones
         String msg = result;
+        if (!placementResult.isEmpty()) {
+            msg = msg.isEmpty() ? placementResult : msg + " " + placementResult;
+        }
         String revealLog = continueRevealChain("");
         if (!revealLog.isEmpty()) {
             msg = msg.isEmpty() ? revealLog : msg + " " + revealLog;
