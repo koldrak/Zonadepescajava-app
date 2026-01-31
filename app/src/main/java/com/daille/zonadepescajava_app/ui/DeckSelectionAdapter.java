@@ -186,7 +186,7 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
             if (fullImage == null) {
                 fullImage = imageResolver.getCardBack();
             }
-            CardFullscreenDialog.show(holder.itemView.getContext(), fullImage);
+            CardFullscreenDialog.show(holder.itemView.getContext(), fullImage, card);
             return true;
         });
     }
