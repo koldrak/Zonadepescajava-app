@@ -1,56 +1,89 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/fondoseleccion">
 
+    <!-- BARRA SUPERIOR -->
+    <TextView
+        android:id="@+id/fullscreenTopInfo"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/card_detail_info_background"
+        android:elevation="8dp"
+        android:gravity="start"
+        android:lineSpacingExtra="2dp"
+        android:padding="14dp"
+        android:textAlignment="viewStart"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- IMAGEN (CARTA) ENTRE AMBAS BARRAS -->
     <ImageView
         android:id="@+id/fullscreenImage"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="12dp"
         android:adjustViewBounds="true"
         android:contentDescription="@string/card_image_content_description"
-        android:scaleType="fitCenter" />
+        android:scaleType="fitCenter"
+        app:layout_constraintBottom_toTopOf="@+id/bottomInfoContainer"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/fullscreenTopInfo" />
 
+    <!-- OVERLAY CENTRAL (por si lo usas) -->
     <TextView
         android:id="@+id/fullscreenOverlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:gravity="center"
         android:padding="24dp"
         android:textColor="@android:color/white"
         android:textSize="32sp"
         android:textStyle="bold"
-        android:visibility="gone" />
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@+id/fullscreenImage"
+        app:layout_constraintEnd_toEndOf="@+id/fullscreenImage"
+        app:layout_constraintStart_toStartOf="@+id/fullscreenImage"
+        app:layout_constraintTop_toTopOf="@+id/fullscreenImage" />
 
-    <TextView
-        android:id="@+id/fullscreenTopInfo"
-        android:layout_width="match_parent"
+    <!-- CONTENEDOR BARRA INFERIOR (permite limitar altura y eventualmente scroll) -->
+    <FrameLayout
+        android:id="@+id/bottomInfoContainer"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_gravity="top"
-        android:layout_margin="16dp"
-        android:background="@drawable/card_detail_info_background"
-        android:gravity="start"
-        android:lineSpacingExtra="2dp"
-        android:padding="16dp"
-        android:textAlignment="viewStart"
-        android:textColor="@android:color/white"
-        android:textSize="16sp"
-        android:visibility="gone" />
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:elevation="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
-    <TextView
-        android:id="@+id/fullscreenBottomInfo"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:layout_margin="16dp"
-        android:background="@drawable/card_detail_info_background"
-        android:gravity="start"
-        android:lineSpacingExtra="2dp"
-        android:padding="16dp"
-        android:textAlignment="viewStart"
-        android:textColor="@android:color/white"
-        android:textSize="15sp"
-        android:visibility="gone" />
+        <TextView
+            android:id="@+id/fullscreenBottomInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/card_detail_info_background"
+            android:gravity="start"
+            android:lineSpacingExtra="2dp"
+            android:padding="14dp"
+            android:textAlignment="viewStart"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:visibility="gone" />
+    </FrameLayout>
 
-</FrameLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
