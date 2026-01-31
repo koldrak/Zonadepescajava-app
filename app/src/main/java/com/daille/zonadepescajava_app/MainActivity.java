@@ -3485,7 +3485,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         });
     }
 
-
     private void runCaptureAnimationQueue(List<CaptureAnimationRequest> queue, Runnable onComplete) {
         if (queue == null || queue.isEmpty()) {
             if (onComplete != null) {
