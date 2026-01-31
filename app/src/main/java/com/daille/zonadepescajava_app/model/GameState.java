@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -14,9 +15,14 @@ public class GameState {
     private final BoardSlot[] board = new BoardSlot[9];
     private final Deque<Card> deck = new ArrayDeque<>();
     private final List<Card> captures = new ArrayList<>();
+    private final Map<Card, Integer> captureMultipliers = new IdentityHashMap<>();
     private final List<Die> lostDice = new ArrayList<>();
     private final List<DieType> reserve = new ArrayList<>();
     private final List<Card> failedDiscards = new ArrayList<>();
+    private int captureComboMultiplier = 0;
+    private int currentCaptureMultiplier = 1;
+    private boolean captureOccurredThisTurn = false;
+    private boolean lastTurnCaptured = false;
     private Die selectedDie;
     private boolean lastDiePlaced = false;
     private boolean gameOver = false;
@@ -268,10 +274,15 @@ public class GameState {
 
     public void newGame(List<DieType> startingReserve, Map<CardId, Integer> captureCounts, List<Card> selectedDeck) {
         captures.clear();
+        captureMultipliers.clear();
         lostDice.clear();
         failedDiscards.clear();
         deck.clear();
         reserve.clear();
+        captureComboMultiplier = 0;
+        currentCaptureMultiplier = 1;
+        captureOccurredThisTurn = false;
+        lastTurnCaptured = false;
         selectedDie = null;
         gameOver = false;
         pendingDieLossSlot = null;
@@ -427,6 +438,15 @@ public class GameState {
 
     public List<Card> getCaptures() {
         return captures;
+    }
+
+    public int getCaptureComboMultiplier() {
+        return captureComboMultiplier;
+    }
+
+    public int getCaptureMultiplierFor(Card card) {
+        if (card == null) return 1;
+        return captureMultipliers.getOrDefault(card, 1);
     }
 
     public int getDeckSize() {
@@ -1600,7 +1620,7 @@ public class GameState {
         slot.setStatus(new SlotStatus()); // resetea estados del slot
 
         // 4) Sacarla de capturas (pierdes su puntaje automáticamente porque score se calcula desde captures)
-        captures.remove(pendingReleaseCard);
+        removeCapture(pendingReleaseCard);
 
         String name = pendingReleaseCard.getName();
         if (pendingManualRelease) {
@@ -1792,7 +1812,7 @@ public class GameState {
             return "Debes elegir una carta descartada válida.";
         }
         Card chosen = failedDiscards.remove(index);
-        captures.add(chosen);
+        addCapture(chosen);
         awaitingViolinistChoice = false;
         return "Cangrejo violinista capturó directamente " + chosen.getName() + ".";
     }
@@ -2474,6 +2494,11 @@ public class GameState {
             selectedDie = null;
             return "Una carta no puede tener más de 2 dados.";
         }
+        if (!lastTurnCaptured) {
+            resetCaptureCombo();
+        }
+        captureOccurredThisTurn = false;
+        lastTurnCaptured = false;
         Die placedDie = selectedDie;
         slot.addDie(placedDie);
         lastDiePlaced = true;
@@ -2500,7 +2525,9 @@ public class GameState {
 
         String cocoLoss = applyCoconutCrabLoss(slotIndex, placedValue);
         String baseLog = cocoLoss.isEmpty() ? "" : cocoLoss;
-        return resolvePlacementAfterValue(slotIndex, placedValue, baseLog);
+        String outcome = resolvePlacementAfterValue(slotIndex, placedValue, baseLog);
+        lastTurnCaptured = captureOccurredThisTurn;
+        return outcome;
     }
 
     public boolean consumeLastDiePlaced() {
@@ -2563,9 +2590,13 @@ public class GameState {
             if (!corrientes.isEmpty()) {
                 msg += " " + corrientes;
             }
-            return checkDefeatOrContinue(msg);
+            String outcome = checkDefeatOrContinue(msg);
+            lastTurnCaptured = captureOccurredThisTurn;
+            return outcome;
         }
-        return resolveFishingOutcome(slotIndex, placedValue, "", true);
+        String outcome = resolveFishingOutcome(slotIndex, placedValue, "", true);
+        lastTurnCaptured = captureOccurredThisTurn;
+        return outcome;
     }
 
     private String addDieToSlot(int slotIndex, Die die) {
@@ -2677,6 +2708,33 @@ public class GameState {
                 : "Camarón pistola reposicionó un dado. " + reveal;
     }
 
+    private void updateCaptureComboOnSuccess() {
+        captureComboMultiplier = captureComboMultiplier == 0 ? 1 : captureComboMultiplier + 1;
+        currentCaptureMultiplier = captureComboMultiplier;
+    }
+
+    private void resetCaptureCombo() {
+        captureComboMultiplier = 0;
+        currentCaptureMultiplier = 1;
+    }
+
+    private void addCapture(Card card) {
+        if (card == null) return;
+        if (!captureOccurredThisTurn) {
+            updateCaptureComboOnSuccess();
+        }
+        captureOccurredThisTurn = true;
+        lastTurnCaptured = true;
+        captures.add(card);
+        captureMultipliers.put(card, currentCaptureMultiplier);
+    }
+
+    private void removeCapture(Card card) {
+        if (card == null) return;
+        captures.remove(card);
+        captureMultipliers.remove(card);
+    }
+
     private String resolveFishingOutcome(int slotIndex, int triggerValue, String extraLog, boolean applyCurrents) {
         BoardSlot slot = board[slotIndex];
 
@@ -2692,13 +2750,17 @@ public class GameState {
             String onCaptureLog = capture(slotIndex);
             coreResult = "¡Captura exitosa!" + onCaptureLog;
         } else if (slot.getStatus().protectedOnce) {
+            resetCaptureCombo();
             coreResult = handleProtectedFailure(slotIndex);
         } else if (isDelfinProtectionActive(slotIndex)) {
+            resetCaptureCombo();
             coreResult = handleDelfinProtection(slotIndex);
         } else if (isHookActive()) {
+            resetCaptureCombo();
             markHookPenaltyUsed();
             coreResult = handleFailedCatchImmediate(slotIndex, true);
         } else {
+            resetCaptureCombo();
             pendingDieLossSlot = slotIndex;
             pendingLossTriggerValue = triggerValue;
             coreResult = "La pesca falló. Elige qué dado perder.";
@@ -2762,11 +2824,11 @@ public class GameState {
         if (slot == null) return;
         Card card = slot.getCard();
         if (card == null) return;
-        captures.add(card);
+        addCapture(card);
         if (card.getId() == CardId.CANGREJO_ERMITANO) {
             Card underCard = slot.getUnderCard();
             if (underCard != null) {
-                captures.add(underCard);
+                addCapture(underCard);
                 slot.setUnderCard(null);
             }
         }
@@ -2807,7 +2869,8 @@ public class GameState {
         int krillCount = 0, sardinaCount = 0, tiburonMartilloCount = 0, limpiadorCount = 0, tiburonBallenaCount = 0;
         int copepodoCount = 0, congrioCount = 0, fosaAbisalCount = 0;
         for (Card c : captures) {
-            sum += c.getPoints();
+            int multiplier = captureMultipliers.getOrDefault(c, 1);
+            sum += c.getPoints() * multiplier;
             switch (c.getType()) {
                 case CRUSTACEO: crustaceos++; break;
                 case PEZ: peces++; break;
@@ -4988,7 +5051,7 @@ public class GameState {
             return "Sepia: selección inválida.";
         }
         Card chosen = pendingSepiaOptions.remove(index);
-        captures.add(chosen);
+        addCapture(chosen);
         for (Card c : pendingSepiaOptions) {
             deck.addLast(c);
         }
@@ -5065,7 +5128,7 @@ public class GameState {
         for (int idx : unique) {
             Card chosen = pendingLeonMarinoGreen.get(idx);
             selected.add(chosen);
-            captures.add(chosen);
+            addCapture(chosen);
         }
         if (!selected.isEmpty()) {
             pendingLeonMarinoTop.removeAll(selected);
@@ -7939,7 +8002,7 @@ public class GameState {
         if (slot.getStatus().attachedRemoras.isEmpty()) return "";
         int count = 0;
         for (Card c : slot.getStatus().attachedRemoras) {
-            captures.add(c);
+            addCapture(c);
             count++;
         }
         slot.getStatus().attachedRemoras.clear();
@@ -8097,7 +8160,7 @@ public class GameState {
                 highest = c;
             }
         }
-        captures.remove(highest);
+        removeCapture(highest);
     }
     private void clearTransientVisualMarks() {
         for (BoardSlot s : board) {

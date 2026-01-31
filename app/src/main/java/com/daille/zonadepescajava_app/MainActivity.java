@@ -7,6 +7,7 @@ import android.animation.ObjectAnimator;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.media.SoundPool;
@@ -2275,6 +2276,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 : "Dado preparado: " + gameState.getSelectedDie().getLabel());
 
         updateSelectedDiePreview();
+        updateCaptureComboLabel();
         renderDiceCollection(binding.gamePanel.reserveDiceContainer, gameState.getReserve(), true);
         renderDiceCollection(binding.gamePanel.lostDiceContainer, gameState.getLostDice(), false);
 
@@ -2801,6 +2803,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         if (preview == null) {
             binding.gamePanel.selectedDieImage.setVisibility(View.GONE);
+            updateCaptureComboLabel();
             return;
         }
 
@@ -2810,6 +2813,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             binding.gamePanel.selectedDieImage.setImageBitmap(face);
         } else {
             binding.gamePanel.selectedDieImage.setVisibility(View.GONE);
+        }
+        updateCaptureComboLabel();
+    }
+
+    private void updateCaptureComboLabel() {
+        int multiplier = gameState.getCaptureComboMultiplier();
+        boolean shouldShow = multiplier > 1 && binding.gamePanel.selectedDieImage.getVisibility() == View.VISIBLE;
+        if (shouldShow) {
+            binding.gamePanel.captureComboLabel.setText("Captura x" + multiplier);
+            binding.gamePanel.captureComboLabel.setVisibility(View.VISIBLE);
+        } else {
+            binding.gamePanel.captureComboLabel.setVisibility(View.GONE);
         }
     }
 
@@ -3383,15 +3398,23 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 Bitmap image = cardImageResolver.getImageFor(card, true);
                 if (image == null) image = cardImageResolver.getCardBack();
 
-                ImageView cardView = new ImageView(this);
+                FrameLayout cardWrapper = new FrameLayout(this);
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(cardWidth, cardHeight);
                 if (index == 0) {
                     params.setMargins(margin, 0, margin, 0);
                 } else {
                     params.setMargins(-overlap + margin, 0, margin, 0);
                 }
-                cardView.setLayoutParams(params);
+                cardWrapper.setLayoutParams(params);
+                cardWrapper.setClipChildren(false);
+                cardWrapper.setClipToPadding(false);
 
+                ImageView cardView = new ImageView(this);
+                FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                );
+                cardView.setLayoutParams(imageParams);
                 // Elige cómo se ajusta la imagen dentro del rectángulo:
                 // - CENTER_CROP: llena y puede recortar un poco
                 // - FIT_CENTER: se ve completa (recomendado si no quieres recortes)
@@ -3401,7 +3424,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 cardView.setContentDescription(card != null ? card.getName() : getString(R.string.card_image_content_description));
 
                 // ✅ CLICK NORMAL = LIBERAR PEZ
-                cardView.setOnClickListener(v -> {
+                cardWrapper.setOnClickListener(v -> {
                     // Si hay revelaciones/prompt activos, mejor bloquear para no romper flujos.
                     if (isRevealingCard) {
                         Toast.makeText(this, "Toca la carta para continuar.", Toast.LENGTH_SHORT).show();
@@ -3425,7 +3448,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 });
 
                 // 👇 CLICK LARGO = CARTA EN GRANDE
-                cardView.setOnLongClickListener(v -> {
+                cardWrapper.setOnLongClickListener(v -> {
                     Bitmap fullImage = cardImageResolver.getImageFor(card, true);
                     if (fullImage == null) {
                         fullImage = cardImageResolver.getCardBack();
@@ -3434,7 +3457,29 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                     return true;
                 });
 
-                container.addView(cardView);
+                TextView captureBonusLabel = new TextView(this);
+                FrameLayout.LayoutParams bonusParams = new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        Gravity.CENTER
+                );
+                captureBonusLabel.setLayoutParams(bonusParams);
+                captureBonusLabel.setRotation(-18f);
+                captureBonusLabel.setTextColor(0xFFFFD54F);
+                captureBonusLabel.setTextSize(14f);
+                captureBonusLabel.setTypeface(captureBonusLabel.getTypeface(), android.graphics.Typeface.BOLD);
+                captureBonusLabel.setShadowLayer(2f, 1f, 1f, Color.BLACK);
+                int multiplier = gameState.getCaptureMultiplierFor(card);
+                if (multiplier > 1) {
+                    captureBonusLabel.setText("Captura x" + multiplier);
+                    captureBonusLabel.setVisibility(View.VISIBLE);
+                } else {
+                    captureBonusLabel.setVisibility(View.GONE);
+                }
+
+                cardWrapper.addView(cardView);
+                cardWrapper.addView(captureBonusLabel);
+                container.addView(cardWrapper);
                 index++;
             }
         });
