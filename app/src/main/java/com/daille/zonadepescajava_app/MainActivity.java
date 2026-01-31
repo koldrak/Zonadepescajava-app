@@ -3412,7 +3412,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                             .setTitle("Liberar pez")
                             .setMessage("¿Quieres liberar este pez?")
                             .setPositiveButton("Sí", (dialogInterface, which) -> {
-                                String msg = gameState.startReleaseFromCapture(card);
+                                String msg = gameState.startManualReleaseFromCapture(card);
                                 handleGameResult(msg); // refresca UI + toast + prompts
                                 if (activeTutorial == TutorialType.CARD_RELEASE && tutorialStepIndex == 0) {
                                     advanceTutorialStep();

@@ -119,6 +119,8 @@ public class GameState {
     private final java.util.Map<Integer, Integer> bottleTargets = new java.util.HashMap<>();
     private final java.util.Map<Integer, Integer> glassBottleTargets = new java.util.HashMap<>();
     private Card pendingReleaseCard = null;
+    private boolean pendingManualRelease = false;
+    private boolean manualReleaseUsedThisTurn = false;
     private int pendingPezBorronSlot = -1;
     private int pendingSepiaSlot = -1;
     private boolean pendingFletanActive = false;
@@ -380,6 +382,8 @@ public class GameState {
         processingRevealChain = false;
         bottleTargets.clear();
         glassBottleTargets.clear();
+        pendingManualRelease = false;
+        manualReleaseUsedThisTurn = false;
 
         if (startingReserve == null || startingReserve.isEmpty()) {
             for (int i = 0; i < 6; i++) {
@@ -401,6 +405,19 @@ public class GameState {
             slot.setFaceUp(false);
             slot.clearDice();
             slot.setStatus(new SlotStatus());
+        }
+
+        List<Integer> startingSlots = new ArrayList<>();
+        for (int i = 0; i < board.length; i++) {
+            startingSlots.add(i);
+        }
+        Collections.shuffle(startingSlots, rng);
+        int revealCount = Math.min(3, startingSlots.size());
+        for (int i = 0; i < revealCount; i++) {
+            int slotIndex = startingSlots.get(i);
+            if (board[slotIndex].getCard() != null) {
+                board[slotIndex].setFaceUp(true);
+            }
         }
     }
 
@@ -574,6 +591,19 @@ public class GameState {
     }
 
     public String startReleaseFromCapture(Card capturedCard) {
+        pendingManualRelease = false;
+        return startReleaseFromCaptureInternal(capturedCard);
+    }
+
+    public String startManualReleaseFromCapture(Card capturedCard) {
+        if (manualReleaseUsedThisTurn) {
+            return "Solo puedes liberar una carta por turno.";
+        }
+        pendingManualRelease = true;
+        return startReleaseFromCaptureInternal(capturedCard);
+    }
+
+    private String startReleaseFromCaptureInternal(Card capturedCard) {
         if (hasPendingTurnResolutions() || selectedDie != null) {
             return "No puedes liberar ahora: termina primero las resoluciones pendientes.";
         }
@@ -1573,6 +1603,9 @@ public class GameState {
         captures.remove(pendingReleaseCard);
 
         String name = pendingReleaseCard.getName();
+        if (pendingManualRelease) {
+            manualReleaseUsedThisTurn = true;
+        }
         clearReleaseState();
 
         // Recalcula cualquier ajuste dependiente del tablero (tú ya lo haces en otras acciones)
@@ -1590,6 +1623,7 @@ public class GameState {
 
     private void clearReleaseState() {
         pendingReleaseCard = null;
+        pendingManualRelease = false;
         pendingSelection = PendingSelection.NONE;
         pendingSelectionActor = -1;
         pendingSelectionAux = -1;
@@ -2443,6 +2477,7 @@ public class GameState {
         Die placedDie = selectedDie;
         slot.addDie(placedDie);
         lastDiePlaced = true;
+        manualReleaseUsedThisTurn = false;
         int placedValue = placedDie.getValue();
         selectedDie = null;
         if (forcedSlotIndex != null && slotIndex == forcedSlotIndex) {
