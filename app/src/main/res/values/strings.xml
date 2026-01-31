@@ -116,7 +116,7 @@
     <string name="buy">Comprar</string>
     <string name="back">Volver</string>
     <string name="dice_selection_instruction">Toca los dados que usarás (máx. 6) para moverlos a la zona de selección</string>
-    <string name="dice_selection_instruction_format">Toca los dados que usarás (máx. %1$d) para moverlos a la zona de selección</string>
+    <string name="dice_selection_instruction_format">Toca los dados que usarás </string>
     <string name="dice_selection_counter_placeholder">Dados seleccionados: 0 (máx. 6)</string>
     <string name="dice_selection_counter_format">Dados seleccionados: %1$d (máx. %2$d)</string>
     <string name="dice_selection_limit_warning">La zona de selección solo admite %1$d dados.</string>
