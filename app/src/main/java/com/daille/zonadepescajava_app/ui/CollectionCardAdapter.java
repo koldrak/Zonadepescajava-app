@@ -116,7 +116,7 @@ public class CollectionCardAdapter extends RecyclerView.Adapter<CollectionCardAd
             if (fullImage == null) {
                 fullImage = imageResolver.getCardBack();
             }
-            CardFullscreenDialog.show(holder.itemView.getContext(), fullImage);
+            CardFullscreenDialog.show(holder.itemView.getContext(), fullImage, card);
         });
     }
 
