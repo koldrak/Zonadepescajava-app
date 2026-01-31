@@ -3394,6 +3394,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             int overlap = Math.round(cardWidth * 0.5f);
 
             int index = 0;
+            int totalCaptures = gameState.getCaptures().size();
             for (Card card : gameState.getCaptures()) {
                 Bitmap image = cardImageResolver.getImageFor(card, true);
                 if (image == null) image = cardImageResolver.getCardBack();
@@ -3408,6 +3409,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 cardWrapper.setLayoutParams(params);
                 cardWrapper.setClipChildren(false);
                 cardWrapper.setClipToPadding(false);
+                cardWrapper.setZ(totalCaptures - index);
 
                 ImageView cardView = new ImageView(this);
                 FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(
