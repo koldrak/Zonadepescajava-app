@@ -24,6 +24,8 @@ import java.util.Map;
 
 public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdapter.DeckSelectionViewHolder> {
 
+    private static final int MAX_COPIES_PER_CARD = 3;
+
     public interface OnSelectionChangedListener {
         void onSelectionChanged();
     }
@@ -106,7 +108,7 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
                 if (entry.getKey() == null) {
                     continue;
                 }
-                int maxCopies = inventoryCounts.getOrDefault(entry.getKey(), 0);
+                int maxCopies = Math.min(inventoryCounts.getOrDefault(entry.getKey(), 0), MAX_COPIES_PER_CARD);
                 int desired = entry.getValue() == null ? 0 : entry.getValue();
                 int finalCount = Math.min(Math.max(desired, 0), maxCopies);
                 if (finalCount > 0) {
@@ -163,7 +165,7 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
 
         holder.itemView.setOnClickListener(v -> {
             int current = selectionCounts.getOrDefault(card.getId(), 0);
-            int maxCopies = inventoryCounts.getOrDefault(card.getId(), 0);
+            int maxCopies = Math.min(inventoryCounts.getOrDefault(card.getId(), 0), MAX_COPIES_PER_CARD);
             if (maxCopies <= 0) {
                 return;
             }

@@ -540,7 +540,18 @@ public final class GameUtils {
                                                     Map<CardId, Integer> ownedCounts) {
         List<Card> deck = new ArrayList<>();
         if (selection != null) {
-            deck.addAll(selection);
+            Map<CardId, Integer> counts = new java.util.EnumMap<>(CardId.class);
+            for (Card card : selection) {
+                if (card == null) {
+                    continue;
+                }
+                int current = counts.getOrDefault(card.getId(), 0);
+                if (current >= 3) {
+                    continue;
+                }
+                counts.put(card.getId(), current + 1);
+                deck.add(card);
+            }
         }
         List<Card> extra = drawExtraOwnedCards(rng, selection, ownedCounts, 10);
         deck.addAll(extra);
@@ -644,7 +655,7 @@ public final class GameUtils {
             return pool;
         }
         for (Card card : availableCards) {
-            int copies = Math.max(0, ownedCounts.getOrDefault(card.getId(), 0));
+            int copies = Math.min(3, Math.max(0, ownedCounts.getOrDefault(card.getId(), 0)));
             for (int i = 0; i < copies; i++) {
                 pool.add(card);
             }
