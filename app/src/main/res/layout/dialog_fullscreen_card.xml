@@ -27,26 +27,24 @@
         android:id="@+id/fullscreenTopInfo"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="top"
-        android:background="#66000000"
-        android:gravity="start"
-        android:padding="16dp"
-        android:textAlignment="viewStart"
-        android:textColor="@android:color/white"
-        android:textSize="18sp"
-        android:visibility="gone" />
-
-    <TextView
-        android:id="@+id/fullscreenBottomInfo"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
         android:background="#66000000"
         android:gravity="start"
         android:padding="16dp"
         android:textAlignment="viewStart"
         android:textColor="@android:color/white"
         android:textSize="16sp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/fullscreenBottomInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#66000000"
+        android:gravity="start"
+        android:padding="16dp"
+        android:textAlignment="viewStart"
+        android:textColor="@android:color/white"
+        android:textSize="15sp"
         android:visibility="gone" />
 
 </FrameLayout>
