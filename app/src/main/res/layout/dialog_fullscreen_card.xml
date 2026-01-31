@@ -5,13 +5,30 @@
     android:layout_height="match_parent"
     android:background="@drawable/fondoseleccion">
 
+    <!-- COPIAS (ESQUINA SUPERIOR IZQUIERDA) -->
+    <TextView
+        android:id="@+id/fullscreenCopies"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/card_detail_info_background"
+        android:elevation="8dp"
+        android:padding="10dp"
+        android:textAlignment="viewStart"
+        android:textColor="@android:color/white"
+        android:textSize="14sp"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <!-- BARRA SUPERIOR -->
     <TextView
         android:id="@+id/fullscreenTopInfo"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="12dp"
         android:layout_marginEnd="16dp"
         android:background="@drawable/card_detail_info_background"
         android:elevation="8dp"
@@ -24,7 +41,7 @@
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@+id/fullscreenCopies" />
 
     <!-- IMAGEN (CARTA) ENTRE AMBAS BARRAS -->
     <ImageView
@@ -38,7 +55,7 @@
         android:adjustViewBounds="true"
         android:contentDescription="@string/card_image_content_description"
         android:scaleType="fitCenter"
-        app:layout_constraintBottom_toTopOf="@+id/bottomInfoContainer"
+        app:layout_constraintBottom_toTopOf="@+id/fullscreenSellButton"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/fullscreenTopInfo" />
@@ -58,6 +75,21 @@
         app:layout_constraintEnd_toEndOf="@+id/fullscreenImage"
         app:layout_constraintStart_toStartOf="@+id/fullscreenImage"
         app:layout_constraintTop_toTopOf="@+id/fullscreenImage" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/fullscreenSellButton"
+        style="@style/App.Button.Glass"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="8dp"
+        android:textAllCaps="false"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/bottomInfoContainer"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/fullscreenImage" />
 
     <!-- CONTENEDOR BARRA INFERIOR (permite limitar altura y eventualmente scroll) -->
     <FrameLayout
