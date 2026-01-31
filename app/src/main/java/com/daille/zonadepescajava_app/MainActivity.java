@@ -3479,7 +3479,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
                 cardWrapper.addView(cardView);
                 cardWrapper.addView(captureBonusLabel);
-                container.addView(cardWrapper);
+                container.addView(cardWrapper, 0);
                 index++;
             }
         });
