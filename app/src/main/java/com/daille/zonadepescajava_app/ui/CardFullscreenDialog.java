@@ -138,6 +138,12 @@ public final class CardFullscreenDialog {
     private static String formatCondition(Context context, Condition condition) {
         if (condition instanceof ConditionInfo) {
             ConditionInfo info = (ConditionInfo) condition;
+            if (info.getDescriptionResId() != null) {
+                Object[] args = info.getDescriptionArgs();
+                return args == null || args.length == 0
+                        ? context.getString(info.getDescriptionResId())
+                        : context.getString(info.getDescriptionResId(), args);
+            }
             switch (info.getType()) {
                 case SUM_RANGE:
                     return context.getString(R.string.card_condition_sum_range_format, info.getFirst(), info.getSecond());
@@ -153,6 +159,8 @@ public final class CardFullscreenDialog {
                     return context.getString(R.string.card_condition_sum_less_than_format, info.getFirst());
                 case DIFFERENCE_AT_LEAST:
                     return context.getString(R.string.card_condition_difference_at_least_format, info.getFirst());
+                case CUSTOM:
+                    break;
                 default:
                     break;
             }
