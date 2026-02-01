@@ -35,6 +35,7 @@ import android.widget.GridView;
 import android.widget.LinearLayout;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -2352,6 +2353,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.gamePanel.scoreValue.setText(String.format(Locale.getDefault(), "%d", gameState.getScore()));
         binding.gamePanel.deckRemainingCount.setText(String.format(Locale.getDefault(), "%d", gameState.getDeckSize()));
         binding.gamePanel.captures.setText(String.format(Locale.getDefault(), "Capturas: %d", gameState.getCaptures().size()));
+        updateZoneProgressBar();
 
         binding.gamePanel.selection.setText(gameState.getSelectedDie() == null
                 ? "Selecciona un dado de la reserva"
@@ -2402,6 +2404,44 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         showRevealedCardsSequential(new ArrayList<>(revealed), afterReveals);
 
+    }
+
+    private void updateZoneProgressBar() {
+        GameState.ZoneProgress progress = gameState.getZoneProgress();
+        ProgressBar bar = binding.gamePanel.zoneProgressBar;
+        View marker = binding.gamePanel.zoneProgressMarker;
+        if (bar == null || marker == null) {
+            return;
+        }
+        int initialDeckSize = progress.getInitialDeckSize();
+        int remaining = progress.getRemaining();
+        if (initialDeckSize <= 0) {
+            bar.setMax(1);
+            bar.setProgress(0);
+            marker.setVisibility(View.INVISIBLE);
+            return;
+        }
+        bar.setMax(initialDeckSize);
+        int consumed = Math.max(0, initialDeckSize - remaining);
+        bar.setProgress(consumed);
+        if (!progress.hasNextThreshold()) {
+            marker.setVisibility(View.INVISIBLE);
+            return;
+        }
+        marker.setVisibility(View.VISIBLE);
+        int thresholdRemaining = progress.getNextThreshold();
+        int markerProgress = Math.max(0, initialDeckSize - thresholdRemaining);
+        bar.post(() -> {
+            int barWidth = bar.getWidth() - bar.getPaddingLeft() - bar.getPaddingRight();
+            if (barWidth <= 0) {
+                return;
+            }
+            float ratio = initialDeckSize == 0 ? 0f : (float) markerProgress / initialDeckSize;
+            float clampedRatio = Math.max(0f, Math.min(1f, ratio));
+            float markerOffset = bar.getPaddingLeft() + (clampedRatio * barWidth);
+            float halfMarker = marker.getWidth() / 2f;
+            marker.setTranslationX(markerOffset - halfMarker);
+        });
     }
 
     private void updateDiscardPile() {
