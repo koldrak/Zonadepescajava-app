@@ -1,15 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:id="@android:id/background">
-        <bitmap
-            android:gravity="fill_horizontal|center_vertical"
-            android:src="@drawable/zone_progress_wave_background" />
-    </item>
+    <item
+        android:id="@android:id/background"
+        android:drawable="@drawable/zone_progress_wave_background" />
     <item android:id="@android:id/progress">
-        <clip>
-            <bitmap
-                android:gravity="fill_horizontal|center_vertical"
-                android:src="@drawable/zone_progress_wave_progress" />
-        </clip>
+        <clip
+            android:drawable="@drawable/zone_progress_wave_progress"
+            android:gravity="left|center_vertical" />
     </item>
 </layer-list>
