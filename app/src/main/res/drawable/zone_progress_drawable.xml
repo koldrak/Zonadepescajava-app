@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:id="@android:id/background">
-        <shape android:shape="rectangle">
-            <corners android:radius="6dp" />
-            <solid android:color="#330B1F2A" />
-        </shape>
+        <bitmap
+            android:gravity="fill_horizontal|center_vertical"
+            android:src="@drawable/zone_progress_wave_background" />
     </item>
     <item android:id="@android:id/progress">
         <clip>
-            <shape android:shape="rectangle">
-                <corners android:radius="6dp" />
-                <solid android:color="@color/marine_turquoise" />
-            </shape>
+            <bitmap
+                android:gravity="fill_horizontal|center_vertical"
+                android:src="@drawable/zone_progress_wave_progress" />
         </clip>
     </item>
 </layer-list>
