@@ -21,6 +21,8 @@ android {
           7. Actualizacion de tipos de cartas
           8. Ajuste de habilidades de "Pulpo, Sepia, cangrejo herradura cangrejo ermitaño"
           9. Nuevas Cartas de Morsa, Foca moteada, León marino y Manati
+          10. incorporacion de combos de capturas
+          11. incorporacion de zonas de pesca
          */
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

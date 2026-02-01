@@ -3002,7 +3002,7 @@ public class GameState {
 
     public ZoneTransition consumeZoneTransition() {
         SeaZone zone = getCurrentZone();
-        if (zone == lastAnnouncedZone) {
+        if (zone.ordinal() <= lastAnnouncedZone.ordinal()) {
             return ZoneTransition.NONE;
         }
         lastAnnouncedZone = zone;
