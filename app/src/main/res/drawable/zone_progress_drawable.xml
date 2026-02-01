@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:id="@android:id/background">
-        <shape android:shape="rectangle">
-            <corners android:radius="6dp" />
+        <shape android:shape="path">
+            <path android:pathData="M0,6 C8,0 16,0 24,6 C32,12 40,12 48,6 C56,0 64,0 72,6 C80,12 88,12 96,6 L100,6 L100,14 L0,14 Z" />
             <solid android:color="#330B1F2A" />
         </shape>
     </item>
     <item android:id="@android:id/progress">
         <clip>
-            <shape android:shape="rectangle">
-                <corners android:radius="6dp" />
+            <shape android:shape="path">
+                <path android:pathData="M0,6 C8,0 16,0 24,6 C32,12 40,12 48,6 C56,0 64,0 72,6 C80,12 88,12 96,6 L100,6 L100,14 L0,14 Z" />
                 <solid android:color="@color/marine_turquoise" />
             </shape>
         </clip>
