@@ -16,6 +16,7 @@ public class GameState {
     private final Deque<Card> deck = new ArrayDeque<>();
     private final List<Card> captures = new ArrayList<>();
     private final Map<Card, Integer> captureMultipliers = new IdentityHashMap<>();
+    private final Map<Card, Integer> captureZoneBonuses = new IdentityHashMap<>();
     private final List<Die> lostDice = new ArrayList<>();
     private final List<DieType> reserve = new ArrayList<>();
     private final List<Card> failedDiscards = new ArrayList<>();
@@ -146,6 +147,8 @@ public class GameState {
     private Die pendingLocoDie = null;
     private AbilityActivation pendingAbilityConfirmation = null;
     private final java.util.Deque<AbilityActivation> pendingAbilityQueue = new java.util.ArrayDeque<>();
+    private int initialDeckSize = 0;
+    private SeaZone lastAnnouncedZone = SeaZone.COASTAL;
 
     private enum AbilityTrigger {
         REVEAL,
@@ -254,6 +257,12 @@ public class GameState {
     public enum CurrentDirection { UP, DOWN, LEFT, RIGHT }
     private final Deque<CurrentDirection> pendingCurrentAnimations = new ArrayDeque<>();
 
+    private enum SeaZone {
+        COASTAL,
+        SEA,
+        DEEP_SEA
+    }
+
     public GameState() {
         for (int i = 0; i < board.length; i++) {
             board[i] = new BoardSlot();
@@ -275,6 +284,7 @@ public class GameState {
     public void newGame(List<DieType> startingReserve, Map<CardId, Integer> captureCounts, List<Card> selectedDeck) {
         captures.clear();
         captureMultipliers.clear();
+        captureZoneBonuses.clear();
         lostDice.clear();
         failedDiscards.clear();
         deck.clear();
@@ -430,6 +440,8 @@ public class GameState {
                 board[slotIndex].setFaceUp(true);
             }
         }
+        initialDeckSize = deck.size() + countBoardCards();
+        lastAnnouncedZone = getCurrentZone();
     }
 
     public BoardSlot[] getBoard() {
@@ -2738,12 +2750,14 @@ public class GameState {
         lastTurnCaptured = true;
         captures.add(card);
         captureMultipliers.put(card, currentCaptureMultiplier);
+        captureZoneBonuses.put(card, getZoneScoreBonus());
     }
 
     private void removeCapture(Card card) {
         if (card == null) return;
         captures.remove(card);
         captureMultipliers.remove(card);
+        captureZoneBonuses.remove(card);
     }
 
     private String resolveFishingOutcome(int slotIndex, int triggerValue, String extraLog, boolean applyCurrents) {
@@ -2882,6 +2896,7 @@ public class GameState {
         for (Card c : captures) {
             int multiplier = captureMultipliers.getOrDefault(c, 1);
             sum += c.getPoints() * multiplier;
+            sum += captureZoneBonuses.getOrDefault(c, 0);
             switch (c.getType()) {
                 case CRUSTACEO: crustaceos++; break;
                 case PEZ: peces++; break;
@@ -2922,6 +2937,24 @@ public class GameState {
             sum += tiburonBallenaCount * 6;
         }
         return sum;
+    }
+
+    public String consumeZoneTransitionMessage() {
+        SeaZone zone = getCurrentZone();
+        if (zone == lastAnnouncedZone) {
+            return "";
+        }
+        lastAnnouncedZone = zone;
+        switch (zone) {
+            case COASTAL:
+                return "Nueva zona: costera. La marea no se activa en esta zona.";
+            case SEA:
+                return "Nueva zona: mar. Las capturas otorgan +1 punto y la marea avanza hacia arriba al sacar un 1.";
+            case DEEP_SEA:
+                return "Nueva zona: mar adentro. Las capturas otorgan +2 puntos y la marea avanza en una dirección aleatoria al sacar un 1.";
+            default:
+                return "";
+        }
     }
 
     private String handleFailedCatchImmediate(int slotIndex, boolean loseTwo) {
@@ -3037,6 +3070,10 @@ public class GameState {
     }
 
     private String buildCurrentsLog(int placedValue) {
+        SeaZone zone = getCurrentZone();
+        if (zone == SeaZone.COASTAL) {
+            return "";
+        }
         CurrentDirection deepDirection = getDeepCurrentDirection(placedValue);
         boolean triggered = placedValue == 1 || deepDirection != null;
         if (triggered && isHumpbackActive()) {
@@ -3045,12 +3082,55 @@ public class GameState {
             return "Ballena jorobada: elige la dirección de la marea.";
         }
         if (placedValue == 1) {
-            enqueueCurrentAnimation(CurrentDirection.UP);
+            enqueueCurrentAnimation(zone == SeaZone.DEEP_SEA ? getRandomCurrentDirection() : CurrentDirection.UP);
         }
         if (deepDirection != null) {
             enqueueCurrentAnimation(deepDirection);
         }
         return "";
+    }
+
+    private SeaZone getCurrentZone() {
+        if (initialDeckSize <= 0) {
+            return SeaZone.COASTAL;
+        }
+        int oneThird = Math.max(1, initialDeckSize / 3);
+        int secondThreshold = initialDeckSize - oneThird;
+        int thirdThreshold = initialDeckSize - (2 * oneThird);
+        int remaining = deck.size();
+        if (remaining < thirdThreshold) {
+            return SeaZone.DEEP_SEA;
+        }
+        if (remaining < secondThreshold) {
+            return SeaZone.SEA;
+        }
+        return SeaZone.COASTAL;
+    }
+
+    private int getZoneScoreBonus() {
+        SeaZone zone = getCurrentZone();
+        if (zone == SeaZone.SEA) {
+            return 1;
+        }
+        if (zone == SeaZone.DEEP_SEA) {
+            return 2;
+        }
+        return 0;
+    }
+
+    private CurrentDirection getRandomCurrentDirection() {
+        CurrentDirection[] directions = CurrentDirection.values();
+        return directions[rng.nextInt(directions.length)];
+    }
+
+    private int countBoardCards() {
+        int count = 0;
+        for (BoardSlot slot : board) {
+            if (slot.getCard() != null) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private String applyCurrent(CurrentDirection direction) {
