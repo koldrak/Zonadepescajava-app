@@ -2424,13 +2424,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         bar.setMax(initialDeckSize);
         int consumed = Math.max(0, initialDeckSize - remaining);
         bar.setProgress(consumed);
-        if (!progress.hasNextThreshold()) {
-            marker.setVisibility(View.INVISIBLE);
-            return;
-        }
         marker.setVisibility(View.VISIBLE);
-        int thresholdRemaining = progress.getNextThreshold();
-        int markerProgress = Math.max(0, initialDeckSize - thresholdRemaining);
+        int markerProgress = consumed;
         bar.post(() -> {
             int barWidth = bar.getWidth() - bar.getPaddingLeft() - bar.getPaddingRight();
             if (barWidth <= 0) {
