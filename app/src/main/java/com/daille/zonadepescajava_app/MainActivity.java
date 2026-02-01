@@ -159,6 +159,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private final List<View> tutorialHighlightedViews = new ArrayList<>();
     private final List<ObjectAnimator> tutorialHighlightAnimators = new ArrayList<>();
     private boolean pendingTideTutorial;
+    private AlertDialog zoneTransitionDialog;
 
     private static final String PACK_RANDOM_ASSET = "sobresorpresa.png";
     private static final String PACK_CRUSTACEO_ASSET = "sobrecrustaceos.png";
@@ -2220,6 +2221,19 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         });
     }
 
+    private void showZoneTransitionDialog(String message) {
+        if (zoneTransitionDialog != null && zoneTransitionDialog.isShowing()) {
+            zoneTransitionDialog.dismiss();
+        }
+        zoneTransitionDialog = new AlertDialog.Builder(this)
+                .setTitle("Nueva zona")
+                .setMessage(message)
+                .setPositiveButton("Aceptar", (dialog, which) -> dialog.dismiss())
+                .create();
+        attachDialogButtonSounds(zoneTransitionDialog);
+        zoneTransitionDialog.show();
+    }
+
     private void attachButtonSound(View button) {
         if (button == null) {
             return;
@@ -2284,6 +2298,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         String pendingGameOver = gameState.resolvePendingGameOverIfReady();
         if (pendingGameOver != null) {
             log = pendingGameOver;
+        }
+        String zoneMessage = gameState.consumeZoneTransitionMessage();
+        if (zoneMessage != null && !zoneMessage.isEmpty()) {
+            showZoneTransitionDialog(zoneMessage);
         }
         binding.gamePanel.log.setText(log);
         triggerTideAnimationIfNeeded();
