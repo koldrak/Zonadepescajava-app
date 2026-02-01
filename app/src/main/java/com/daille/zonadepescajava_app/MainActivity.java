@@ -2221,17 +2221,85 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         });
     }
 
-    private void showZoneTransitionDialog(String message) {
+    private void showZoneTransitionDialog(GameState.ZoneTransition zoneTransition) {
+        ZoneTransitionInfo info = buildZoneTransitionInfo(zoneTransition);
+        if (info == null) {
+            return;
+        }
         if (zoneTransitionDialog != null && zoneTransitionDialog.isShowing()) {
             zoneTransitionDialog.dismiss();
         }
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_zone_transition, null);
+        ImageView background = dialogView.findViewById(R.id.zoneBackground);
+        TextView title = dialogView.findViewById(R.id.zoneTitle);
+        TextView body = dialogView.findViewById(R.id.zoneBody);
+        background.setImageResource(info.backgroundResId);
+        title.setText(info.title);
+        body.setText(info.body);
         zoneTransitionDialog = new AlertDialog.Builder(this)
-                .setTitle("Nueva zona")
-                .setMessage(message)
+                .setView(dialogView)
                 .setPositiveButton("Aceptar", (dialog, which) -> dialog.dismiss())
                 .create();
         attachDialogButtonSounds(zoneTransitionDialog);
         zoneTransitionDialog.show();
+    }
+
+    private ZoneTransitionInfo buildZoneTransitionInfo(GameState.ZoneTransition zoneTransition) {
+        switch (zoneTransition) {
+            case SEA:
+                return new ZoneTransitionInfo(
+                        "Haz entrado a zona de mar",
+                        "• Las cartas capturadas dan +1 de puntaje\n" +
+                                "• Si sacas 1 en el valor de un dado la marea arrastrara hacia arriba las cartas, " +
+                                "aquellas que salgan de la zona de juego sin dados seran barajadas y aquellas con el dado " +
+                                "se consideran pesca fallida.",
+                        R.drawable.zona2
+                );
+            case DEEP_SEA:
+                return new ZoneTransitionInfo(
+                        "Haz entrado a zona de mar adentro",
+                        "• Las cartas capturadas dan +2 de puntaje\n" +
+                                "• Si sacas 1 en el valor de un dado la marea arrastrara hacia una direccion aleatoria, " +
+                                "aquellas que salgan de la zona de juego sin dados seran barajadas y aquellas con el dado " +
+                                "se consideran pesca fallida.",
+                        R.drawable.zona3
+                );
+            default:
+                return null;
+        }
+    }
+
+    private void updateGamePanelBackground(GameState.ZoneTransition zoneTransition) {
+        if (binding == null || binding.gamePanel == null) {
+            return;
+        }
+        int backgroundResId;
+        switch (zoneTransition) {
+            case SEA:
+                backgroundResId = R.drawable.zona2;
+                break;
+            case DEEP_SEA:
+                backgroundResId = R.drawable.zona3;
+                break;
+            case COASTAL:
+                backgroundResId = R.drawable.fondojuego;
+                break;
+            default:
+                return;
+        }
+        binding.gamePanel.gamePanelRoot.setBackgroundResource(backgroundResId);
+    }
+
+    private static class ZoneTransitionInfo {
+        private final String title;
+        private final String body;
+        private final int backgroundResId;
+
+        private ZoneTransitionInfo(String title, String body, int backgroundResId) {
+            this.title = title;
+            this.body = body;
+            this.backgroundResId = backgroundResId;
+        }
     }
 
     private void attachButtonSound(View button) {
@@ -2299,9 +2367,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (pendingGameOver != null) {
             log = pendingGameOver;
         }
-        String zoneMessage = gameState.consumeZoneTransitionMessage();
-        if (zoneMessage != null && !zoneMessage.isEmpty()) {
-            showZoneTransitionDialog(zoneMessage);
+        GameState.ZoneTransition zoneTransition = gameState.consumeZoneTransition();
+        if (zoneTransition != GameState.ZoneTransition.NONE) {
+            updateGamePanelBackground(zoneTransition);
+            showZoneTransitionDialog(zoneTransition);
         }
         binding.gamePanel.log.setText(log);
         triggerTideAnimationIfNeeded();

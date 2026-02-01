@@ -257,6 +257,13 @@ public class GameState {
     public enum CurrentDirection { UP, DOWN, LEFT, RIGHT }
     private final Deque<CurrentDirection> pendingCurrentAnimations = new ArrayDeque<>();
 
+    public enum ZoneTransition {
+        NONE,
+        COASTAL,
+        SEA,
+        DEEP_SEA
+    }
+
     private enum SeaZone {
         COASTAL,
         SEA,
@@ -2939,21 +2946,21 @@ public class GameState {
         return sum;
     }
 
-    public String consumeZoneTransitionMessage() {
+    public ZoneTransition consumeZoneTransition() {
         SeaZone zone = getCurrentZone();
         if (zone == lastAnnouncedZone) {
-            return "";
+            return ZoneTransition.NONE;
         }
         lastAnnouncedZone = zone;
         switch (zone) {
             case COASTAL:
-                return "Nueva zona: costera. La marea no se activa en esta zona.";
+                return ZoneTransition.COASTAL;
             case SEA:
-                return "Nueva zona: mar. Las capturas otorgan +1 punto y la marea avanza hacia arriba al sacar un 1.";
+                return ZoneTransition.SEA;
             case DEEP_SEA:
-                return "Nueva zona: mar adentro. Las capturas otorgan +2 puntos y la marea avanza en una dirección aleatoria al sacar un 1.";
+                return ZoneTransition.DEEP_SEA;
             default:
-                return "";
+                return ZoneTransition.NONE;
         }
     }
 
