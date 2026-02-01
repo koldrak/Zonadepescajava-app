@@ -278,6 +278,22 @@
                 android:progress="0"
                 android:progressDrawable="@drawable/zone_progress_drawable" />
 
+            <View
+                android:id="@+id/zoneProgressThresholdOne"
+                android:layout_width="2dp"
+                android:layout_height="18dp"
+                android:layout_gravity="start|center_vertical"
+                android:background="@color/zone_progress_marker"
+                android:contentDescription="@string/zone_progress_marker_description" />
+
+            <View
+                android:id="@+id/zoneProgressThresholdTwo"
+                android:layout_width="2dp"
+                android:layout_height="18dp"
+                android:layout_gravity="start|center_vertical"
+                android:background="@color/zone_progress_marker"
+                android:contentDescription="@string/zone_progress_marker_description" />
+
             <ImageView
                 android:id="@+id/zoneProgressMarker"
                 android:layout_width="24dp"
