@@ -2410,7 +2410,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         GameState.ZoneProgress progress = gameState.getZoneProgress();
         ProgressBar bar = binding.gamePanel.zoneProgressBar;
         View marker = binding.gamePanel.zoneProgressMarker;
-        if (bar == null || marker == null) {
+        View thresholdOne = binding.gamePanel.zoneProgressThresholdOne;
+        View thresholdTwo = binding.gamePanel.zoneProgressThresholdTwo;
+        if (bar == null || marker == null || thresholdOne == null || thresholdTwo == null) {
             return;
         }
         int initialDeckSize = progress.getInitialDeckSize();
@@ -2419,18 +2421,20 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             bar.setMax(1);
             bar.setProgress(0);
             marker.setVisibility(View.INVISIBLE);
+            thresholdOne.setVisibility(View.INVISIBLE);
+            thresholdTwo.setVisibility(View.INVISIBLE);
             return;
         }
         bar.setMax(initialDeckSize);
         int consumed = Math.max(0, initialDeckSize - remaining);
         bar.setProgress(consumed);
-        if (!progress.hasNextThreshold()) {
-            marker.setVisibility(View.INVISIBLE);
-            return;
-        }
         marker.setVisibility(View.VISIBLE);
-        int thresholdRemaining = progress.getNextThreshold();
-        int markerProgress = Math.max(0, initialDeckSize - thresholdRemaining);
+        int markerProgress = consumed;
+        int oneThird = Math.max(1, initialDeckSize / 3);
+        int thresholdOneProgress = oneThird;
+        int thresholdTwoProgress = Math.min(initialDeckSize, 2 * oneThird);
+        thresholdOne.setVisibility(View.VISIBLE);
+        thresholdTwo.setVisibility(View.VISIBLE);
         bar.post(() -> {
             int barWidth = bar.getWidth() - bar.getPaddingLeft() - bar.getPaddingRight();
             if (barWidth <= 0) {
@@ -2441,6 +2445,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             float markerOffset = bar.getPaddingLeft() + (clampedRatio * barWidth);
             float halfMarker = marker.getWidth() / 2f;
             marker.setTranslationX(markerOffset - halfMarker);
+
+            float thresholdOneRatio = initialDeckSize == 0 ? 0f : (float) thresholdOneProgress / initialDeckSize;
+            float thresholdTwoRatio = initialDeckSize == 0 ? 0f : (float) thresholdTwoProgress / initialDeckSize;
+            float thresholdOneOffset = bar.getPaddingLeft() + (Math.max(0f, Math.min(1f, thresholdOneRatio)) * barWidth);
+            float thresholdTwoOffset = bar.getPaddingLeft() + (Math.max(0f, Math.min(1f, thresholdTwoRatio)) * barWidth);
+            float halfThresholdOne = thresholdOne.getWidth() / 2f;
+            float halfThresholdTwo = thresholdTwo.getWidth() / 2f;
+            thresholdOne.setTranslationX(thresholdOneOffset - halfThresholdOne);
+            thresholdTwo.setTranslationX(thresholdTwoOffset - halfThresholdTwo);
         });
     }
 
