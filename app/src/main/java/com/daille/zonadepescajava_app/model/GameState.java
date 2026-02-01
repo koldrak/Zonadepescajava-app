@@ -149,6 +149,7 @@ public class GameState {
     private final java.util.Deque<AbilityActivation> pendingAbilityQueue = new java.util.ArrayDeque<>();
     private int initialDeckSize = 0;
     private SeaZone lastAnnouncedZone = SeaZone.COASTAL;
+    private static final int INITIAL_FISHING_ZONE_CARDS = 9;
 
     private enum AbilityTrigger {
         REVEAL,
@@ -478,20 +479,21 @@ public class GameState {
 
     public ZoneProgress getZoneProgress() {
         int remaining = deck.size();
-        if (initialDeckSize <= 0) {
-            return new ZoneProgress(initialDeckSize, remaining, -1, false);
+        int effectiveDeckSize = getEffectiveDeckSize();
+        if (effectiveDeckSize <= 0) {
+            return new ZoneProgress(effectiveDeckSize, remaining, -1, false);
         }
-        int oneThird = Math.max(1, initialDeckSize / 3);
-        int secondThreshold = initialDeckSize - oneThird;
-        int thirdThreshold = initialDeckSize - (2 * oneThird);
+        int oneThird = Math.max(1, effectiveDeckSize / 3);
+        int secondThreshold = effectiveDeckSize - oneThird;
+        int thirdThreshold = effectiveDeckSize - (2 * oneThird);
         SeaZone zone = getCurrentZone();
         if (zone == SeaZone.COASTAL) {
-            return new ZoneProgress(initialDeckSize, remaining, secondThreshold, true);
+            return new ZoneProgress(effectiveDeckSize, remaining, secondThreshold, true);
         }
         if (zone == SeaZone.SEA) {
-            return new ZoneProgress(initialDeckSize, remaining, thirdThreshold, true);
+            return new ZoneProgress(effectiveDeckSize, remaining, thirdThreshold, true);
         }
-        return new ZoneProgress(initialDeckSize, remaining, -1, false);
+        return new ZoneProgress(effectiveDeckSize, remaining, -1, false);
     }
 
     public static class ZoneProgress {
@@ -3150,12 +3152,13 @@ public class GameState {
     }
 
     private SeaZone getCurrentZone() {
-        if (initialDeckSize <= 0) {
+        int effectiveDeckSize = getEffectiveDeckSize();
+        if (effectiveDeckSize <= 0) {
             return SeaZone.COASTAL;
         }
-        int oneThird = Math.max(1, initialDeckSize / 3);
-        int secondThreshold = initialDeckSize - oneThird;
-        int thirdThreshold = initialDeckSize - (2 * oneThird);
+        int oneThird = Math.max(1, effectiveDeckSize / 3);
+        int secondThreshold = effectiveDeckSize - oneThird;
+        int thirdThreshold = effectiveDeckSize - (2 * oneThird);
         int remaining = deck.size();
         if (remaining < thirdThreshold) {
             return SeaZone.DEEP_SEA;
@@ -3164,6 +3167,10 @@ public class GameState {
             return SeaZone.SEA;
         }
         return SeaZone.COASTAL;
+    }
+
+    private int getEffectiveDeckSize() {
+        return Math.max(0, initialDeckSize - INITIAL_FISHING_ZONE_CARDS);
     }
 
     private int getZoneScoreBonus() {
