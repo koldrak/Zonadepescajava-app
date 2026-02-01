@@ -261,6 +261,32 @@
                 tools:text="Lanzaste D4=3" />
         </LinearLayout>
 
+        <FrameLayout
+            android:id="@+id/zoneProgressContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp">
+
+            <ProgressBar
+                android:id="@+id/zoneProgressBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="12dp"
+                android:contentDescription="@string/zone_progress_description"
+                android:indeterminate="false"
+                android:max="100"
+                android:progress="0"
+                android:progressDrawable="@drawable/zone_progress_drawable" />
+
+            <View
+                android:id="@+id/zoneProgressMarker"
+                android:layout_width="3dp"
+                android:layout_height="16dp"
+                android:layout_gravity="start|center_vertical"
+                android:background="@color/zone_progress_marker"
+                android:contentDescription="@string/zone_progress_marker_description" />
+        </FrameLayout>
+
 
 
         <FrameLayout

@@ -130,6 +130,8 @@
     <string name="collection_capture_progress_format">%1$d/%2$d para nueva copia</string>
     <string name="cardumen_deck_label">Mazo</string>
     <string name="discard_pile_label">Descarte</string>
+    <string name="zone_progress_description">Avance hacia el cambio de zona</string>
+    <string name="zone_progress_marker_description">Marca de cambio de zona</string>
     <string name="score_label">Puntaje:</string>
     <string name="discard_pile_title">Cartas descartadas</string>
     <string name="discard_pile_empty">No hay cartas descartadas.</string>

@@ -17,5 +17,6 @@
     <color name="dice_warehouse_border">#33495DDB</color>
     <color name="dice_label_background">#CCFFFFFF</color>
     <color name="dice_label_border">#1A0B1F2A</color>
+    <color name="zone_progress_marker">#FF0B1F2A</color>
 
 </resources>

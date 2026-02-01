@@ -472,6 +472,58 @@ public class GameState {
         return deck.size();
     }
 
+    public int getInitialDeckSize() {
+        return initialDeckSize;
+    }
+
+    public ZoneProgress getZoneProgress() {
+        int remaining = deck.size();
+        if (initialDeckSize <= 0) {
+            return new ZoneProgress(initialDeckSize, remaining, -1, false);
+        }
+        int oneThird = Math.max(1, initialDeckSize / 3);
+        int secondThreshold = initialDeckSize - oneThird;
+        int thirdThreshold = initialDeckSize - (2 * oneThird);
+        SeaZone zone = getCurrentZone();
+        if (zone == SeaZone.COASTAL) {
+            return new ZoneProgress(initialDeckSize, remaining, secondThreshold, true);
+        }
+        if (zone == SeaZone.SEA) {
+            return new ZoneProgress(initialDeckSize, remaining, thirdThreshold, true);
+        }
+        return new ZoneProgress(initialDeckSize, remaining, -1, false);
+    }
+
+    public static class ZoneProgress {
+        private final int initialDeckSize;
+        private final int remaining;
+        private final int nextThreshold;
+        private final boolean hasNextThreshold;
+
+        public ZoneProgress(int initialDeckSize, int remaining, int nextThreshold, boolean hasNextThreshold) {
+            this.initialDeckSize = initialDeckSize;
+            this.remaining = remaining;
+            this.nextThreshold = nextThreshold;
+            this.hasNextThreshold = hasNextThreshold;
+        }
+
+        public int getInitialDeckSize() {
+            return initialDeckSize;
+        }
+
+        public int getRemaining() {
+            return remaining;
+        }
+
+        public int getNextThreshold() {
+            return nextThreshold;
+        }
+
+        public boolean hasNextThreshold() {
+            return hasNextThreshold;
+        }
+    }
+
     public List<Die> getLostDice() {
         return lostDice;
     }
