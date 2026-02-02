@@ -453,7 +453,7 @@ public final class GameUtils {
                 "", ""));
 
         cards.add(new Card(CardId.BALLENA_JOROBADA, "Ballena jorobada", CardType.PEZ_GRANDE, 4,
-                condSumRange(1, 2), "Puedes elegir la dirección de la marea.", "", ""));
+                condSumRange(1, 2), "Puedes diriguir la direccion de las próximas 3 mareas", "", ""));
 
         // ==== Cartas Negras ====
         cards.add(new Card(CardId.BOTA_VIEJA, "Bota Vieja", CardType.OBJETO, 7,

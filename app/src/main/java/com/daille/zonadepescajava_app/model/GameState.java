@@ -143,6 +143,7 @@ public class GameState {
     private Card pendingPeregrinoTopChoice = null;
     private int pendingHumpbackSlot = -1;
     private boolean awaitingHumpbackDirection = false;
+    private int humpbackTidesRemaining = 0;
     private final java.util.List<Die> pendingLocoDice = new java.util.ArrayList<>();
     private Die pendingLocoDie = null;
     private AbilityActivation pendingAbilityConfirmation = null;
@@ -391,6 +392,7 @@ public class GameState {
         pendingPeregrinoTopChoice = null;
         pendingHumpbackSlot = -1;
         awaitingHumpbackDirection = false;
+        humpbackTidesRemaining = 0;
         clearHorseshoeState();
         clearD20CriticalState();
         clearCachaloteState();
@@ -3137,7 +3139,7 @@ public class GameState {
         }
         CurrentDirection deepDirection = getDeepCurrentDirection(placedValue);
         boolean triggered = placedValue == 1 || deepDirection != null;
-        if (triggered && isHumpbackActive()) {
+        if (triggered && humpbackTidesRemaining > 0) {
             awaitingHumpbackDirection = true;
             pendingHumpbackSlot = findHumpbackSlot();
             return "Ballena jorobada: elige la dirección de la marea.";
@@ -3645,6 +3647,7 @@ public class GameState {
         }
         awaitingHumpbackDirection = false;
         pendingHumpbackSlot = -1;
+        humpbackTidesRemaining = Math.max(0, humpbackTidesRemaining - 1);
         enqueueCurrentAnimation(dir);
         return "Ballena jorobada: la marea se está formando.";
     }
@@ -4599,7 +4602,8 @@ public class GameState {
                 result = startEsturionRoll(slotIndex);
                 break;
             case BALLENA_JOROBADA:
-                result = "Ballena jorobada: podrás elegir la dirección de la marea.";
+                humpbackTidesRemaining = 3;
+                result = "Ballena jorobada: podrás dirigir la dirección de las próximas 3 mareas.";
                 break;
             case MERO_GIGANTE:
                 result = flipAdjacentCardsDown(slotIndex);
