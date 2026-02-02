@@ -19,7 +19,7 @@ android {
           5. Se agrego tutorial de mareas
           6. Reestructuracion de UI de juegos, panel de dados y mazos
           7. Actualizacion de tipos de cartas
-          8. Ajuste de habilidades de "Pulpo, Sepia, cangrejo herradura cangrejo ermitaño"
+          8. Ajuste de habilidades de "Pulpo, Sepia, cangrejo herradura cangrejo ermitaño, ballena jorobada"
           9. Nuevas Cartas de Morsa, Foca moteada, León marino y Manati
           10. incorporacion de combos de capturas
           11. incorporacion de zonas de pesca

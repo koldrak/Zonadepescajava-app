@@ -4602,8 +4602,8 @@ public class GameState {
                 result = startEsturionRoll(slotIndex);
                 break;
             case BALLENA_JOROBADA:
-                humpbackTidesRemaining = 3;
-                result = "Ballena jorobada: podrás dirigir la dirección de las próximas 3 mareas.";
+                humpbackTidesRemaining = 2;
+                result = "Ballena jorobada: podrás dirigir la dirección de las próximas 2 mareas.";
                 break;
             case MERO_GIGANTE:
                 result = flipAdjacentCardsDown(slotIndex);
