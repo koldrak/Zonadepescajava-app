@@ -1584,13 +1584,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<String> languageCodes = Arrays.asList(LANGUAGE_SPANISH, LANGUAGE_ENGLISH);
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this,
-                android.R.layout.simple_list_item_single_choice,
+                android.R.layout.simple_list_item_1,
                 languageLabels
         );
-        binding.settingsPanel.settingsLanguageList.setAdapter(adapter);
         int selectedIndex = LANGUAGE_ENGLISH.equals(language) ? 1 : 0;
-        binding.settingsPanel.settingsLanguageList.setItemChecked(selectedIndex, true);
-        binding.settingsPanel.settingsLanguageList.setOnItemClickListener((parent, view, position, id) ->
+        binding.settingsPanel.settingsLanguageDropdown.setAdapter(adapter);
+        binding.settingsPanel.settingsLanguageDropdown.setText(languageLabels.get(selectedIndex), false);
+        binding.settingsPanel.settingsLanguageDropdown.setOnItemClickListener((parent, view, position, id) ->
                 saveTextLanguagePreference(languageCodes.get(position)));
     }
 
