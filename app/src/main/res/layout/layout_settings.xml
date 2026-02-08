@@ -165,15 +165,22 @@
                         android:layout_height="wrap_content"
                         android:text="@string/settings_language_texts_title" />
 
-                    <ListView
-                        android:id="@+id/settingsLanguageList"
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/settingsLanguageDropdownLayout"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:choiceMode="singleChoice"
-                        android:divider="@android:color/transparent"
-                        android:dividerHeight="8dp"
-                        android:listSelector="@color/selection_highlight" />
+                        android:hint="@string/settings_language_texts_title">
+
+                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                            android:id="@+id/settingsLanguageDropdown"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:dropDownHeight="220dp"
+                            android:inputType="none"
+                            android:importantForAutofill="no" />
+                    </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
             </LinearLayout>
 
