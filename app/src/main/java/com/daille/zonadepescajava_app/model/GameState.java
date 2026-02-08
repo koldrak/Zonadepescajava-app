@@ -1,5 +1,7 @@
 package com.daille.zonadepescajava_app.model;
 
+import com.daille.zonadepescajava_app.R;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -4248,22 +4250,41 @@ public class GameState {
         AbilityActivation activation = new AbilityActivation(trigger, slotIndex, placedValue, diceOnCard, card, detail);
         if (pendingAbilityConfirmation == null) {
             pendingAbilityConfirmation = activation;
-            return "Habilidad activada: " + card.getName(textProvider) + ".";
+            return formatAbilityActivatedMessage(card.getName(textProvider), false);
         }
         pendingAbilityQueue.add(activation);
-        return "Habilidad activada: " + card.getName(textProvider) + ". Queda en espera.";
+        return formatAbilityActivatedMessage(card.getName(textProvider), true);
     }
 
     private String buildAbilityDetail(Card card) {
         if (card == null) return "";
-        String detail = card.getOnCatch();
+        String detail = card.getOnCatch(textProvider);
         if (detail == null || detail.isEmpty()) {
-            detail = card.getBonus();
+            detail = card.getBonus(textProvider);
         }
         if (detail == null || detail.isEmpty()) {
-            detail = card.getOnFail();
+            detail = card.getOnFail(textProvider);
         }
-        return detail == null || detail.isEmpty() ? "Habilidad especial lista para activarse." : detail;
+        if (detail == null || detail.isEmpty()) {
+            if (textProvider == null) {
+                return "";
+            }
+            return textProvider.getString(R.string.card_detail_ability_default);
+        }
+        return detail;
+    }
+
+    private String formatAbilityActivatedMessage(String cardName, boolean queued) {
+        if (cardName == null) {
+            cardName = "";
+        }
+        if (textProvider == null) {
+            return cardName.isEmpty() ? "" : "Ability activated: " + cardName + ".";
+        }
+        return textProvider.getString(
+                queued ? R.string.ability_activated_queue_format : R.string.ability_activated_format,
+                cardName
+        );
     }
 
     private String executeAbilityActivation(AbilityActivation activation) {
