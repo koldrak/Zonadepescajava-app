@@ -8,6 +8,7 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.PorterDuff;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.media.SoundPool;
@@ -3537,6 +3538,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             for (Card card : gameState.getCaptures()) {
                 Bitmap image = cardImageResolver.getImageFor(card, true);
                 if (image == null) image = cardImageResolver.getCardBack();
+                boolean releaseBlocked = gameState.isReleaseBlocked(card);
 
                 FrameLayout cardWrapper = new FrameLayout(this);
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(cardWidth, cardHeight);
@@ -3562,12 +3564,20 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
                 cardView.setImageBitmap(image);
                 cardView.setContentDescription(card != null ? card.getName() : getString(R.string.card_image_content_description));
+                if (releaseBlocked) {
+                    cardView.setColorFilter(Color.argb(170, 0, 0, 0), PorterDuff.Mode.SRC_ATOP);
+                    cardView.setAlpha(0.85f);
+                }
 
                 // ✅ CLICK NORMAL = LIBERAR PEZ
                 cardWrapper.setOnClickListener(v -> {
                     // Si hay revelaciones/prompt activos, mejor bloquear para no romper flujos.
                     if (isRevealingCard) {
                         Toast.makeText(this, "Toca la carta para continuar.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (releaseBlocked) {
+                        Toast.makeText(this, "Esta carta ya fue liberada y no puede liberarse otra vez.", Toast.LENGTH_SHORT).show();
                         return;
                     }
 

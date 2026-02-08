@@ -9,6 +9,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 public class GameState {
     private final Random rng = new Random();
@@ -17,6 +18,7 @@ public class GameState {
     private final List<Card> captures = new ArrayList<>();
     private final Map<Card, Integer> captureMultipliers = new IdentityHashMap<>();
     private final Map<Card, Integer> captureZoneBonuses = new IdentityHashMap<>();
+    private final Set<Card> releasedCards = Collections.newSetFromMap(new IdentityHashMap<>());
     private final List<Die> lostDice = new ArrayList<>();
     private final List<DieType> reserve = new ArrayList<>();
     private final List<Card> failedDiscards = new ArrayList<>();
@@ -294,6 +296,7 @@ public class GameState {
         captures.clear();
         captureMultipliers.clear();
         captureZoneBonuses.clear();
+        releasedCards.clear();
         lostDice.clear();
         failedDiscards.clear();
         deck.clear();
@@ -709,6 +712,9 @@ public class GameState {
         if (!captures.contains(capturedCard)) {
             return "No se puede liberar: esa carta no está en capturas.";
         }
+        if (releasedCards.contains(capturedCard)) {
+            return "No se puede liberar: esa carta ya fue liberada antes.";
+        }
 
         // Si ya hay una selección pendiente, lo encolamos (tu sistema ya soporta cola).
         pendingReleaseCard = capturedCard;
@@ -719,6 +725,10 @@ public class GameState {
                 0,
                 "Liberación: toca una carta BOCA ABAJO de la zona de pesca para reemplazarla."
         );
+    }
+
+    public boolean isReleaseBlocked(Card capturedCard) {
+        return capturedCard != null && releasedCards.contains(capturedCard);
     }
 
 
@@ -1695,6 +1705,7 @@ public class GameState {
         slot.setStatus(new SlotStatus()); // resetea estados del slot
 
         // 4) Sacarla de capturas (pierdes su puntaje automáticamente porque score se calcula desde captures)
+        releasedCards.add(pendingReleaseCard);
         removeCapture(pendingReleaseCard);
 
         String name = pendingReleaseCard.getName();
