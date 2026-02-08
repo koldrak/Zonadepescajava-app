@@ -3043,6 +3043,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             return;
         }
         BoardSlot slot = gameState.getBoard()[position];
+        if (slot.getCard() == null || !slot.isFaceUp()) {
+            return;
+        }
         android.graphics.Bitmap image = cardImageResolver.getImageFor(slot.getCard(), slot.isFaceUp());
         if (image == null) {
             image = cardImageResolver.getCardBack();
