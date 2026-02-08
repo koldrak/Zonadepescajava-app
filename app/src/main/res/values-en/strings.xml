@@ -190,9 +190,9 @@
     <string name="tutorial_dice_step2_title">Adjust your selection</string>
     <string name="tutorial_dice_step2_message">If you want to remove a die, tap it in the selection zone to return it.</string>
     <string name="tutorial_dice_step3_title">Start the match</string>
-    <string name="tutorial_dice_step3_message">When you're ready, tap “Start match” to begin.</string>
+    <string name="tutorial_dice_step3_message">When you&apos;re ready, tap \"Start match\" to begin.</string>
     <string name="tutorial_deck_step1_title">Select cards</string>
-    <string name="tutorial_deck_step1_message">Tap cards to build your deck (30–40). At the top left you can see how many cards you have and at the top right how many you've selected.</string>
+    <string name="tutorial_deck_step1_message">Tap cards to build your deck (30–40). At the top left you can see how many cards you have and at the top right how many you&apos;ve selected.</string>
     <string name="tutorial_deck_step2_title">Create your deck</string>
     <string name="tutorial_deck_step2_message">Tap Create, type a name, and confirm to save your deck.</string>
     <string name="tutorial_deck_step3_title">Manage decks</string>
@@ -282,7 +282,7 @@
     <string name="dice_reserve_summary_format">D4 x%1$d • D6 x%2$d • D8 x%3$d • D10 x%4$d • D12 x%5$d • D20 x%6$d</string>
     <string name="toast_tap_card_to_continue">Tap the card to continue.</string>
     <string name="capture_combo_format">Capture x%1$d</string>
-    <string name="toast_release_blocked">This card was already released and can't be released again.</string>
+    <string name="toast_release_blocked">This card was already released and can&apos;t be released again.</string>
     <string name="dialog_release_fish_title">Release fish</string>
     <string name="dialog_release_fish_message">Do you want to release this fish?</string>
     <string name="toast_missing_pending_dice_choices">ERROR: Missing dice list to lose (pendingDiceChoices is empty).</string>
@@ -351,9 +351,9 @@
     <string name="dialog_cachalote_title">Sperm whale</string>
     <string name="toast_select_cards_to_sell">Select cards to sell.</string>
     <string name="toast_sale_completed">Sale complete: +%1$d points.</string>
-    <string name="toast_insufficient_points_die">You don't have enough points to buy this die.</string>
-    <string name="toast_insufficient_points_capacity">You don't have enough points to increase capacity.</string>
-    <string name="toast_insufficient_points_pack">You don't have enough points to buy this pack.</string>
+    <string name="toast_insufficient_points_die">You don&apos;t have enough points to buy this die.</string>
+    <string name="toast_insufficient_points_capacity">You don&apos;t have enough points to increase capacity.</string>
+    <string name="toast_insufficient_points_pack">You don&apos;t have enough points to buy this pack.</string>
     <string name="toast_no_cards_in_pack">No cards available in this pack.</string>
     <string name="tutorial_dice_enabled">Dice tutorial re-enabled.</string>
     <string name="tutorial_dice_disabled">Dice tutorial disabled.</string>
