@@ -34,6 +34,7 @@ import com.daille.zonadepescajava_app.R;
 import com.daille.zonadepescajava_app.data.ScoreDatabaseHelper;
 import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardId;
+import com.daille.zonadepescajava_app.model.GameTextProvider;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -116,7 +117,8 @@ public final class CardPackOpenDialog {
             cardView.setOnClickListener(v -> {
                 v.setEnabled(false);
                 stopTrailEmitter(cardView); // corta el emisor cuando entra al detalle
-                String overlay = context.getString(R.string.card_pack_reward_detail, cardFinal.getName());
+                GameTextProvider textProvider = new AndroidGameTextProvider(context);
+                String overlay = context.getString(R.string.card_pack_reward_detail, cardFinal.getName(textProvider));
                 Bitmap detailBitmap = cardBitmapFinal != null ? cardBitmapFinal : resolver.getCardBack();
                 int ownedCopies = getOwnedCopies(scoreDatabaseHelper, cardFinal.getId());
                 int sellPrice = cardFinal.getPoints() * CARD_SELL_MULTIPLIER;

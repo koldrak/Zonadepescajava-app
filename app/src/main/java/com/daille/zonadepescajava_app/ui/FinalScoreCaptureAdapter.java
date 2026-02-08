@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.daille.zonadepescajava_app.R;
 import com.daille.zonadepescajava_app.model.Card;
+import com.daille.zonadepescajava_app.model.GameTextProvider;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,7 +59,8 @@ public class FinalScoreCaptureAdapter extends RecyclerView.Adapter<FinalScoreCap
     public void onBindViewHolder(@NonNull CaptureViewHolder holder, int position) {
         Entry entry = entries.get(position);
         Card card = entry.card;
-        String name = card != null ? card.getName() : holder.itemView.getContext()
+        GameTextProvider textProvider = new AndroidGameTextProvider(holder.itemView.getContext());
+        String name = card != null ? card.getName(textProvider) : holder.itemView.getContext()
                 .getString(R.string.final_score_unknown_card);
         holder.name.setText(name);
 

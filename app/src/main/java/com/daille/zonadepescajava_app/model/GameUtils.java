@@ -54,50 +54,50 @@ public final class GameUtils {
         List<Card> cards = new ArrayList<>();
 
         // ==== Cartas Naranjas ====
-        cards.add(new Card(CardId.CANGREJO_ROJO, "Cangrejo Rojo", CardType.CRUSTACEO, 2,
+        cards.add(new Card(CardId.CANGREJO_ROJO, R.string.card_name_cangrejo_rojo, CardType.CRUSTACEO, 2,
                 condSumRange(6, 8),
                 "Mueve 1 dado desde una carta adyacente hacia otra carta adyacente (máx. 2 dados por carta).",
                 "", ""));
 
-        cards.add(new Card(CardId.CANGREJO_BOXEADOR, "Cangrejo Boxeador", CardType.CRUSTACEO, 5,
+        cards.add(new Card(CardId.CANGREJO_BOXEADOR, R.string.card_name_cangrejo_boxeador, CardType.CRUSTACEO, 5,
                 condSumExact(5), "Mueve 1 dado entre cartas adyacentes (hasta 2 veces).", "", ""));
 
-        cards.add(new Card(CardId.JAIBA_AZUL, "Jaiba Azul", CardType.CRUSTACEO, 2,
+        cards.add(new Card(CardId.JAIBA_AZUL, R.string.card_name_jaiba_azul, CardType.CRUSTACEO, 2,
                 conditionWithDescription(GameUtils::bothDiceEven, R.string.card_condition_both_even),
                 "Puedes ajustar en ±1 uno de los dados en la zona de pesca (mín. 1, máx. su cara).",
                 "", ""));
 
-        cards.add(new Card(CardId.LANGOSTINO_MANTIS, "Langostino Mantis", CardType.CRUSTACEO, 3,
+        cards.add(new Card(CardId.LANGOSTINO_MANTIS, R.string.card_name_langostino_mantis, CardType.CRUSTACEO, 3,
                 conditionWithDescription(GameUtils::oneDieIsDouble, R.string.card_condition_one_die_double),
                 "Selecciona y relanza un dado perdido para reemplazar un dado de la zona de pesca.",
                 "", ""));
 
-        cards.add(new Card(CardId.CAMARON_FANTASMA, "Camarón Fantasma", CardType.CRUSTACEO, 5,
+        cards.add(new Card(CardId.CAMARON_FANTASMA, R.string.card_name_camaron_fantasma, CardType.CRUSTACEO, 5,
                 conditionWithDescription((slotIndex, g) -> atLeastOneIs(slotIndex, g, 1, 2),
                         R.string.card_condition_at_least_one_two_values_format, 1, 2),
                 "Mira 2 cartas boca abajo adyacentes y decide si invertir su posición.",
                 "", ""));
 
-        cards.add(new Card(CardId.CAMARON_PISTOLA, "Camarón Pistola", CardType.CRUSTACEO, 7,
+        cards.add(new Card(CardId.CAMARON_PISTOLA, R.string.card_name_camaron_pistola, CardType.CRUSTACEO, 7,
                 condSumRange(7, 9),
                 "Al colocar un dado aquí, tiene 50% de probabilidad de reposicionarse al azar.",
                 "", ""));
 
-        cards.add(new Card(CardId.LANGOSTA_ESPINOSA, "Langosta Espinosa", CardType.CRUSTACEO, 4,
+        cards.add(new Card(CardId.LANGOSTA_ESPINOSA, R.string.card_name_langosta_espinosa, CardType.CRUSTACEO, 4,
                 condSumExact(9),
                 "Si uno de los dados usados fue D8, recupera 1 dado perdido.",
                 "", ""));
 
-        cards.add(new Card(CardId.BOGAVANTE, "Bogavante", CardType.CRUSTACEO, 3,
+        cards.add(new Card(CardId.BOGAVANTE, R.string.card_name_bogavante, CardType.CRUSTACEO, 3,
                 condSumExact(10), "Recupera 1 dado perdido.", "", ""));
 
-        cards.add(new Card(CardId.KRILL, "Krill", CardType.CRUSTACEO, 9,
+        cards.add(new Card(CardId.KRILL, R.string.card_name_krill, CardType.CRUSTACEO, 9,
                 condSumExact(7), "", "", "Otorga +1 por cada carta naranja capturada."));
 
-        cards.add(new Card(CardId.COPEPODO_BRILLANTE, "Copépodo Brillante", CardType.CRUSTACEO, 8,
+        cards.add(new Card(CardId.COPEPODO_BRILLANTE, R.string.card_name_copepodo_brillante, CardType.CRUSTACEO, 8,
                 condSumRange(2, 3), "", "", "Otorga +1 por cada carta naranja descartada por fallo."));
 
-        cards.add(new Card(CardId.CANGREJO_ERMITANO, "Cangrejo Ermitaño", CardType.CRUSTACEO, 6,
+        cards.add(new Card(CardId.CANGREJO_ERMITANO, R.string.card_name_cangrejo_ermitano, CardType.CRUSTACEO, 6,
                 conditionWithDescription((slotIndex, g) -> {
                     int s = sumWithModifiers(slotIndex, g);
                     int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
@@ -109,27 +109,27 @@ public final class GameUtils {
                 }, R.string.card_condition_sum_range_and_both_odd_format, 5, 9),
                 "Si hay una carta negra adyacente boca arriba, puedes colocarla bajo esta carta y reemplazarla por una carta del mazo que elijas boca abajo.", "", ""));
 
-        cards.add(new Card(CardId.CANGREJO_DECORADOR, "Cangrejo Decorador", CardType.CRUSTACEO, 7,
+        cards.add(new Card(CardId.CANGREJO_DECORADOR, R.string.card_name_cangrejo_decorador, CardType.CRUSTACEO, 7,
                 conditionWithDescription(
                         (slotIndex, g) -> condSumRange(5, 9).isSatisfied(slotIndex, g) && bothDiceEven(slotIndex, g),
                         R.string.card_condition_sum_range_and_both_even_format, 5, 9),
                 "Busca una carta negra en el mazo y reemplaza una carta boca abajo sin dados.", "", ""));
 
-        cards.add(new Card(CardId.PERCEBES, "Percebes", CardType.CRUSTACEO, 8,
+        cards.add(new Card(CardId.PERCEBES, R.string.card_name_percebes, CardType.CRUSTACEO, 8,
                 conditionWithDescription(GameUtils::bothDiceSameValue, R.string.card_condition_both_same),
                 "Los dados de esta carta deben moverse a cartas adyacentes conservando su valor.",
                 "", ""));
 
-        cards.add(new Card(CardId.LOCO, "Loco", CardType.CRUSTACEO, 7,
+        cards.add(new Card(CardId.LOCO, R.string.card_name_loco, CardType.CRUSTACEO, 7,
                 conditionWithDescription(GameUtils::bothDiceSameValue, R.string.card_condition_both_same),
                 "Mueve los dados de esta carta a cartas adyacentes ajustando ±1.", "", ""));
 
-        cards.add(new Card(CardId.CENTOLLA, "Centolla", CardType.CRUSTACEO, 7,
+        cards.add(new Card(CardId.CENTOLLA, R.string.card_name_centolla, CardType.CRUSTACEO, 7,
                 condSumGreaterThan(10),
                 "El próximo dado lanzado debe ir obligatoriamente a esta carta.",
                 "", ""));
 
-        cards.add(new Card(CardId.JAIBA_GIGANTE_DE_COCO, "Jaiba Gigante de Coco", CardType.CRUSTACEO, 9,
+        cards.add(new Card(CardId.JAIBA_GIGANTE_DE_COCO, R.string.card_name_jaiba_gigante_de_coco, CardType.CRUSTACEO, 9,
                 conditionWithDescription((slotIndex, g) -> {
                     int[] values = adjustedDiceValues(slotIndex, g);
                     if (values.length != 2) return false;
@@ -137,45 +137,45 @@ public final class GameUtils {
                 }, R.string.card_condition_both_at_least_format, 8),
                 "Si el dado colocado es < 7 se pierde automáticamente.", "", ""));
 
-        cards.add(new Card(CardId.NAUTILUS, "Nautilus", CardType.CRUSTACEO, 2,
+        cards.add(new Card(CardId.NAUTILUS, R.string.card_name_nautilus, CardType.CRUSTACEO, 2,
                 condSumAtLeast(8),
                 "Puede cambiar el valor de 2 dados sumando o restando 2 puntos.",
                 "", ""));
 
-        cards.add(new Card(CardId.CANGREJO_HERRADURA, "Cangrejo herradura", CardType.CRUSTACEO, 3,
+        cards.add(new Card(CardId.CANGREJO_HERRADURA, R.string.card_name_cangrejo_herradura, CardType.CRUSTACEO, 3,
                 condSumAtLeast(14), "Puedes cambiar el valor de 1 dado de una carta naranja al número que elijas.", "", ""));
 
-        cards.add(new Card(CardId.ALMEJAS, "Almejas", CardType.CRUSTACEO, 2,
+        cards.add(new Card(CardId.ALMEJAS, R.string.card_name_almejas, CardType.CRUSTACEO, 2,
                 condSumAtLeast(8), "Lanza un dado descartado y colócalo aquí si se activó una habilidad adyacente.", "", ""));
 
-        cards.add(new Card(CardId.OSTRAS, "Ostras", CardType.CRUSTACEO, 3,
+        cards.add(new Card(CardId.OSTRAS, R.string.card_name_ostras, CardType.CRUSTACEO, 3,
                 condSumExact(4),
                 "Relanza y reposiciona aleatoriamente un dado perdido al activarse una habilidad adyacente.", "", ""));
 
-        cards.add(new Card(CardId.CANGREJO_ARANA, "Cangrejo araña", CardType.CRUSTACEO, 2,
+        cards.add(new Card(CardId.CANGREJO_ARANA, R.string.card_name_cangrejo_arana, CardType.CRUSTACEO, 2,
                 condSumAtLeast(5),
                 "Elige una carta descartada por fallo y reemplaza una carta boca abajo.",
                 "", ""));
 
-        cards.add(new Card(CardId.CANGREJO_VIOLINISTA, "Cangrejo violinista", CardType.CRUSTACEO, 6,
+        cards.add(new Card(CardId.CANGREJO_VIOLINISTA, R.string.card_name_cangrejo_violinista, CardType.CRUSTACEO, 6,
                 condSumRange(13, 15),
                 "Elige una carta descartada por fallo y captúrala directamente.", "", ""));
 
-        cards.add(new Card(CardId.FOCA_MOTEADA, "Foca moteada", CardType.PEZ_GRANDE, 2,
+        cards.add(new Card(CardId.FOCA_MOTEADA, R.string.card_name_foca_moteada, CardType.PEZ_GRANDE, 2,
                 condSumAtLeast(10),
                 "Tras tu próximo lanzamiento, si colocas el dado en una carta verde, puedes elegir su valor.",
                 "", ""));
 
         // ==== Cartas Celestes ====
-        cards.add(new Card(CardId.SARDINA, "Sardina", CardType.PEZ, 9,
+        cards.add(new Card(CardId.SARDINA, R.string.card_name_sardina, CardType.PEZ, 9,
                 condSumExact(6), "", "", "Otorga +1 punto por cada carta celeste capturada."));
 
-        cards.add(new Card(CardId.ATUN, "Atún", CardType.PEZ, 4,
+        cards.add(new Card(CardId.ATUN, R.string.card_name_atun, CardType.PEZ, 4,
                 condSumRange(3, 7),
                 "Puedes relanzar el dado recién lanzado y reposicionarlo en cualquier carta.",
                 "", ""));
 
-        cards.add(new Card(CardId.SALMON, "Salmón", CardType.PEZ, 6,
+        cards.add(new Card(CardId.SALMON, R.string.card_name_salmon, CardType.PEZ, 6,
                 conditionWithDescription((slotIndex, g) -> {
                     int[] values = adjustedDiceValues(slotIndex, g);
                     if (values.length != 2) return false;
@@ -185,12 +185,12 @@ public final class GameUtils {
                 }, R.string.card_condition_one_value_other_at_least_format, 4, 5),
                 "Selecciona 1 carta boca abajo y voltéala sin ponerle dado.", "", ""));
 
-        cards.add(new Card(CardId.PEZ_PAYASO, "Pez Payaso", CardType.PEZ, 5,
+        cards.add(new Card(CardId.PEZ_PAYASO, R.string.card_name_pez_payaso, CardType.PEZ, 5,
                 condSumRange(8, 10),
                 "Elige una carta adyacente boca arriba para protegerla del próximo fallo.",
                 "", ""));
 
-        cards.add(new Card(CardId.PEZ_GLOBO, "Pez Globo", CardType.PEZ, 6,
+        cards.add(new Card(CardId.PEZ_GLOBO, R.string.card_name_pez_globo, CardType.PEZ, 6,
                 conditionWithDescription((slotIndex, g) -> {
                     int[] values = adjustedDiceValues(slotIndex, g);
                     if (values.length != 2) return false;
@@ -200,67 +200,67 @@ public final class GameUtils {
                 }, R.string.card_condition_both_maximum),
                 "Puedes inflar el resultado de cualquier dado a su valor máximo.", "", ""));
 
-        cards.add(new Card(CardId.MORENA, "Morena", CardType.PEZ, 3,
+        cards.add(new Card(CardId.MORENA, R.string.card_name_morena, CardType.PEZ, 3,
                 differenceAtLeast(4),
                 "Mueve 1 dado de una carta adyacente a otra carta adyacente.", "", ""));
 
-        cards.add(new Card(CardId.CABALLITO_DE_MAR, "Caballito de Mar", CardType.PEZ, 5,
+        cards.add(new Card(CardId.CABALLITO_DE_MAR, R.string.card_name_caballito_de_mar, CardType.PEZ, 5,
                 condSumRange(2, 4), "Puedes recuperar un D4 perdido.", "", ""));
 
-        cards.add(new Card(CardId.PEZ_LINTERNA, "Pez Linterna", CardType.PEZ, 6,
+        cards.add(new Card(CardId.PEZ_LINTERNA, R.string.card_name_pez_linterna, CardType.PEZ, 6,
                 conditionWithDescription((slotIndex, g) -> atLeastOneIs(slotIndex, g, 3),
                         R.string.card_condition_at_least_one_value_format, 3),
                 "Selecciona 1 carta boca abajo: si es carta verde, mueve el dado; si es carta negra, pierdes el dado.",
                 "", ""));
 
-        cards.add(new Card(CardId.KOI, "Koi", CardType.PEZ, 7,
+        cards.add(new Card(CardId.KOI, R.string.card_name_koi, CardType.PEZ, 7,
                 condSumExact(9),
                 "Intercambia un dado de esta carta con uno de una carta adyacente boca arriba con 1 dado.",
                 "", ""));
 
-        cards.add(new Card(CardId.PEZ_VOLADOR, "Pez Volador", CardType.PEZ, 2,
+        cards.add(new Card(CardId.PEZ_VOLADOR, R.string.card_name_pez_volador, CardType.PEZ, 2,
                 conditionWithDescription(GameUtils::oneEvenOneOdd, R.string.card_condition_one_even_one_odd),
                 "Revela una línea: si el par es mayor, es vertical; si es menor, es horizontal.",
                 "", ""));
 
-        cards.add(new Card(CardId.PIRANA, "Piraña", CardType.PEZ, 8,
+        cards.add(new Card(CardId.PIRANA, R.string.card_name_pirana, CardType.PEZ, 8,
                 conditionWithDescription(
                         (slotIndex, g) -> condSumAtLeast(8).isSatisfied(slotIndex, g) && atLeastOneIs(slotIndex, g, 6),
                         R.string.card_condition_sum_at_least_and_at_least_one_value_format, 8, 6),
                 "Descarta 1 carta celeste adyacente boca arriba y reemplázala sin perder sus dados.",
                 "", ""));
 
-        cards.add(new Card(CardId.PEZ_FANTASMA, "Pez Fantasma", CardType.PEZ, 2,
+        cards.add(new Card(CardId.PEZ_FANTASMA, R.string.card_name_pez_fantasma, CardType.PEZ, 2,
                 conditionWithDescription(
                         (slotIndex, g) -> condSumGreaterThan(6).isSatisfied(slotIndex, g) && !hasAdjacentFaceUp(slotIndex, g),
                         R.string.card_condition_sum_greater_than_and_no_adjacent_face_up_format, 6),
                 "Vuelve boca abajo una carta adyacente y recupera su dado.", "", ""));
 
-        cards.add(new Card(CardId.PULPO, "Pulpo", CardType.CRUSTACEO, 2,
+        cards.add(new Card(CardId.PULPO, R.string.card_name_pulpo, CardType.CRUSTACEO, 2,
                 condSumLessThan(8),
                 "Si el dado es par, busca una carta naranja y reemplaza esta carta manteniendo el dado.",
                 "", ""));
 
-        cards.add(new Card(CardId.ARENQUE, "Arenque", CardType.PEZ, 5,
+        cards.add(new Card(CardId.ARENQUE, R.string.card_name_arenque, CardType.PEZ, 5,
                 condSumRange(5, 7),
                 "Busca 2 cartas celestes y colócalas boca abajo adyacentes, reemplazando cartas boca abajo.",
                 "", ""));
 
-        cards.add(new Card(CardId.REMORA, "Rémora", CardType.PEZ, 7,
+        cards.add(new Card(CardId.REMORA, R.string.card_name_remora, CardType.PEZ, 7,
                 conditionWithDescription(
                         (slotIndex, g) -> containsDieType(slotIndex, g, DieType.D4) && containsDieType(slotIndex, g, DieType.D6),
                         R.string.card_condition_contains_die_types_two_format, DieType.D4.getLabel(), DieType.D6.getLabel()),
                 "Si está adyacente a una carta verde, se adhiere y se captura junto a ella.",
                 "", ""));
 
-        cards.add(new Card(CardId.CONGRIO, "Congrio", CardType.PEZ, 7,
+        cards.add(new Card(CardId.CONGRIO, R.string.card_name_congrio, CardType.PEZ, 7,
                 condSumExact(5), "", "", "Otorga +1 por cada carta celeste descartada por fallo."));
 
-        cards.add(new Card(CardId.PEZ_BETTA, "Pez betta", CardType.PEZ, 9,
+        cards.add(new Card(CardId.PEZ_BETTA, R.string.card_name_pez_betta, CardType.PEZ, 9,
                 condSumRange(10, 11),
                 "Mientras esté boca arriba, solo puedes colocar dados en su fila.", "", ""));
 
-        cards.add(new Card(CardId.TRUCHA_ARCOIRIS, "Trucha Arcoíris", CardType.PEZ, 5,
+        cards.add(new Card(CardId.TRUCHA_ARCOIRIS, R.string.card_name_trucha_arcoiris, CardType.PEZ, 5,
                 conditionWithDescription((slotIndex, g) -> {
                     int[] values = adjustedDiceValues(slotIndex, g);
                     if (values.length != 2) return false;
@@ -270,13 +270,13 @@ public final class GameUtils {
                 }, R.string.card_condition_one_value_other_at_least_format, 5, 6),
                 "Voltea una carta adyacente; si es carta celeste, coloca 1 dado perdido.", "", ""));
 
-        cards.add(new Card(CardId.PEZ_PIEDRA, "Pez piedra", CardType.PEZ, 6,
+        cards.add(new Card(CardId.PEZ_PIEDRA, R.string.card_name_pez_piedra, CardType.PEZ, 6,
                 conditionWithDescription(
                         (slotIndex, g) -> condSumRange(10, 14).isSatisfied(slotIndex, g) && bothDiceEven(slotIndex, g),
                         R.string.card_condition_sum_range_and_both_even_format, 10, 14),
                 "La columna donde está no es afectada por la marea.", "", ""));
 
-        cards.add(new Card(CardId.PEZ_LEON, "Pez León", CardType.PEZ, 6,
+        cards.add(new Card(CardId.PEZ_LEON, R.string.card_name_pez_leon, CardType.PEZ, 6,
                 conditionWithDescription((slotIndex, g) -> {
                     if (!condSumAtLeast(16).isSatisfied(slotIndex, g)) return false;
                     BoardSlot slot = g.getBoard()[slotIndex];
@@ -289,47 +289,47 @@ public final class GameUtils {
                 }, R.string.card_condition_sum_at_least_and_one_is_max_format, 16),
                 "Multiplica por 2 el resultado de un dado.", "", ""));
 
-        cards.add(new Card(CardId.PEZ_DRAGON_AZUL, "Pez Dragón azul", CardType.PEZ, 5,
+        cards.add(new Card(CardId.PEZ_DRAGON_AZUL, R.string.card_name_pez_dragon_azul, CardType.PEZ, 5,
                 differenceAtLeast(5),
                 "Regresa los dados con valor ≥ 6 al voltearse.", "", ""));
 
-        cards.add(new Card(CardId.PEZ_PIPA, "Pez pipa", CardType.PEZ, 4,
+        cards.add(new Card(CardId.PEZ_PIPA, R.string.card_name_pez_pipa, CardType.PEZ, 4,
                 condSumExact(14), "Si usas un D12 en su captura, recuperas 1 dado.", "", ""));
 
-        cards.add(new Card(CardId.PEZ_HACHA_ABISAL, "Pez Hacha Abisal", CardType.PEZ, 9,
+        cards.add(new Card(CardId.PEZ_HACHA_ABISAL, R.string.card_name_pez_hacha_abisal, CardType.PEZ, 9,
                 conditionWithDescription((slotIndex, g) -> atLeastOneIs(slotIndex, g, 2),
                         R.string.card_condition_at_least_one_value_format, 2),
                 "Debes liberar 2 cartas.", "", ""));
 
-        cards.add(new Card(CardId.CARPA_DORADA, "Carpa Dorada", CardType.PEZ, 7,
+        cards.add(new Card(CardId.CARPA_DORADA, R.string.card_name_carpa_dorada, CardType.PEZ, 7,
                 differenceAtLeast(3), "La marea solo afecta a los dados; los que salen se pierden.", "", ""));
 
-        cards.add(new Card(CardId.FLETAN, "Fletan", CardType.PEZ, 7,
+        cards.add(new Card(CardId.FLETAN, R.string.card_name_fletan, CardType.PEZ, 7,
                 conditionWithDescription(GameUtils::diceConsecutive, R.string.card_condition_dice_consecutive),
                 "Al activarse la marea, elige un pez boca arriba y ponlo boca abajo; recuperas su dado.",
                 "", ""));
 
-        cards.add(new Card(CardId.PEZ_LOBO, "Pez Lobo", CardType.PEZ, 6,
+        cards.add(new Card(CardId.PEZ_LOBO, R.string.card_name_pez_lobo, CardType.PEZ, 6,
                 conditionWithDescription(
                         (slotIndex, g) -> condSumAtLeast(8).isSatisfied(slotIndex, g) && atLeastOneIs(slotIndex, g, 7),
                         R.string.card_condition_sum_at_least_and_at_least_one_value_format, 8, 7),
                 "Descarta una carta adyacente boca arriba y reemplázala sin perder sus dados; luego vuelve al mazo.",
                 "", ""));
 
-        cards.add(new Card(CardId.PEZ_BORRON, "Pez borrón", CardType.PEZ, 7,
+        cards.add(new Card(CardId.PEZ_BORRON, R.string.card_name_pez_borron, CardType.PEZ, 7,
                 condSumGreaterThan(10),
                 "Elige 1 carta boca abajo y mueve el dado de esta carta a ella sin voltearla.",
                 "", ""));
 
-        cards.add(new Card(CardId.SEPIA, "Sepia", CardType.CRUSTACEO, 3,
+        cards.add(new Card(CardId.SEPIA, R.string.card_name_sepia, CardType.CRUSTACEO, 3,
                 condSumRange(12, 14),
                 "Si el dado es impar, mira 3 cartas y captura 1 naranja; luego baraja esta carta en el mazo.",
                 "", ""));
 
-        cards.add(new Card(CardId.DAMISELAS, "Damiselas", CardType.PEZ, 3,
+        cards.add(new Card(CardId.DAMISELAS, R.string.card_name_damiselas, CardType.PEZ, 3,
                 condSumRange(6, 10), "Mira las 6 primeras cartas del mazo y ordénalas.", "", ""));
 
-        cards.add(new Card(CardId.LAMPREA, "Lamprea", CardType.PEZ, 2,
+        cards.add(new Card(CardId.LAMPREA, R.string.card_name_lamprea, CardType.PEZ, 2,
                 conditionWithDescription(
                         (slotIndex, g) -> containsDieType(slotIndex, g, DieType.D12) && containsDieType(slotIndex, g, DieType.D8),
                         R.string.card_condition_contains_die_types_two_format, DieType.D12.getLabel(), DieType.D8.getLabel()),
@@ -337,27 +337,27 @@ public final class GameUtils {
                 "", ""));
 
         // ==== Cartas Verdes ====
-        cards.add(new Card(CardId.MORSA, "Morsa", CardType.PEZ_GRANDE, 4,
+        cards.add(new Card(CardId.MORSA, R.string.card_name_morsa, CardType.PEZ_GRANDE, 4,
                 condSumRange(7, 8),
                 "Elimina una carta adyacente y luego busca una carta verde en el mazo para reemplazarla boca arriba.",
                 "", ""));
 
-        cards.add(new Card(CardId.LEON_MARINO, "León Marino", CardType.PEZ_GRANDE, 3,
+        cards.add(new Card(CardId.LEON_MARINO, R.string.card_name_leon_marino, CardType.PEZ_GRANDE, 3,
                 condSumRange(13, 14),
                 "Mira las 4 primeras cartas del mazo y captura hasta 2 cartas verdes.",
                 "", ""));
 
-        cards.add(new Card(CardId.MANATI, "Manatí", CardType.PEZ_GRANDE, 5,
+        cards.add(new Card(CardId.MANATI, R.string.card_name_manati, CardType.PEZ_GRANDE, 5,
                 condSumRange(8, 9),
                 "Si hay al menos 3 cartas verdes boca arriba al capturarlo, recupera 2 dados.",
                 "", ""));
 
-        cards.add(new Card(CardId.TIBURON_BLANCO, "Tiburón Blanco", CardType.PEZ_GRANDE, 3,
+        cards.add(new Card(CardId.TIBURON_BLANCO, R.string.card_name_tiburon_blanco, CardType.PEZ_GRANDE, 3,
                 condSumGreaterThan(10),
                 "Elimina una carta adyacente boca arriba y mueve su dado a esta carta.",
                 "", ""));
 
-        cards.add(new Card(CardId.TIBURON_MARTILLO, "Tiburón Martillo", CardType.PEZ_GRANDE, 8,
+        cards.add(new Card(CardId.TIBURON_MARTILLO, R.string.card_name_tiburon_martillo, CardType.PEZ_GRANDE, 8,
                 conditionWithDescription((slotIndex, g) -> {
                     int[] values = adjustedDiceValues(slotIndex, g);
                     if (values.length != 2) return false;
@@ -365,20 +365,20 @@ public final class GameUtils {
                 }, R.string.card_condition_both_at_least_format, 5),
                 "", "", "Otorga +2 por cada carta verde capturada."));
 
-        cards.add(new Card(CardId.TIBURON_BALLENA, "Tiburón Ballena", CardType.PEZ_GRANDE, 5,
+        cards.add(new Card(CardId.TIBURON_BALLENA, R.string.card_name_tiburon_ballena, CardType.PEZ_GRANDE, 5,
                 condSumGreaterThan(11), "", "", "Si tienes 3 cartas naranjas, otorga +6."));
 
-        cards.add(new Card(CardId.PEZ_VELA, "Pez Vela", CardType.PEZ_GRANDE, 9,
+        cards.add(new Card(CardId.PEZ_VELA, R.string.card_name_pez_vela, CardType.PEZ_GRANDE, 9,
                 condSumExact(12), "Relanza el dado y elige resultado.", "", ""));
 
-        cards.add(new Card(CardId.CALAMAR_GIGANTE, "Calamar Gigante", CardType.CRUSTACEO, 9,
+        cards.add(new Card(CardId.CALAMAR_GIGANTE, R.string.card_name_calamar_gigante, CardType.CRUSTACEO, 9,
                 conditionWithDescription(
                         (slotIndex, g) -> condSumGreaterThan(10).isSatisfied(slotIndex, g) && containsDieType(slotIndex, g, DieType.D8),
                         R.string.card_condition_sum_greater_than_and_contains_die_type_format, 10, DieType.D8.getLabel()),
                 "Voltea boca abajo las cartas adyacentes manteniendo sus dados; podrán activarse de nuevo.",
                 "", ""));
 
-        cards.add(new Card(CardId.MANTA_GIGANTE, "Manta Gigante", CardType.PEZ_GRANDE, 3,
+        cards.add(new Card(CardId.MANTA_GIGANTE, R.string.card_name_manta_gigante, CardType.PEZ_GRANDE, 3,
                 conditionWithDescription((slotIndex, g) -> {
                     int s = sumWithModifiers(slotIndex, g);
                     int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
@@ -389,26 +389,26 @@ public final class GameUtils {
                 }, R.string.card_condition_sum_range_and_no_value_format, 9, 11, 4),
                 "Recuperas un dado D8 perdido.", "", ""));
 
-        cards.add(new Card(CardId.BALLENA_AZUL, "Ballena azul", CardType.PEZ_GRANDE, 2,
+        cards.add(new Card(CardId.BALLENA_AZUL, R.string.card_name_ballena_azul, CardType.PEZ_GRANDE, 2,
                 condSumRange(11, 13),
                 "Reposiciona todos los dados del tablero manteniendo sus valores.",
                 "", ""));
 
-        cards.add(new Card(CardId.MERO_GIGANTE, "Mero gigante", CardType.PEZ_GRANDE, 2,
+        cards.add(new Card(CardId.MERO_GIGANTE, R.string.card_name_mero_gigante, CardType.PEZ_GRANDE, 2,
                 conditionWithDescription(
                         (slotIndex, g) -> condSumAtLeast(10).isSatisfied(slotIndex, g) && diceDistinct(slotIndex, g),
                         R.string.card_condition_sum_at_least_and_dice_distinct_format, 10),
                 "Revela todas las cartas adyacentes que estén boca abajo.", "", ""));
 
-        cards.add(new Card(CardId.PEZ_LUNA, "Pez luna", CardType.PEZ_GRANDE, 8,
+        cards.add(new Card(CardId.PEZ_LUNA, R.string.card_name_pez_luna, CardType.PEZ_GRANDE, 8,
                 condSumAtLeast(13), "Si sale del tablero por marea, libera tu captura de mayor valor.", "", ""));
 
-        cards.add(new Card(CardId.TIBURON_TIGRE, "Tiburón tigre", CardType.PEZ_GRANDE, 3,
+        cards.add(new Card(CardId.TIBURON_TIGRE, R.string.card_name_tiburon_tigre, CardType.PEZ_GRANDE, 3,
                 condSumGreaterThan(13),
                 "Elimina una carta adyacente boca arriba y devuelve su dado a la reserva.",
                 "", ""));
 
-        cards.add(new Card(CardId.DELFIN, "Delfín", CardType.PEZ_GRANDE, 4,
+        cards.add(new Card(CardId.DELFIN, R.string.card_name_delfin, CardType.PEZ_GRANDE, 4,
                 conditionWithDescription((slotIndex, g) -> {
                     int[] values = adjustedDiceValues(slotIndex, g);
                     if (values.length != 2) return false;
@@ -416,20 +416,20 @@ public final class GameUtils {
                 }, R.string.card_condition_both_at_least_format, 6),
                 "El próximo fallo adyacente no descarta la carta.", "", ""));
 
-        cards.add(new Card(CardId.TIBURON_PEREGRINO, "Tiburón Peregrino", CardType.PEZ_GRANDE, 4,
+        cards.add(new Card(CardId.TIBURON_PEREGRINO, R.string.card_name_tiburon_peregrino, CardType.PEZ_GRANDE, 4,
                 condSumGreaterThan(9), "Revela 5 cartas, elige 1 arriba y 1 al fondo.", "", ""));
 
-        cards.add(new Card(CardId.NARVAL, "Narval", CardType.PEZ_GRANDE, 8,
+        cards.add(new Card(CardId.NARVAL, R.string.card_name_narval, CardType.PEZ_GRANDE, 8,
                 condSumExact(15),
                 "Regresa las cartas adyacentes boca arriba al mazo y recupera sus dados.", "", ""));
 
-        cards.add(new Card(CardId.ORCA, "Orca", CardType.PEZ_GRANDE, 4,
+        cards.add(new Card(CardId.ORCA, R.string.card_name_orca, CardType.PEZ_GRANDE, 4,
                 conditionWithDescription(
                         (slotIndex, g) -> condSumGreaterThan(19).isSatisfied(slotIndex, g) && containsDieType(slotIndex, g, DieType.D12),
                         R.string.card_condition_sum_greater_than_and_contains_die_type_format, 19, DieType.D12.getLabel()),
                 "Voltea boca abajo las cartas adyacentes y recupera sus dados.", "", ""));
 
-        cards.add(new Card(CardId.ANGUILA_ELECTRICA, "Anguila Eléctrica", CardType.PEZ_GRANDE, 4,
+        cards.add(new Card(CardId.ANGUILA_ELECTRICA, R.string.card_name_anguila_electrica, CardType.PEZ_GRANDE, 4,
                 conditionWithDescription((slotIndex, g) -> {
                     int s = sumWithModifiers(slotIndex, g);
                     int shift = g.getBoard()[slotIndex].getStatus().sumConditionShift;
@@ -440,31 +440,31 @@ public final class GameUtils {
                 }, R.string.card_condition_sum_range_and_no_value_format, 10, 12, 5),
                 "Relanza dados adyacentes; si alguno es máximo recupera un dado.", "", ""));
 
-        cards.add(new Card(CardId.CACHALOTE, "Cachalote", CardType.PEZ_GRANDE, 4,
+        cards.add(new Card(CardId.CACHALOTE, R.string.card_name_cachalote, CardType.PEZ_GRANDE, 4,
                 condSumRange(12, 15),
                 "Reposiciona dados en cartas boca arriba sin dados, eligiendo el valor del dado.",
                 "", ""));
 
-        cards.add(new Card(CardId.ESTURION, "Esturión", CardType.PEZ_GRANDE, 8,
+        cards.add(new Card(CardId.ESTURION, R.string.card_name_esturion, CardType.PEZ_GRANDE, 8,
                 conditionWithDescription(
                         (slotIndex, g) -> condSumAtLeast(8).isSatisfied(slotIndex, g) && bothDiceSameValue(slotIndex, g),
                         R.string.card_condition_sum_at_least_and_both_same_format, 8),
                 "Lanza todos los dados de tu reserva y colócalos en la zona de pesca.",
                 "", ""));
 
-        cards.add(new Card(CardId.BALLENA_JOROBADA, "Ballena jorobada", CardType.PEZ_GRANDE, 4,
+        cards.add(new Card(CardId.BALLENA_JOROBADA, R.string.card_name_ballena_jorobada, CardType.PEZ_GRANDE, 4,
                 condSumRange(1, 2), "Puedes diriguir la direccion de las próximas 3 mareas", "", ""));
 
         // ==== Cartas Negras ====
-        cards.add(new Card(CardId.BOTA_VIEJA, "Bota Vieja", CardType.OBJETO, 7,
+        cards.add(new Card(CardId.BOTA_VIEJA, R.string.card_name_bota_vieja, CardType.OBJETO, 7,
                 condSumLessOrEqual(6), "Mientras esté boca arriba, aplica −1 a adyacentes.", "", ""));
 
-        cards.add(new Card(CardId.BOTELLA_PLASTICO, "Botella de Plástico", CardType.OBJETO, 9,
+        cards.add(new Card(CardId.BOTELLA_PLASTICO, R.string.card_name_botella_plastico, CardType.OBJETO, 9,
                 condSumExact(8),
                 "Elige 1 carta celeste adyacente boca arriba; sus dados obtienen +3.",
                 "", ""));
 
-        cards.add(new Card(CardId.RED_ENREDADA, "Red Enredada", CardType.OBJETO, 4,
+        cards.add(new Card(CardId.RED_ENREDADA, R.string.card_name_red_enredada, CardType.OBJETO, 4,
                 conditionWithDescription((slotIndex, g) -> {
                     int[] values = adjustedDiceValues(slotIndex, g);
                     if (values.length != 2) return false;
@@ -472,29 +472,29 @@ public final class GameUtils {
                 }, R.string.card_condition_both_exact_format, 1),
                 "Captura además una carta adyacente boca abajo.", "", ""));
 
-        cards.add(new Card(CardId.LATA_OXIDADA, "Lata Oxidada", CardType.OBJETO, 4,
+        cards.add(new Card(CardId.LATA_OXIDADA, R.string.card_name_lata_oxidada, CardType.OBJETO, 4,
                 condSumExact(8), "Recupera 1 dado perdido.", "", ""));
 
-        cards.add(new Card(CardId.LIMPIADOR_MARINO, "Limpiador Marino", CardType.OBJETO, 5,
+        cards.add(new Card(CardId.LIMPIADOR_MARINO, R.string.card_name_limpiador_marino, CardType.OBJETO, 5,
                 condSumGreaterThan(8), "", "", "Otorga +2 por cada carta negra capturada."));
 
-        cards.add(new Card(CardId.ANZUELO_ROTO, "Anzuelo Roto", CardType.OBJETO, 9,
+        cards.add(new Card(CardId.ANZUELO_ROTO, R.string.card_name_anzuelo_roto, CardType.OBJETO, 9,
                 conditionWithDescription(GameUtils::bothDiceSameValue, R.string.card_condition_both_same),
                 "Mientras esté boca arriba, el primer fallo con 2 dados pierde 2 dados.",
                 "", ""));
 
-        cards.add(new Card(CardId.CORRIENTES_PROFUNDAS, "Corrientes profundas", CardType.OBJETO, 6,
+        cards.add(new Card(CardId.CORRIENTES_PROFUNDAS, R.string.card_name_corrientes_profundas, CardType.OBJETO, 6,
                 differenceAtLeast(3),
                 "Si un dado iguala el suyo, activa marea: par a la derecha, impar a la izquierda.",
                 "", ""));
 
-        cards.add(new Card(CardId.AUTO_HUNDIDO, "Auto hundido", CardType.OBJETO, 8,
+        cards.add(new Card(CardId.AUTO_HUNDIDO, R.string.card_name_auto_hundido, CardType.OBJETO, 8,
                 condSumExact(13), "Mientras esté boca arriba, aplica +1 a adyacentes.", "", ""));
 
-        cards.add(new Card(CardId.BOTELLA_DE_VIDRIO, "Botella de vidrio", CardType.OBJETO, 9,
+        cards.add(new Card(CardId.BOTELLA_DE_VIDRIO, R.string.card_name_botella_de_vidrio, CardType.OBJETO, 9,
                 condSumExact(8), "Elige 1 carta adyacente boca arriba; sus dados obtienen −3.", "", ""));
 
-        cards.add(new Card(CardId.RED_DE_ARRASTRE, "Red de arrastre", CardType.OBJETO, 8,
+        cards.add(new Card(CardId.RED_DE_ARRASTRE, R.string.card_name_red_de_arrastre, CardType.OBJETO, 8,
                 conditionWithDescription((slotIndex, g) -> {
                     int[] values = adjustedDiceValues(slotIndex, g);
                     if (values.length != 2) return false;
@@ -502,17 +502,17 @@ public final class GameUtils {
                 }, R.string.card_condition_both_exact_format, 7),
                 "Captura 2 cartas boca abajo y libera 1 carta.", "", ""));
 
-        cards.add(new Card(CardId.MICRO_PLASTICOS, "Micro plásticos", CardType.OBJETO, 8,
+        cards.add(new Card(CardId.MICRO_PLASTICOS, R.string.card_name_micro_plasticos, CardType.OBJETO, 8,
                 condSumExact(10), "Invierte todas las cartas de la zona de pesca.", "", ""));
 
-        cards.add(new Card(CardId.FOSA_ABISAL, "Fosa abisal", CardType.OBJETO, 5,
+        cards.add(new Card(CardId.FOSA_ABISAL, R.string.card_name_fosa_abisal, CardType.OBJETO, 5,
                 condSumGreaterThan(10), "", "", "Otorga +1 por cada carta negra fallada."));
 
-        cards.add(new Card(CardId.DERRAME_PETROLEO, "Derrame de petróleo", CardType.OBJETO, 10,
+        cards.add(new Card(CardId.DERRAME_PETROLEO, R.string.card_name_derrame_petroleo, CardType.OBJETO, 10,
                 condSumGreaterThan(11),
                 "Voltea todas las cartas boca arriba; no se pueden voltear hasta que salga.", "", ""));
 
-        cards.add(new Card(CardId.BARCO_PESQUERO, "Barco pesquero", CardType.OBJETO, 6,
+        cards.add(new Card(CardId.BARCO_PESQUERO, R.string.card_name_barco_pesquero, CardType.OBJETO, 6,
                 conditionWithDescription(GameUtils::diceConsecutive, R.string.card_condition_dice_consecutive),
                 "Si un dado iguala el suyo, elimina una carta adyacente boca arriba.",
                 "", ""));

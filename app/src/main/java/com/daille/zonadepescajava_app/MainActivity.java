@@ -62,11 +62,13 @@ import com.daille.zonadepescajava_app.model.Die;
 import com.daille.zonadepescajava_app.model.DieType;
 import com.daille.zonadepescajava_app.model.GameState;
 import com.daille.zonadepescajava_app.model.GameUtils;
+import com.daille.zonadepescajava_app.model.GameTextProvider;
 import com.daille.zonadepescajava_app.model.ShopPrices;
 import com.daille.zonadepescajava_app.ui.BoardLinksDecoration;
 import com.daille.zonadepescajava_app.ui.BoardSlotAdapter;
 import com.daille.zonadepescajava_app.ui.AcquiredCardsAdapter;
 import com.daille.zonadepescajava_app.ui.BiteTeethView;
+import com.daille.zonadepescajava_app.ui.AndroidGameTextProvider;
 import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 import com.daille.zonadepescajava_app.ui.CardImageResolver;
 import com.daille.zonadepescajava_app.ui.CardPackOpenDialog;
@@ -241,6 +243,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
         viewModel = new ViewModelProvider(this).get(GameViewModel.class);
         gameState = viewModel.getGameState();
+        gameState.setTextProvider(getTextProvider());
         endScoringShown = viewModel.isFinalScoreRecorded();
         cardImageResolver = new CardImageResolver(this);
         diceImageResolver = new DiceImageResolver(this);
@@ -360,6 +363,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
             viewModel.startNewGame(startingReserve, ownedCounts, selectedDeck);
             gameState = viewModel.getGameState();
+            gameState.setTextProvider(getTextProvider());
             endScoringShown = false;
             acquiredCopiesInMatch.clear();
             setupBoard();
@@ -613,12 +617,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
         List<CollectionCardAdapter.CollectionEntry> entries = new ArrayList<>();
         List<Card> cards = new ArrayList<>(GameUtils.createAllCards());
+        GameTextProvider textProvider = getTextProvider();
         cards.sort((first, second) -> {
             int byPoints = Integer.compare(second.getPoints(), first.getPoints());
             if (byPoints != 0) {
                 return byPoints;
             }
-            return first.getName().compareToIgnoreCase(second.getName());
+            return first.getName(textProvider).compareToIgnoreCase(second.getName(textProvider));
         });
         for (Card card : cards) {
             if (collectionsFilterType != null && card.getType() != collectionsFilterType) {
@@ -1112,12 +1117,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void refreshDeckSelectionList() {
         Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
         List<Card> selectable = GameUtils.getSelectableCards(ownedCounts);
+        GameTextProvider textProvider = getTextProvider();
         selectable.sort((first, second) -> {
             int byPoints = Integer.compare(second.getPoints(), first.getPoints());
             if (byPoints != 0) {
                 return byPoints;
             }
-            return first.getName().compareToIgnoreCase(second.getName());
+            return first.getName(textProvider).compareToIgnoreCase(second.getName(textProvider));
         });
         deckSelectionCounts.clear();
         selectedDeck = new ArrayList<>();
@@ -1192,12 +1198,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 cards.add(card);
             }
         }
+        GameTextProvider textProvider = getTextProvider();
         cards.sort((first, second) -> {
             int byPoints = Integer.compare(second.getPoints(), first.getPoints());
             if (byPoints != 0) {
                 return byPoints;
             }
-            return first.getName().compareToIgnoreCase(second.getName());
+            return first.getName(textProvider).compareToIgnoreCase(second.getName(textProvider));
         });
         cardSellPoints = 0;
         if (cardSellAdapter != null) {
@@ -1553,6 +1560,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         );
     }
 
+    private GameTextProvider getTextProvider() {
+        return new AndroidGameTextProvider(this);
+    }
+
     private void configureSettingsSection(View header, View content, ImageView chevron, boolean expanded) {
         content.setVisibility(expanded ? View.VISIBLE : View.GONE);
         chevron.setRotation(expanded ? 180f : 0f);
@@ -1566,16 +1577,21 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void setupTextLanguageSettings() {
         String language = getSharedPreferences(PREF_SETTINGS, MODE_PRIVATE)
                 .getString(KEY_TEXT_LANGUAGE, LANGUAGE_SPANISH);
-        int selectedId = LANGUAGE_ENGLISH.equals(language)
-                ? R.id.settingsLanguageEnglishOption
-                : R.id.settingsLanguageSpanishOption;
-        binding.settingsPanel.settingsLanguageGroup.check(selectedId);
-        binding.settingsPanel.settingsLanguageGroup.setOnCheckedChangeListener((group, checkedId) -> {
-            String selectedLanguage = checkedId == R.id.settingsLanguageEnglishOption
-                    ? LANGUAGE_ENGLISH
-                    : LANGUAGE_SPANISH;
-            saveTextLanguagePreference(selectedLanguage);
-        });
+        List<String> languageLabels = Arrays.asList(
+                getString(R.string.settings_language_spanish),
+                getString(R.string.settings_language_english)
+        );
+        List<String> languageCodes = Arrays.asList(LANGUAGE_SPANISH, LANGUAGE_ENGLISH);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_list_item_single_choice,
+                languageLabels
+        );
+        binding.settingsPanel.settingsLanguageList.setAdapter(adapter);
+        int selectedIndex = LANGUAGE_ENGLISH.equals(language) ? 1 : 0;
+        binding.settingsPanel.settingsLanguageList.setItemChecked(selectedIndex, true);
+        binding.settingsPanel.settingsLanguageList.setOnItemClickListener((parent, view, position, id) ->
+                saveTextLanguagePreference(languageCodes.get(position)));
     }
 
     private void saveTextLanguagePreference(String language) {
@@ -2335,7 +2351,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         body.setText(info.body);
         zoneTransitionDialog = new AlertDialog.Builder(this)
                 .setView(dialogView)
-                .setPositiveButton("Aceptar", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton(R.string.dialog_accept, (dialog, which) -> dialog.dismiss())
                 .create();
         attachDialogButtonSounds(zoneTransitionDialog);
         zoneTransitionDialog.show();
@@ -2345,20 +2361,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         switch (zoneTransition) {
             case SEA:
                 return new ZoneTransitionInfo(
-                        "Haz entrado a zona de mar",
-                        "• Las cartas capturadas dan +1 de puntaje\n" +
-                                "• Si sacas 1 en el valor de un dado la marea arrastrara hacia arriba las cartas, " +
-                                "aquellas que salgan de la zona de juego sin dados seran barajadas y aquellas con el dado " +
-                                "se consideran pesca fallida.",
+                        getString(R.string.zone_transition_sea_title),
+                        getString(R.string.zone_transition_sea_body),
                         R.drawable.zona2
                 );
             case DEEP_SEA:
                 return new ZoneTransitionInfo(
-                        "Haz entrado a zona de mar adentro",
-                        "• Las cartas capturadas dan +2 de puntaje\n" +
-                                "• Si sacas 1 en el valor de un dado la marea arrastrara hacia una direccion aleatoria, " +
-                                "aquellas que salgan de la zona de juego sin dados seran barajadas y aquellas con el dado " +
-                                "se consideran pesca fallida.",
+                        getString(R.string.zone_transition_deep_sea_title),
+                        getString(R.string.zone_transition_deep_sea_body),
                         R.drawable.zona3
                 );
             default:
@@ -2569,7 +2579,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         discardImage.setImageBitmap(image);
         discardImage.setAlpha(1f);
-        discardImage.setContentDescription(lastDiscard.getName());
+        discardImage.setContentDescription(lastDiscard.getName(getTextProvider()));
     }
 
     private void showDiscardPileDialog() {
@@ -3641,7 +3651,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 cardView.setScaleType(ImageView.ScaleType.FIT_CENTER);
 
                 cardView.setImageBitmap(image);
-                cardView.setContentDescription(card != null ? card.getName() : getString(R.string.card_image_content_description));
+                cardView.setContentDescription(card != null ? card.getName(getTextProvider()) : getString(R.string.card_image_content_description));
                 if (releaseBlocked) {
                     cardView.setColorFilter(Color.argb(170, 0, 0, 0), PorterDuff.Mode.SRC_ATOP);
                 }
@@ -4352,7 +4362,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 image = cardImageResolver.getCardBack();
             }
             imageView.setImageBitmap(image);
-            imageView.setContentDescription(card != null ? card.getName()
+            imageView.setContentDescription(card != null ? card.getName(getTextProvider())
                     : getString(R.string.card_image_content_description));
 
             if (showSelection && selected != null) {
@@ -4952,7 +4962,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (image != null) {
             cardImage.setImageBitmap(image);
         }
-        cardName.setText(confirmation.getCard().getName());
+        cardName.setText(confirmation.getCard().getName(getTextProvider()));
         detail.setText(confirmation.getDetail());
 
         AlertDialog dialog = new AlertDialog.Builder(this)

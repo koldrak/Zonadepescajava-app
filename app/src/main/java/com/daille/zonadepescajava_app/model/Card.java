@@ -2,7 +2,7 @@ package com.daille.zonadepescajava_app.model;
 
 public class Card {
     private final CardId id;
-    private final String name;
+    private final int nameResId;
     private final CardType type;
     private final int points;
     private final Condition condition;
@@ -10,10 +10,10 @@ public class Card {
     private final String onFail;
     private final String bonus;
 
-    public Card(CardId id, String name, CardType type, int points,
+    public Card(CardId id, int nameResId, CardType type, int points,
                 Condition condition, String onCatch, String onFail, String bonus) {
         this.id = id;
-        this.name = name;
+        this.nameResId = nameResId;
         this.type = type;
         this.points = points;
         this.condition = condition;
@@ -26,8 +26,11 @@ public class Card {
         return id;
     }
 
-    public String getName() {
-        return name;
+    public String getName(GameTextProvider provider) {
+        if (provider == null || nameResId == 0) {
+            return "";
+        }
+        return provider.getString(nameResId);
     }
 
     public CardType getType() {

@@ -165,25 +165,15 @@
                         android:layout_height="wrap_content"
                         android:text="@string/settings_language_texts_title" />
 
-                    <RadioGroup
-                        android:id="@+id/settingsLanguageGroup"
+                    <ListView
+                        android:id="@+id/settingsLanguageList"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:orientation="vertical">
-
-                        <RadioButton
-                            android:id="@+id/settingsLanguageSpanishOption"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/settings_language_spanish" />
-
-                        <RadioButton
-                            android:id="@+id/settingsLanguageEnglishOption"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/settings_language_english" />
-                    </RadioGroup>
+                        android:choiceMode="singleChoice"
+                        android:divider="@android:color/transparent"
+                        android:dividerHeight="8dp"
+                        android:listSelector="@color/selection_highlight" />
                 </LinearLayout>
             </LinearLayout>
 

@@ -15,6 +15,7 @@ import com.daille.zonadepescajava_app.databinding.ItemBoardSlotBinding;
 import com.daille.zonadepescajava_app.model.BoardSlot;
 import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.Die;
+import com.daille.zonadepescajava_app.model.GameTextProvider;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -250,8 +251,9 @@ public class BoardSlotAdapter extends RecyclerView.Adapter<BoardSlotAdapter.Slot
             binding.getRoot().setStrokeColor(strokeColor);
 
 
+            GameTextProvider textProvider = new AndroidGameTextProvider(context);
             binding.cardImage.setContentDescription(slot.isFaceUp() && card != null
-                    ? card.getName()
+                    ? card.getName(textProvider)
                     : context.getString(R.string.card_image_content_description));
 
 

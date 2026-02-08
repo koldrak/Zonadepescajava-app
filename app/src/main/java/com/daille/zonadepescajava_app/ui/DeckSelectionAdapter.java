@@ -15,6 +15,7 @@ import com.daille.zonadepescajava_app.R;
 import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardId;
 import com.daille.zonadepescajava_app.model.CardType;
+import com.daille.zonadepescajava_app.model.GameTextProvider;
 import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 
 import java.util.ArrayList;
@@ -138,7 +139,8 @@ public class DeckSelectionAdapter extends RecyclerView.Adapter<DeckSelectionAdap
         }
         holder.cardImage.setImageBitmap(image);
         holder.cardImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        holder.cardImage.setContentDescription(card != null ? card.getName()
+        GameTextProvider textProvider = new AndroidGameTextProvider(holder.cardImage.getContext());
+        holder.cardImage.setContentDescription(card != null ? card.getName(textProvider)
                 : holder.cardImage.getContext().getString(R.string.card_image_content_description));
 
         int ownedCount = inventoryCounts.getOrDefault(card.getId(), 0);

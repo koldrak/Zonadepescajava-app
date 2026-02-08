@@ -19,6 +19,7 @@ import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardType;
 import com.daille.zonadepescajava_app.model.Condition;
 import com.daille.zonadepescajava_app.model.ConditionInfo;
+import com.daille.zonadepescajava_app.model.GameTextProvider;
 
 public final class CardFullscreenDialog {
     public interface SellAction {
@@ -92,10 +93,11 @@ public final class CardFullscreenDialog {
                 sellButton.setVisibility(android.view.View.GONE);
             }
         } else {
+            GameTextProvider textProvider = new AndroidGameTextProvider(context);
             if (topInfo != null) {
                 String conditionText = formatCondition(context, card.getCondition());
                 SpannableStringBuilder topText = new SpannableStringBuilder();
-                appendLabeledText(topText, context.getString(R.string.card_detail_name_label), card.getName());
+                appendLabeledText(topText, context.getString(R.string.card_detail_name_label), card.getName(textProvider));
                 topText.append("\n");
                 appendLabeledText(topText, context.getString(R.string.card_detail_condition_label), conditionText);
                 topText.append("\n");

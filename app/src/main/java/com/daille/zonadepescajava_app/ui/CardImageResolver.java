@@ -74,10 +74,6 @@ public class CardImageResolver {
         candidates.add(normalizedId + ".png");
         candidates.add(normalizedId.replace("_", "") + ".png");
 
-        String normalizedName = normalize(card.getName());
-        candidates.add(normalizedName + ".png");
-        candidates.add(normalizedName.replace(" ", "") + ".png");
-
         return candidates;
     }
 
