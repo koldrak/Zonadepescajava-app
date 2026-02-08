@@ -643,26 +643,25 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<ScoreRecord> records = scoreDatabaseHelper.getTopScores(5);
         List<String> labels = new ArrayList<>();
 
-        labels.add("🏠 TOP PERSONAL");
+        labels.add(getString(R.string.score_records_personal_title));
         if (records == null || records.isEmpty()) {
-            labels.add("— Sin registros todavía —");
+            labels.add(getString(R.string.score_records_empty));
         } else {
             DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault());
             for (int i = 0; i < records.size(); i++) {
                 ScoreRecord r = records.get(i);
                 String date = dateFormat.format(new Date(r.getCreatedAt()));
-                labels.add(String.format(Locale.getDefault(),
-                        "#%d • %d puntos (%s)", i + 1, r.getScore(), date));
+                labels.add(getString(R.string.score_records_entry_format, i + 1, r.getScore(), date));
             }
         }
 
         // ===== 2) Separador TOP GLOBAL =====
         labels.add(""); // espacio visual
-        labels.add("🌐 TOP GLOBAL (online)");
+        labels.add(getString(R.string.score_records_global_title));
 
         // Mensaje inicial (se reemplaza si hay internet y llega data)
         if (!RankingApiClient.hasInternet(this)) {
-            labels.add("— Sin conexión —");
+            labels.add(getString(R.string.ranking_no_connection));
             scoreRecordsAdapter.clear();
             scoreRecordsAdapter.addAll(labels);
             scoreRecordsAdapter.notifyDataSetChanged();
@@ -671,7 +670,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             );
             return;
         } else {
-            labels.add("Cargando...");
+            labels.add(getString(R.string.ranking_loading));
             scoreRecordsAdapter.clear();
             scoreRecordsAdapter.addAll(labels);
             scoreRecordsAdapter.notifyDataSetChanged();
@@ -686,32 +685,31 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             List<String> merged = new ArrayList<>();
 
             // (A) Local otra vez (para mantenerlo estable)
-            merged.add("🏠 TOP PERSONAL");
+            merged.add(getString(R.string.score_records_personal_title));
             if (records == null || records.isEmpty()) {
-                merged.add("— Sin registros todavía —");
+                merged.add(getString(R.string.score_records_empty));
             } else {
                 DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault());
                 for (int i = 0; i < records.size(); i++) {
                     ScoreRecord r = records.get(i);
                     String date = dateFormat.format(new Date(r.getCreatedAt()));
-                    merged.add(String.format(Locale.getDefault(),
-                            "#%d • %d puntos (%s)", i + 1, r.getScore(), date));
+                    merged.add(getString(R.string.score_records_entry_format, i + 1, r.getScore(), date));
                 }
             }
 
             merged.add("");
-            merged.add("🌐 TOP GLOBAL (online)");
+            merged.add(getString(R.string.score_records_global_title));
 
             // (B) Global
             if (err != null || top == null || top.isEmpty()) {
-                merged.add("— No disponible —");
+                merged.add(getString(R.string.ranking_unavailable));
             } else {
                 for (int i = 0; i < top.size(); i++) {
                     RankingApiClient.RemoteScore r = top.get(i);
 
                     // r.fecha viene como "YYYY-MM-DD" desde tu Worker
-                    merged.add(String.format(Locale.getDefault(),
-                            "#%d • %s %s — %d (%s)",
+                    merged.add(getString(
+                            R.string.score_records_global_entry_format,
                             i + 1,
                             r.nombre,
                             countryCodeToFlag(r.pais),
@@ -2459,19 +2457,21 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
         binding.gamePanel.scoreValue.setText(String.format(Locale.getDefault(), "%d", gameState.getScore()));
         binding.gamePanel.deckRemainingCount.setText(String.format(Locale.getDefault(), "%d", gameState.getDeckSize()));
-        binding.gamePanel.captures.setText(String.format(Locale.getDefault(), "Capturas: %d", gameState.getCaptures().size()));
+        binding.gamePanel.captures.setText(
+                getString(R.string.game_panel_captures_format, gameState.getCaptures().size()));
         updateZoneProgressBar();
 
         binding.gamePanel.selection.setText(gameState.getSelectedDie() == null
-                ? "Selecciona un dado de la reserva"
-                : "Dado preparado: " + gameState.getSelectedDie().getLabel());
+                ? getString(R.string.game_panel_select_die_prompt)
+                : getString(R.string.game_panel_selected_die_format, gameState.getSelectedDie().getLabel()));
 
         updateSelectedDiePreview();
         updateCaptureComboLabel();
         renderDiceCollection(binding.gamePanel.reserveDiceContainer, gameState.getReserve(), true);
         renderDiceCollection(binding.gamePanel.lostDiceContainer, gameState.getLostDice(), false);
 
-        binding.gamePanel.lost.setText(String.format(Locale.getDefault(), "Perdidos: %d", gameState.getLostDice().size()));
+        binding.gamePanel.lost.setText(
+                getString(R.string.game_panel_lost_format, gameState.getLostDice().size()));
         String pendingGameOver = gameState.resolvePendingGameOverIfReady();
         if (pendingGameOver != null) {
             log = pendingGameOver;
@@ -3066,7 +3066,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         int multiplier = gameState.getCaptureComboMultiplier();
         boolean shouldShow = multiplier > 1 && binding.gamePanel.selectedDieImage.getVisibility() == View.VISIBLE;
         if (shouldShow) {
-            binding.gamePanel.captureComboLabel.setText("Captura x" + multiplier);
+            binding.gamePanel.captureComboLabel.setText(
+                    getString(R.string.game_panel_capture_combo_format, multiplier));
             binding.gamePanel.captureComboLabel.setVisibility(View.VISIBLE);
         } else {
             binding.gamePanel.captureComboLabel.setVisibility(View.GONE);
@@ -3709,7 +3710,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 captureBonusLabel.setShadowLayer(2f, 1f, 1f, Color.BLACK);
                 int multiplier = gameState.getCaptureMultiplierFor(card);
                 if (multiplier > 1) {
-                    captureBonusLabel.setText("Captura x" + multiplier);
+                    captureBonusLabel.setText(
+                            getString(R.string.game_panel_capture_combo_format, multiplier));
                     captureBonusLabel.setVisibility(View.VISIBLE);
                 } else {
                     captureBonusLabel.setVisibility(View.GONE);
@@ -5022,11 +5024,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptSpiderCrabCardChoice() {
         List<Card> cards = new ArrayList<>(gameState.getFailedDiscardCards());
         if (cards.isEmpty()) {
-            handleGameResult("No hay cartas descartadas por fallo para recuperar.");
+            handleGameResult(getString(R.string.ability_spider_crab_no_discard));
             return;
         }
         showSingleCardChoiceDialog(
-                "Cangrejo araña",
+                getString(R.string.card_name_cangrejo_arana),
                 cards,
                 gameState::chooseSpiderCrabCard,
                 gameState::cancelSpiderCrab
@@ -5036,11 +5038,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptDecoradorChoice() {
         List<Card> cards = new ArrayList<>(gameState.getPendingDecoradorCards());
         if (cards.isEmpty()) {
-            handleGameResult("Cangrejo decorador: no hay cartas negras disponibles.");
+            handleGameResult(getString(R.string.ability_decorator_no_black_cards));
             return;
         }
         showSingleCardChoiceDialog(
-                "Cangrejo decorador",
+                getString(R.string.card_name_cangrejo_decorador),
                 cards,
                 gameState::chooseDecoradorCard,
                 gameState::cancelDecoradorAbility
@@ -5050,11 +5052,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptHermitChoice() {
         List<Card> cards = new ArrayList<>(gameState.getPendingHermitCards());
         if (cards.isEmpty()) {
-            handleGameResult("Cangrejo ermitaño: no hay cartas disponibles en el mazo.");
+            handleGameResult(getString(R.string.ability_hermit_no_deck_cards));
             return;
         }
         showSingleCardChoiceDialog(
-                "Cangrejo ermitaño",
+                getString(R.string.card_name_cangrejo_ermitano),
                 cards,
                 gameState::chooseHermitReplacementCard,
                 null
@@ -5064,11 +5066,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptViolinistChoice() {
         List<Card> cards = new ArrayList<>(gameState.getFailedDiscardCards());
         if (cards.isEmpty()) {
-            handleGameResult("No hay cartas descartadas por fallo para capturar.");
+            handleGameResult(getString(R.string.ability_violinist_no_discard));
             return;
         }
         showSingleCardChoiceDialog(
-                "Cangrejo violinista",
+                getString(R.string.card_name_cangrejo_violinista),
                 cards,
                 gameState::chooseViolinistCard,
                 gameState::cancelViolinistAbility
@@ -5079,7 +5081,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         int sides = gameState.getHorseshoeDieSides();
         DieType dieType = gameState.getHorseshoeDieType();
         if (sides <= 0 || dieType == null) {
-            handleGameResult("Cangrejo herradura: no hay dado válido para ajustar.");
+            handleGameResult(getString(R.string.ability_horseshoe_no_valid_die));
             return;
         }
         List<Integer> values = new ArrayList<>();

@@ -20,6 +20,7 @@ import com.daille.zonadepescajava_app.model.CardType;
 import com.daille.zonadepescajava_app.model.Condition;
 import com.daille.zonadepescajava_app.model.ConditionInfo;
 import com.daille.zonadepescajava_app.model.GameTextProvider;
+import com.daille.zonadepescajava_app.model.GameTextProvider;
 
 public final class CardFullscreenDialog {
     public interface SellAction {
@@ -165,12 +166,13 @@ public final class CardFullscreenDialog {
         if (card == null) {
             return context.getString(R.string.card_detail_ability_default);
         }
-        String detail = card.getOnCatch();
+        GameTextProvider provider = (resId, formatArgs) -> context.getString(resId, formatArgs);
+        String detail = card.getOnCatch(provider);
         if (detail == null || detail.isEmpty()) {
-            detail = card.getBonus();
+            detail = card.getBonus(provider);
         }
         if (detail == null || detail.isEmpty()) {
-            detail = card.getOnFail();
+            detail = card.getOnFail(provider);
         }
         return detail == null || detail.isEmpty()
                 ? context.getString(R.string.card_detail_ability_default)
