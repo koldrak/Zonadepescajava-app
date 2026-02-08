@@ -1602,6 +1602,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         preferences.edit().putString(KEY_TEXT_LANGUAGE, language).apply();
         updateAppLocalesIfNeeded(language);
+        recreate();
     }
 
     private void applySavedTextLanguage() {
