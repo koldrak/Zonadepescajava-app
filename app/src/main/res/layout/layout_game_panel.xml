@@ -143,7 +143,7 @@
                     android:id="@+id/spacio"
                     android:layout_width="wrap_content"
                     android:layout_height="15pt"
-                    android:text=" "
+                    android:text="@string/empty_space"
                     android:textAppearance="@style/App.Text.Title.Ocean.Sub" />
                 <TextView
                     android:id="@+id/scoreLabel"
@@ -454,7 +454,7 @@
                 android:id="@+id/captureZoneTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="zona de capturas"
+                android:text="@string/capture_zone_title"
                 style="@style/App.Text.Title.Ocean.Sub" />
 
             <HorizontalScrollView

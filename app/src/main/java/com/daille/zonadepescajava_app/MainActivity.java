@@ -4,7 +4,9 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
+import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -156,6 +158,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final String TUTORIAL_GAME_LOOP_DONE_KEY = "tutorial_game_loop_done";
     private static final String TUTORIAL_RELEASE_DONE_KEY = "tutorial_release_done";
     private static final String TUTORIAL_TIDE_DONE_KEY = "tutorial_tide_done";
+    private static final String APP_SETTINGS_PREFS = "app_settings";
+    private static final String APP_LANGUAGE_KEY = "app_language";
+    private static final String LANGUAGE_SPANISH = "es";
+    private static final String LANGUAGE_ENGLISH = "en";
     private SharedPreferences tutorialPreferences;
     private TutorialType activeTutorial;
     private final List<TutorialStep> tutorialSteps = new ArrayList<>();
@@ -231,6 +237,34 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     @Override
+    protected void attachBaseContext(Context newBase) {
+        String language = resolveLanguagePreference(newBase);
+        Context localizedContext = applyLocale(newBase, language);
+        super.attachBaseContext(localizedContext);
+    }
+
+    private static String resolveLanguagePreference(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(APP_SETTINGS_PREFS, Context.MODE_PRIVATE);
+        String stored = prefs.getString(APP_LANGUAGE_KEY, null);
+        if (stored == null || stored.isEmpty()) {
+            String deviceLanguage = Locale.getDefault().getLanguage();
+            return LANGUAGE_ENGLISH.equals(deviceLanguage) ? LANGUAGE_ENGLISH : LANGUAGE_SPANISH;
+        }
+        return stored;
+    }
+
+    private static Context applyLocale(Context context, String languageCode) {
+        if (languageCode == null || languageCode.isEmpty()) {
+            return context;
+        }
+        Locale locale = new Locale(languageCode);
+        Locale.setDefault(locale);
+        Configuration config = new Configuration(context.getResources().getConfiguration());
+        config.setLocale(locale);
+        return context.createConfigurationContext(config);
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
@@ -268,7 +302,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             } else {
                 showGameLayout();
             }
-            refreshUi("Partida restaurada tras cambio de orientación.");
+            refreshUi(getString(R.string.game_restored_message));
         } else {
             showStartMenu();
         }
@@ -338,7 +372,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setButtonClickListener(binding.diceSelectionPanel.confirmDiceSelection, () -> {
             List<DieType> startingReserve = extractSelectedDice();
             if (startingReserve.isEmpty()) {
-                Toast.makeText(this, "Selecciona al menos 1 dado para iniciar.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.toast_select_die_to_start), Toast.LENGTH_SHORT).show();
                 return;
             }
             if (activeTutorial == TutorialType.DICE_SELECTION && tutorialStepIndex == 2) {
@@ -362,7 +396,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             setupBoard();
             snapshotBoardState();
             showGameLayout();
-            refreshUi("Juego iniciado. Lanza un dado y toca una carta.");
+            refreshUi(getString(R.string.game_started_message));
             binding.gamePanel.getRoot().post(() -> maybeStartTutorial(TutorialType.GAME_LOOP));
         });
         setSoundButtonClickListener(binding.startMenu.openSettings, this::showSettingsPanel);
@@ -429,7 +463,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             List<Card> selected = deckSelectionAdapter.getSelectedDeck();
             selectedDeck = new ArrayList<>(selected);
             if (selected.size() < MIN_DECK_CARDS || selected.size() > MAX_DECK_CARDS) {
-                Toast.makeText(this, "Selecciona entre 30 y 40 cartas para el mazo.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.toast_select_deck_card_count), Toast.LENGTH_SHORT).show();
                 return;
             }
             selectedDeck = new ArrayList<>(selected);
@@ -453,7 +487,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         Map<CardId, Integer> selection = new EnumMap<>(CardId.class);
         selection.putAll(deckSelectionAdapter.getSelectionCounts());
         if (selection.isEmpty()) {
-            Toast.makeText(this, "Selecciona cartas antes de guardar el mazo.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.toast_select_cards_before_save), Toast.LENGTH_SHORT).show();
             return;
         }
         EditText nameInput = new EditText(this);
@@ -473,22 +507,22 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             positiveButton.setOnClickListener(view -> {
                 String name = nameInput.getText().toString().trim();
                 if (name.isEmpty()) {
-                    Toast.makeText(this, "Ingresa un nombre para el mazo.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.toast_enter_deck_name), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 Map<CardId, Integer> currentSelection = new EnumMap<>(CardId.class);
                 currentSelection.putAll(deckSelectionAdapter.getSelectionCounts());
                 if (currentSelection.isEmpty()) {
-                    Toast.makeText(this, "Selecciona cartas antes de guardar el mazo.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.toast_select_cards_before_save), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 boolean saved = scoreDatabaseHelper.saveDeckPreset(name, currentSelection);
                 if (!saved) {
-                    Toast.makeText(this, "No se pudo guardar el mazo.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, getString(R.string.toast_deck_save_failed), Toast.LENGTH_SHORT).show();
                     return;
                 }
                 refreshDeckPresetList();
-                Toast.makeText(this, "Mazo guardado.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.toast_deck_saved), Toast.LENGTH_SHORT).show();
                 if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 1) {
                     advanceTutorialStep();
                 }
@@ -501,7 +535,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void showDeckPresetSelectionDialog(int titleResId, DeckPresetSelectionHandler handler) {
         refreshDeckPresetList();
         if (deckPresetNames.isEmpty()) {
-            Toast.makeText(this, "No hay mazos guardados.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.toast_no_saved_decks), Toast.LENGTH_SHORT).show();
             return;
         }
         CharSequence[] items = deckPresetNames.toArray(new CharSequence[0]);
@@ -517,26 +551,26 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void loadDeckPreset(String name) {
         Map<CardId, Integer> preset = scoreDatabaseHelper.getDeckPreset(name);
         if (preset.isEmpty()) {
-            Toast.makeText(this, "No se encontró el mazo seleccionado.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.toast_deck_not_found), Toast.LENGTH_SHORT).show();
             return;
         }
         if (deckSelectionAdapter != null) {
             deckSelectionAdapter.setSelectionCounts(preset);
         }
-        Toast.makeText(this, "Mazo cargado.", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, getString(R.string.toast_deck_loaded), Toast.LENGTH_SHORT).show();
     }
 
     private void confirmDeleteDeckPreset(String name) {
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.deck_selection_delete_title)
-                .setMessage("¿Eliminar el mazo guardado \"" + name + "\"?")
+                .setMessage(getString(R.string.dialog_delete_deck_message, name))
                 .setPositiveButton(R.string.deck_selection_delete, (dlg, which) -> {
                     boolean removed = scoreDatabaseHelper.deleteDeckPreset(name);
                     refreshDeckPresetList();
                     if (removed) {
-                        Toast.makeText(this, "Mazo eliminado.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, getString(R.string.toast_deck_deleted), Toast.LENGTH_SHORT).show();
                     } else {
-                        Toast.makeText(this, "No se pudo eliminar el mazo.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, getString(R.string.toast_deck_delete_failed), Toast.LENGTH_SHORT).show();
                     }
                     if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 2) {
                         advanceTutorialStep();
@@ -635,26 +669,26 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<ScoreRecord> records = scoreDatabaseHelper.getTopScores(5);
         List<String> labels = new ArrayList<>();
 
-        labels.add("🏠 TOP PERSONAL");
+        labels.add(getString(R.string.score_records_local_title));
         if (records == null || records.isEmpty()) {
-            labels.add("— Sin registros todavía —");
+            labels.add(getString(R.string.score_records_empty));
         } else {
             DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault());
             for (int i = 0; i < records.size(); i++) {
                 ScoreRecord r = records.get(i);
                 String date = dateFormat.format(new Date(r.getCreatedAt()));
                 labels.add(String.format(Locale.getDefault(),
-                        "#%d • %d puntos (%s)", i + 1, r.getScore(), date));
+                        getString(R.string.score_records_entry_format), i + 1, r.getScore(), date));
             }
         }
 
         // ===== 2) Separador TOP GLOBAL =====
         labels.add(""); // espacio visual
-        labels.add("🌐 TOP GLOBAL (online)");
+        labels.add(getString(R.string.score_records_global_title));
 
         // Mensaje inicial (se reemplaza si hay internet y llega data)
         if (!RankingApiClient.hasInternet(this)) {
-            labels.add("— Sin conexión —");
+            labels.add(getString(R.string.ranking_no_connection));
             scoreRecordsAdapter.clear();
             scoreRecordsAdapter.addAll(labels);
             scoreRecordsAdapter.notifyDataSetChanged();
@@ -663,7 +697,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             );
             return;
         } else {
-            labels.add("Cargando...");
+            labels.add(getString(R.string.ranking_loading));
             scoreRecordsAdapter.clear();
             scoreRecordsAdapter.addAll(labels);
             scoreRecordsAdapter.notifyDataSetChanged();
@@ -678,32 +712,32 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             List<String> merged = new ArrayList<>();
 
             // (A) Local otra vez (para mantenerlo estable)
-            merged.add("🏠 TOP PERSONAL");
+            merged.add(getString(R.string.score_records_local_title));
             if (records == null || records.isEmpty()) {
-                merged.add("— Sin registros todavía —");
+                merged.add(getString(R.string.score_records_empty));
             } else {
                 DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.SHORT, Locale.getDefault());
                 for (int i = 0; i < records.size(); i++) {
                     ScoreRecord r = records.get(i);
                     String date = dateFormat.format(new Date(r.getCreatedAt()));
                     merged.add(String.format(Locale.getDefault(),
-                            "#%d • %d puntos (%s)", i + 1, r.getScore(), date));
+                            getString(R.string.score_records_entry_format), i + 1, r.getScore(), date));
                 }
             }
 
             merged.add("");
-            merged.add("🌐 TOP GLOBAL (online)");
+            merged.add(getString(R.string.score_records_global_title));
 
             // (B) Global
             if (err != null || top == null || top.isEmpty()) {
-                merged.add("— No disponible —");
+                merged.add(getString(R.string.ranking_unavailable));
             } else {
                 for (int i = 0; i < top.size(); i++) {
                     RankingApiClient.RemoteScore r = top.get(i);
 
                     // r.fecha viene como "YYYY-MM-DD" desde tu Worker
                     merged.add(String.format(Locale.getDefault(),
-                            "#%d • %s %s — %d (%s)",
+                            getString(R.string.score_records_global_entry_format),
                             i + 1,
                             r.nombre,
                             countryCodeToFlag(r.pais),
@@ -735,7 +769,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void refreshRankingList() {
         List<String> labels = new ArrayList<>();
-        labels.add(getString(R.string.ranking_title) + " (TOP 900)");
+        labels.add(getString(R.string.ranking_top_format, 900));
 
         if (!RankingApiClient.hasInternet(this)) {
             labels.add(getString(R.string.ranking_no_connection));
@@ -752,7 +786,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
         RankingApiClient.fetchTopAsync(900, (top, err) -> {
             List<String> merged = new ArrayList<>();
-            merged.add(getString(R.string.ranking_title) + " (TOP 900)");
+            merged.add(getString(R.string.ranking_top_format, 900));
 
             if (err != null || top == null || top.isEmpty()) {
                 merged.add(getString(R.string.ranking_unavailable));
@@ -760,7 +794,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 for (int i = 0; i < top.size(); i++) {
                     RankingApiClient.RemoteScore r = top.get(i);
                     merged.add(String.format(Locale.getDefault(),
-                            "#%d • %s %s — %d (%s)",
+                            getString(R.string.score_records_global_entry_format),
                             i + 1,
                             r.nombre,
                             countryCodeToFlag(r.pais),
@@ -847,7 +881,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         layout.setPadding(pad, pad, pad, pad);
 
         android.widget.EditText etNombre = new android.widget.EditText(this);
-        etNombre.setHint("Nombre (máx 7)");
+        etNombre.setHint(getString(R.string.ranking_name_hint_short));
         etNombre.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(7)});
         String storedName = getSharedPreferences(PREF_RANKING, MODE_PRIVATE)
                 .getString(KEY_PLAYER_NAME, "");
@@ -862,10 +896,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         layout.addView(spPais);
 
         new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Ranking online")
-                .setMessage("Se usará para publicar tu puntaje (solo cuando tengas internet).")
+                .setTitle(R.string.ranking_online_title)
+                .setMessage(getString(R.string.ranking_online_message))
                 .setView(layout)
-                .setPositiveButton("Guardar", (d, w) -> {
+                .setPositiveButton(R.string.action_save, (d, w) -> {
                     String nombre = normalizeNombre(etNombre.getText().toString());
                     int index = spPais.getSelectedItemPosition();
                     String selectedPais = countryOptions.get(index).code;
@@ -880,7 +914,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                     // ahora sí, subimos
                     submitScoreOnlineIfPossible(finalScore);
                 })
-                .setNegativeButton("Cancelar", null)
+                .setNegativeButton(android.R.string.cancel, null)
                 .show();
     }
 
@@ -1219,7 +1253,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         Map<CardId, Integer> selections = cardSellAdapter.getSelectionCounts();
         if (selections == null || selections.isEmpty()) {
-            Toast.makeText(this, "Selecciona cartas para vender.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.toast_select_cards_to_sell), Toast.LENGTH_SHORT).show();
             return;
         }
         Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
@@ -1252,7 +1286,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         if (totalPoints > 0) {
             scoreDatabaseHelper.addBonusPoints(totalPoints);
-            Toast.makeText(this, "Venta completada: +" + totalPoints + " puntos.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.toast_sale_completed, totalPoints), Toast.LENGTH_SHORT).show();
         }
         showDiceShopPanel();
     }
@@ -1307,7 +1341,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void attemptDicePurchase(DieType type, int cost) {
         int available = scoreDatabaseHelper.getAvailablePoints();
         if (available < cost) {
-            Toast.makeText(this, "No tienes suficientes puntos para comprar este dado.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.toast_insufficient_points_die), Toast.LENGTH_SHORT).show();
             return;
         }
         scoreDatabaseHelper.addPurchasedDice(type.name(), 1);
@@ -1325,7 +1359,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         int cost = ShopPrices.getDiceCapacityUpgradeCost(nextCapacity);
         int available = scoreDatabaseHelper.getAvailablePoints();
         if (available < cost) {
-            Toast.makeText(this, "No tienes suficientes puntos para ampliar la capacidad.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.toast_insufficient_points_capacity), Toast.LENGTH_SHORT).show();
             return;
         }
         scoreDatabaseHelper.setDiceCapacity(nextCapacity);
@@ -1353,12 +1387,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void attemptCardPackPurchase(int cost, CardType filterType, String packAsset) {
         int available = scoreDatabaseHelper.getAvailablePoints();
         if (available < cost) {
-            Toast.makeText(this, "No tienes suficientes puntos para comprar este paquete.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.toast_insufficient_points_pack), Toast.LENGTH_SHORT).show();
             return;
         }
         List<Card> awarded = drawPackRewards(filterType);
         if (awarded.isEmpty()) {
-            Toast.makeText(this, "No hay cartas disponibles en este paquete.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.toast_no_cards_in_pack), Toast.LENGTH_SHORT).show();
             return;
         }
         scoreDatabaseHelper.addSpentPoints(cost);
@@ -1512,6 +1546,17 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
+            }
+        });
+        SharedPreferences appPrefs = getSharedPreferences(APP_SETTINGS_PREFS, MODE_PRIVATE);
+        String currentLanguage = resolveLanguagePreference(this);
+        binding.settingsPanel.settingsLanguageToggle.setOnCheckedChangeListener(null);
+        binding.settingsPanel.settingsLanguageToggle.setChecked(LANGUAGE_ENGLISH.equals(currentLanguage));
+        binding.settingsPanel.settingsLanguageToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            String nextLanguage = isChecked ? LANGUAGE_ENGLISH : LANGUAGE_SPANISH;
+            if (!nextLanguage.equals(appPrefs.getString(APP_LANGUAGE_KEY, null))) {
+                appPrefs.edit().putString(APP_LANGUAGE_KEY, nextLanguage).apply();
+                recreate();
             }
         });
         setupRankingProfileSettings();
@@ -1921,7 +1966,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.settingsPanel.settingsTutorialDiceToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
             setTutorialCompleted(TutorialType.DICE_SELECTION, !isChecked);
             Toast.makeText(this,
-                    isChecked ? "Tutorial de dados reactivado." : "Tutorial de dados desactivado.",
+                    getString(isChecked
+                            ? R.string.tutorial_dice_enabled
+                            : R.string.tutorial_dice_disabled),
                     Toast.LENGTH_SHORT).show();
         });
 
@@ -1931,7 +1978,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.settingsPanel.settingsTutorialDeckToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
             setTutorialCompleted(TutorialType.DECK_SELECTION, !isChecked);
             Toast.makeText(this,
-                    isChecked ? "Tutorial de mazos reactivado." : "Tutorial de mazos desactivado.",
+                    getString(isChecked
+                            ? R.string.tutorial_deck_enabled
+                            : R.string.tutorial_deck_disabled),
                     Toast.LENGTH_SHORT).show();
         });
 
@@ -1941,7 +1990,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.settingsPanel.settingsTutorialGameLoopToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
             setTutorialCompleted(TutorialType.GAME_LOOP, !isChecked);
             Toast.makeText(this,
-                    isChecked ? "Tutorial de juego reactivado." : "Tutorial de juego desactivado.",
+                    getString(isChecked
+                            ? R.string.tutorial_game_enabled
+                            : R.string.tutorial_game_disabled),
                     Toast.LENGTH_SHORT).show();
         });
 
@@ -1951,8 +2002,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.settingsPanel.settingsTutorialReleaseToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
             setTutorialCompleted(TutorialType.CARD_RELEASE, !isChecked);
             Toast.makeText(this,
-                    isChecked ? "Tutorial de liberar cartas reactivado."
-                            : "Tutorial de liberar cartas desactivado.",
+                    getString(isChecked
+                            ? R.string.tutorial_release_enabled
+                            : R.string.tutorial_release_disabled),
                     Toast.LENGTH_SHORT).show();
         });
 
@@ -1962,8 +2014,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.settingsPanel.settingsTutorialTideToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
             setTutorialCompleted(TutorialType.TIDE, !isChecked);
             Toast.makeText(this,
-                    isChecked ? "Tutorial de mareas reactivado."
-                            : "Tutorial de mareas desactivado.",
+                    getString(isChecked
+                            ? R.string.tutorial_tide_enabled
+                            : R.string.tutorial_tide_disabled),
                     Toast.LENGTH_SHORT).show();
         });
     }
@@ -2242,7 +2295,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         body.setText(info.body);
         zoneTransitionDialog = new AlertDialog.Builder(this)
                 .setView(dialogView)
-                .setPositiveButton("Aceptar", (dialog, which) -> dialog.dismiss())
+                .setPositiveButton(R.string.action_accept, (dialog, which) -> dialog.dismiss())
                 .create();
         attachDialogButtonSounds(zoneTransitionDialog);
         zoneTransitionDialog.show();
@@ -2252,20 +2305,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         switch (zoneTransition) {
             case SEA:
                 return new ZoneTransitionInfo(
-                        "Haz entrado a zona de mar",
-                        "• Las cartas capturadas dan +1 de puntaje\n" +
-                                "• Si sacas 1 en el valor de un dado la marea arrastrara hacia arriba las cartas, " +
-                                "aquellas que salgan de la zona de juego sin dados seran barajadas y aquellas con el dado " +
-                                "se consideran pesca fallida.",
+                        getString(R.string.zone_transition_sea_title),
+                        getString(R.string.zone_transition_sea_body),
                         R.drawable.zona2
                 );
             case DEEP_SEA:
                 return new ZoneTransitionInfo(
-                        "Haz entrado a zona de mar adentro",
-                        "• Las cartas capturadas dan +2 de puntaje\n" +
-                                "• Si sacas 1 en el valor de un dado la marea arrastrara hacia una direccion aleatoria, " +
-                                "aquellas que salgan de la zona de juego sin dados seran barajadas y aquellas con el dado " +
-                                "se consideran pesca fallida.",
+                        getString(R.string.zone_transition_deep_sea_title),
+                        getString(R.string.zone_transition_deep_sea_body),
                         R.drawable.zona3
                 );
             default:
@@ -2355,19 +2402,23 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
         binding.gamePanel.scoreValue.setText(String.format(Locale.getDefault(), "%d", gameState.getScore()));
         binding.gamePanel.deckRemainingCount.setText(String.format(Locale.getDefault(), "%d", gameState.getDeckSize()));
-        binding.gamePanel.captures.setText(String.format(Locale.getDefault(), "Capturas: %d", gameState.getCaptures().size()));
+        binding.gamePanel.captures.setText(String.format(Locale.getDefault(),
+                getString(R.string.captures_format),
+                gameState.getCaptures().size()));
         updateZoneProgressBar();
 
         binding.gamePanel.selection.setText(gameState.getSelectedDie() == null
-                ? "Selecciona un dado de la reserva"
-                : "Dado preparado: " + gameState.getSelectedDie().getLabel());
+                ? getString(R.string.selection_prompt_select_die)
+                : getString(R.string.selection_prompt_ready_die, gameState.getSelectedDie().getLabel()));
 
         updateSelectedDiePreview();
         updateCaptureComboLabel();
         renderDiceCollection(binding.gamePanel.reserveDiceContainer, gameState.getReserve(), true);
         renderDiceCollection(binding.gamePanel.lostDiceContainer, gameState.getLostDice(), false);
 
-        binding.gamePanel.lost.setText(String.format(Locale.getDefault(), "Perdidos: %d", gameState.getLostDice().size()));
+        binding.gamePanel.lost.setText(String.format(Locale.getDefault(),
+                getString(R.string.lost_dice_format),
+                gameState.getLostDice().size()));
         String pendingGameOver = gameState.resolvePendingGameOverIfReady();
         if (pendingGameOver != null) {
             log = pendingGameOver;
@@ -2840,14 +2891,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
         }
         return String.format(Locale.getDefault(),
-                "D4 x%d • D6 x%d • D8 x%d • D10 x%d • D12 x%d • D20 x%d",
+                getString(R.string.dice_reserve_summary_format),
                 d4, d6, d8, d10, d12, d20);
     }
 
     @Override
     public void onSlotTapped(int position) {
         if (isRevealingCard) {
-            Toast.makeText(this, "Toca la carta para continuar.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.toast_tap_card_to_continue), Toast.LENGTH_SHORT).show();
             return;
         }
         if (gameState.isAwaitingValueAdjustment()) {
@@ -2964,7 +3015,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         int multiplier = gameState.getCaptureComboMultiplier();
         boolean shouldShow = multiplier > 1 && binding.gamePanel.selectedDieImage.getVisibility() == View.VISIBLE;
         if (shouldShow) {
-            binding.gamePanel.captureComboLabel.setText("Captura x" + multiplier);
+            binding.gamePanel.captureComboLabel.setText(getString(R.string.capture_combo_format, multiplier));
             binding.gamePanel.captureComboLabel.setVisibility(View.VISIBLE);
         } else {
             binding.gamePanel.captureComboLabel.setVisibility(View.GONE);
@@ -3140,7 +3191,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void handleReserveDieTap(DieType type) {
         if (isRevealingCard) {
-            Toast.makeText(this, "Toca la carta para continuar.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.toast_tap_card_to_continue), Toast.LENGTH_SHORT).show();
             return;
         }
         startRollingAnimation(type);
@@ -3559,25 +3610,25 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 cardWrapper.setOnClickListener(v -> {
                     // Si hay revelaciones/prompt activos, mejor bloquear para no romper flujos.
                     if (isRevealingCard) {
-                        Toast.makeText(this, "Toca la carta para continuar.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, getString(R.string.toast_tap_card_to_continue), Toast.LENGTH_SHORT).show();
                         return;
                     }
                     if (releaseBlocked) {
-                        Toast.makeText(this, "Esta carta ya fue liberada y no puede liberarse otra vez.", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, getString(R.string.toast_release_blocked), Toast.LENGTH_SHORT).show();
                         return;
                     }
 
                     AlertDialog dialog = new AlertDialog.Builder(this)
-                            .setTitle("Liberar pez")
-                            .setMessage("¿Quieres liberar este pez?")
-                            .setPositiveButton("Sí", (dialogInterface, which) -> {
+                            .setTitle(R.string.dialog_release_fish_title)
+                            .setMessage(R.string.dialog_release_fish_message)
+                            .setPositiveButton(R.string.action_yes, (dialogInterface, which) -> {
                                 String msg = gameState.startManualReleaseFromCapture(card);
                                 handleGameResult(msg); // refresca UI + toast + prompts
                                 if (activeTutorial == TutorialType.CARD_RELEASE && tutorialStepIndex == 0) {
                                     advanceTutorialStep();
                                 }
                             })
-                            .setNegativeButton("No", null)
+                            .setNegativeButton(R.string.action_no, null)
                             .create();
                     attachDialogButtonSounds(dialog);
                     dialog.show();
@@ -3607,7 +3658,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 captureBonusLabel.setShadowLayer(2f, 1f, 1f, Color.BLACK);
                 int multiplier = gameState.getCaptureMultiplierFor(card);
                 if (multiplier > 1) {
-                    captureBonusLabel.setText("Captura x" + multiplier);
+                    captureBonusLabel.setText(getString(R.string.capture_combo_format, multiplier));
                     captureBonusLabel.setVisibility(View.VISIBLE);
                 } else {
                     captureBonusLabel.setVisibility(View.GONE);
@@ -3789,7 +3840,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
         final java.util.List<Die> options = gameState.getPendingDiceChoices();
         if (options == null || options.isEmpty()) {
-            Toast.makeText(this, "ERROR: Falta lista de dados para perder (pendingDiceChoices vacío).", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.toast_missing_pending_dice_choices), Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -3869,7 +3920,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         };
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Elige qué dado perder")
+                .setTitle(R.string.dialog_choose_die_to_lose)
                 .setAdapter(adapter, (dialogInterface, which) -> {
                     String msg = gameState.chooseDieToLose(which);
                     handleGameResult(msg);
@@ -3885,14 +3936,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (!gameState.isAwaitingCancelConfirmation()) return;
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Cancelar habilidad")
-                .setMessage(gameState.getPendingCancelMessage() +
-                        "\n¿Deseas cancelar la habilidad?")
-                .setPositiveButton("Cancelar", (dialogInterface, which) -> {
+                .setTitle(R.string.dialog_cancel_ability_title)
+                .setMessage(getString(R.string.dialog_cancel_ability_message, gameState.getPendingCancelMessage()))
+                .setPositiveButton(R.string.action_cancel, (dialogInterface, which) -> {
                     String msg = gameState.resolveCancelConfirmation(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Seguir intentando", (dialogInterface, which) -> {
+                .setNegativeButton(R.string.action_keep_trying, (dialogInterface, which) -> {
                     String msg = gameState.resolveCancelConfirmation(false);
                     handleGameResult(msg);
                 })
@@ -3905,13 +3955,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptAtunDecision() {
         if (!gameState.isAwaitingAtunDecision()) return;
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Habilidad del Atún")
-                .setMessage("¿Quieres relanzar el dado recién lanzado?")
-                .setPositiveButton("Relanzar", (dialogInterface, which) -> {
+                .setTitle(R.string.dialog_atun_title)
+                .setMessage(R.string.dialog_atun_message)
+                .setPositiveButton(R.string.action_reroll, (dialogInterface, which) -> {
                     String msg = gameState.chooseAtunReroll(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Conservar", (dialogInterface, which) -> {
+                .setNegativeButton(R.string.action_keep, (dialogInterface, which) -> {
                     String msg = gameState.chooseAtunReroll(false);
                     handleGameResult(msg);
                 })
@@ -3924,13 +3974,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptBlueCrabDecision() {
         if (!gameState.isAwaitingBlueCrabDecision()) return;
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Jaiba azul")
-                .setMessage("¿Quieres activar la habilidad para ajustar un dado ±1?")
-                .setPositiveButton("Usar", (dialogInterface, which) -> {
+                .setTitle(R.string.dialog_blue_crab_title)
+                .setMessage(R.string.dialog_blue_crab_message)
+                .setPositiveButton(R.string.action_use, (dialogInterface, which) -> {
                     String msg = gameState.chooseBlueCrabUse(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Omitir", (dialogInterface, which) -> {
+                .setNegativeButton(R.string.action_skip, (dialogInterface, which) -> {
                     String msg = gameState.chooseBlueCrabUse(false);
                     handleGameResult(msg);
                 })
@@ -3943,13 +3993,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptBlowfishDecision() {
         if (!gameState.isAwaitingBlowfishDecision()) return;
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Pez globo")
-                .setMessage("¿Quieres inflar un dado al máximo?")
-                .setPositiveButton("Usar", (dialogInterface, which) -> {
+                .setTitle(R.string.dialog_blowfish_title)
+                .setMessage(R.string.dialog_blowfish_message)
+                .setPositiveButton(R.string.action_use, (dialogInterface, which) -> {
                     String msg = gameState.chooseBlowfishUse(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Omitir", (dialogInterface, which) -> {
+                .setNegativeButton(R.string.action_skip, (dialogInterface, which) -> {
                     String msg = gameState.chooseBlowfishUse(false);
                     handleGameResult(msg);
                 })
@@ -3962,13 +4012,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptPezLoboDecision() {
         if (!gameState.isAwaitingPezLoboDecision()) return;
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Pez Lobo")
-                .setMessage("¿Quieres descartar una carta adyacente boca arriba?")
-                .setPositiveButton("Usar", (dialogInterface, which) -> {
+                .setTitle(R.string.dialog_wolf_fish_title)
+                .setMessage(R.string.dialog_wolf_fish_message)
+                .setPositiveButton(R.string.action_use, (dialogInterface, which) -> {
                     String msg = gameState.choosePezLoboUse(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Omitir", (dialogInterface, which) -> {
+                .setNegativeButton(R.string.action_skip, (dialogInterface, which) -> {
                     String msg = gameState.choosePezLoboUse(false);
                     handleGameResult(msg);
                 })
@@ -3981,13 +4031,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptMantisDecision() {
         if (!gameState.isAwaitingMantisDecision()) return;
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Langostino mantis")
-                .setMessage("¿Quieres relanzar un dado perdido?")
-                .setPositiveButton("Usar", (dialogInterface, which) -> {
+                .setTitle(R.string.dialog_mantis_title)
+                .setMessage(R.string.dialog_mantis_message)
+                .setPositiveButton(R.string.action_use, (dialogInterface, which) -> {
                     String msg = gameState.chooseMantisReroll(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Omitir", (dialogInterface, which) -> {
+                .setNegativeButton(R.string.action_skip, (dialogInterface, which) -> {
                     String msg = gameState.chooseMantisReroll(false);
                     handleGameResult(msg);
                 })
@@ -4000,13 +4050,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptBoxerDecision() {
         if (!gameState.isAwaitingBoxerDecision()) return;
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Cangrejo boxeador")
-                .setMessage("¿Quieres mover otro dado adyacente?")
-                .setPositiveButton("Mover", (dialogInterface, which) -> {
+                .setTitle(R.string.dialog_boxer_crab_title)
+                .setMessage(R.string.dialog_boxer_crab_message)
+                .setPositiveButton(R.string.action_move, (dialogInterface, which) -> {
                     String msg = gameState.chooseBoxerContinue(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Omitir", (dialogInterface, which) -> {
+                .setNegativeButton(R.string.action_skip, (dialogInterface, which) -> {
                     String msg = gameState.chooseBoxerContinue(false);
                     handleGameResult(msg);
                 })
@@ -4020,7 +4070,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (!gameState.isAwaitingMantisLostDieChoice()) return;
         List<Die> options = new ArrayList<>(gameState.getLostDice());
         if (options.isEmpty()) {
-            handleGameResult("Langostino mantis: no hay dados perdidos para relanzar.");
+            handleGameResult(getString(R.string.result_mantis_no_lost_dice));
             return;
         }
 
@@ -4077,7 +4127,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         };
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Langostino mantis")
+                .setTitle(R.string.dialog_mantis_title)
                 .setAdapter(adapter, (dialogInterface, which) -> {
                     Die chosen = options.get(which);
                     startRollingAnimation(chosen.getType());
@@ -4094,7 +4144,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (!gameState.isAwaitingLangostaRecovery()) return;
         List<Die> options = new ArrayList<>(gameState.getLostDice());
         if (options.isEmpty()) {
-            handleGameResult("Langosta espinosa: no hay dados perdidos para recuperar.");
+            handleGameResult(getString(R.string.result_langosta_no_lost_dice));
             return;
         }
 
@@ -4151,7 +4201,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         };
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Langosta espinosa")
+                .setTitle(R.string.dialog_langosta_title)
                 .setAdapter(adapter, (dialogInterface, which) -> {
                     String msg = gameState.chooseLangostaRecoveredDie(which);
                     handleGameResult(msg);
@@ -4167,20 +4217,20 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         int amount = gameState.getPendingAdjustmentAmount();
         String creature;
         if (gameState.getPendingAdjustmentSource() == CardId.NAUTILUS) {
-            creature = "Nautilus";
+            creature = getString(R.string.creature_nautilus);
         } else if (gameState.getPendingAdjustmentSource() == CardId.LOCO) {
-            creature = "Loco";
+            creature = getString(R.string.creature_loco);
         } else {
-            creature = "Jaiba azul";
+            creature = getString(R.string.creature_blue_crab);
         }
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Ajuste de " + creature)
-                .setMessage("¿Quieres sumar o restar " + amount + " al dado seleccionado?")
-                .setPositiveButton("Sumar", (dialogInterface, which) -> {
+                .setTitle(getString(R.string.dialog_adjustment_title, creature))
+                .setMessage(getString(R.string.dialog_adjustment_message, amount))
+                .setPositiveButton(R.string.action_add, (dialogInterface, which) -> {
                     String msg = gameState.chooseValueAdjustment(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Restar", (dialogInterface, which) -> {
+                .setNegativeButton(R.string.action_subtract, (dialogInterface, which) -> {
                     String msg = gameState.chooseValueAdjustment(false);
                     handleGameResult(msg);
                 })
@@ -4194,13 +4244,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (!gameState.isAwaitingGhostShrimpDecision()) return;
         String seen = gameState.getGhostShrimpPeekNames();
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Camarón fantasma")
-                .setMessage("Viste: " + seen + ". ¿Intercambiar sus posiciones?")
-                .setPositiveButton("Intercambiar", (dialogInterface, which) -> {
+                .setTitle(R.string.dialog_ghost_shrimp_title)
+                .setMessage(getString(R.string.dialog_ghost_shrimp_message, seen))
+                .setPositiveButton(R.string.action_swap, (dialogInterface, which) -> {
                     String msg = gameState.resolveGhostShrimpSwap(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Conservar", (dialogInterface, which) -> {
+                .setNegativeButton(R.string.action_keep, (dialogInterface, which) -> {
                     String msg = gameState.resolveGhostShrimpSwap(false);
                     handleGameResult(msg);
                 })
@@ -4300,7 +4350,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setCancelable(false);
 
         if (onCancel != null) {
-            builder.setNegativeButton("Cancelar", (dialog, which) -> {
+            builder.setNegativeButton(R.string.action_cancel, (dialog, which) -> {
                 String msg = onCancel.onCancel();
                 handleGameResult(msg);
             });
@@ -4338,13 +4388,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(title)
                 .setView(gridView)
-                .setPositiveButton("Aceptar", (dialogInterface, which) -> {
+                .setPositiveButton(R.string.action_accept, (dialogInterface, which) -> {
                     List<Integer> indices = new ArrayList<>(selected);
                     Collections.sort(indices);
                     String msg = onConfirm.onSelect(indices);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Cancelar", (dialogInterface, which) -> {
+                .setNegativeButton(R.string.action_cancel, (dialogInterface, which) -> {
                     if (onCancel != null) {
                         String msg = onCancel.onCancel();
                         handleGameResult(msg);
@@ -4357,13 +4407,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         gridView.setOnItemClickListener((parent, view, position, id) -> {
             if (selected.contains(position)) {
                 selected.remove(position);
-            } else {
-                if (selected.size() >= maxSelections) {
-                    Toast.makeText(this,
-                            "Solo puedes elegir hasta " + maxSelections + " cartas.",
-                            Toast.LENGTH_SHORT).show();
-                    return;
-                }
+                } else {
+                    if (selected.size() >= maxSelections) {
+                        Toast.makeText(this,
+                                getString(R.string.toast_max_card_selection, maxSelections),
+                                Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                 selected.add(position);
             }
             adapter.notifyDataSetChanged();
@@ -4387,7 +4437,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<Card> cards = gameState.getPendingPulpoCards();
         if (cards.isEmpty()) return;
         showSingleCardChoiceDialog(
-                "Pulpo",
+                getString(R.string.dialog_pulpo_title),
                 cards,
                 gameState::choosePulpoReplacement,
                 null
@@ -4399,7 +4449,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<Card> cards = gameState.getPendingMorsaCards();
         if (cards.isEmpty()) return;
         showSingleCardChoiceDialog(
-                "Morsa",
+                getString(R.string.dialog_morsa_title),
                 cards,
                 gameState::chooseMorsaReplacement,
                 null
@@ -4411,7 +4461,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<Card> cards = gameState.getPendingLeonMarinoCards();
         if (cards.isEmpty()) return;
         showMultiCardChoiceDialog(
-                "León Marino: elige hasta 2 cartas verdes",
+                getString(R.string.dialog_leon_marino_title),
                 cards,
                 2,
                 gameState::chooseLeonMarinoCapture,
@@ -4423,15 +4473,15 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (!gameState.isAwaitingPezVelaDecision()) return;
         String current = gameState.getPezVelaOriginalDie() != null
                 ? gameState.getPezVelaOriginalDie().getLabel()
-                : "actual";
+                : getString(R.string.dialog_pez_vela_current_fallback);
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Habilidad del Pez Vela")
-                .setMessage("Resultado actual: " + current + ". ¿Relanzar?")
-                .setPositiveButton("Relanzar", (dialogInterface, which) -> {
+                .setTitle(R.string.dialog_pez_vela_title)
+                .setMessage(getString(R.string.dialog_pez_vela_message, current))
+                .setPositiveButton(R.string.action_reroll, (dialogInterface, which) -> {
                     String msg = gameState.choosePezVelaReroll(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Conservar", (dialogInterface, which) -> {
+                .setNegativeButton(R.string.action_keep, (dialogInterface, which) -> {
                     String msg = gameState.choosePezVelaReroll(false);
                     handleGameResult(msg);
                 })
@@ -4445,18 +4495,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (!gameState.isAwaitingPezVelaResultChoice()) return;
         String previous = gameState.getPezVelaOriginalDie() != null
                 ? gameState.getPezVelaOriginalDie().getLabel()
-                : "previo";
+                : getString(R.string.dialog_pez_vela_previous_fallback);
         String rerolled = gameState.getPezVelaRerolledDie() != null
                 ? gameState.getPezVelaRerolledDie().getLabel()
-                : "nuevo";
+                : getString(R.string.dialog_pez_vela_new_fallback);
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Habilidad del Pez Vela")
-                .setMessage("Elige qué resultado conservar")
-                .setPositiveButton("Nuevo (" + rerolled + ")", (dialogInterface, which) -> {
+                .setTitle(R.string.dialog_pez_vela_title)
+                .setMessage(R.string.dialog_pez_vela_result_message)
+                .setPositiveButton(getString(R.string.action_new_with_value, rerolled), (dialogInterface, which) -> {
                     String msg = gameState.choosePezVelaResult(true);
                     handleGameResult(msg);
                 })
-                .setNegativeButton("Anterior (" + previous + ")", (dialogInterface, which) -> {
+                .setNegativeButton(getString(R.string.action_previous_with_value, previous), (dialogInterface, which) -> {
                     String msg = gameState.choosePezVelaResult(false);
                     handleGameResult(msg);
                 })
@@ -4471,7 +4521,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<Card> cards = gameState.getPendingArenqueCards();
         if (cards.isEmpty()) return;
         showMultiCardChoiceDialog(
-                "Elige hasta 2 peces pequeños",
+                getString(R.string.dialog_arenque_title),
                 cards,
                 2,
                 gameState::chooseArenqueFish,
@@ -4484,7 +4534,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<Card> cards = gameState.getPendingSepiaCards();
         if (cards.isEmpty()) return;
         showSingleCardChoiceDialog(
-                "Sepia",
+                getString(R.string.dialog_sepia_title),
                 cards,
                 gameState::chooseSepiaCapture,
                 null
@@ -4496,7 +4546,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<Card> cards = gameState.getPendingDragnetCards();
         if (cards.isEmpty()) return;
         showSingleCardChoiceDialog(
-                "Red de arrastre",
+                getString(R.string.dialog_dragnet_title),
                 cards,
                 gameState::chooseDragnetRelease,
                 null
@@ -4508,7 +4558,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<Card> cards = gameState.getPendingHachaReleaseCards();
         if (cards.isEmpty()) return;
         showSingleCardChoiceDialog(
-                "Pez Hacha Abisal",
+                getString(R.string.dialog_hacha_title),
                 cards,
                 gameState::chooseHachaRelease,
                 null
@@ -4520,7 +4570,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<Card> cards = gameState.getPendingDamiselasCards();
         if (cards.isEmpty()) return;
         showSingleCardChoiceDialog(
-                "Damiselas: ordena el mazo",
+                getString(R.string.dialog_damiselas_title),
                 cards,
                 gameState::chooseDamiselasOrder,
                 null
@@ -4532,8 +4582,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         List<Card> cards = gameState.getPendingPeregrinoCards();
         if (cards.isEmpty()) return;
         String title = gameState.isAwaitingPeregrinoBottomChoice()
-                ? "Tiburón Peregrino: carta al fondo"
-                : "Tiburón Peregrino: carta arriba";
+                ? getString(R.string.dialog_peregrino_bottom_title)
+                : getString(R.string.dialog_peregrino_top_title);
         showSingleCardChoiceDialog(
                 title,
                 cards,
@@ -4551,21 +4601,21 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         for (int i = 0; i < directions.size(); i++) {
             switch (directions.get(i)) {
                 case UP:
-                    items[i] = "Arriba";
+                    items[i] = getString(R.string.direction_up);
                     break;
                 case DOWN:
-                    items[i] = "Abajo";
+                    items[i] = getString(R.string.direction_down);
                     break;
                 case LEFT:
-                    items[i] = "Izquierda";
+                    items[i] = getString(R.string.direction_left);
                     break;
                 default:
-                    items[i] = "Derecha";
+                    items[i] = getString(R.string.direction_right);
                     break;
             }
         }
         new AlertDialog.Builder(this)
-                .setTitle("Ballena jorobada")
+                .setTitle(R.string.dialog_humpback_title)
                 .setItems(items, (dialog, which) -> {
                     GameState.CurrentDirection selected = directions.get(which);
                     String msg = gameState.chooseHumpbackDirection(selected.name());
@@ -4921,11 +4971,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptSpiderCrabCardChoice() {
         List<Card> cards = new ArrayList<>(gameState.getFailedDiscardCards());
         if (cards.isEmpty()) {
-            handleGameResult("No hay cartas descartadas por fallo para recuperar.");
+            handleGameResult(getString(R.string.result_no_failed_discards_to_recover));
             return;
         }
         showSingleCardChoiceDialog(
-                "Cangrejo araña",
+                getString(R.string.dialog_spider_crab_title),
                 cards,
                 gameState::chooseSpiderCrabCard,
                 gameState::cancelSpiderCrab
@@ -4935,11 +4985,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptDecoradorChoice() {
         List<Card> cards = new ArrayList<>(gameState.getPendingDecoradorCards());
         if (cards.isEmpty()) {
-            handleGameResult("Cangrejo decorador: no hay cartas negras disponibles.");
+            handleGameResult(getString(R.string.result_decorador_no_black_cards));
             return;
         }
         showSingleCardChoiceDialog(
-                "Cangrejo decorador",
+                getString(R.string.dialog_decorador_title),
                 cards,
                 gameState::chooseDecoradorCard,
                 gameState::cancelDecoradorAbility
@@ -4949,11 +4999,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptHermitChoice() {
         List<Card> cards = new ArrayList<>(gameState.getPendingHermitCards());
         if (cards.isEmpty()) {
-            handleGameResult("Cangrejo ermitaño: no hay cartas disponibles en el mazo.");
+            handleGameResult(getString(R.string.result_hermit_no_cards_in_deck));
             return;
         }
         showSingleCardChoiceDialog(
-                "Cangrejo ermitaño",
+                getString(R.string.dialog_hermit_title),
                 cards,
                 gameState::chooseHermitReplacementCard,
                 null
@@ -4963,11 +5013,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void promptViolinistChoice() {
         List<Card> cards = new ArrayList<>(gameState.getFailedDiscardCards());
         if (cards.isEmpty()) {
-            handleGameResult("No hay cartas descartadas por fallo para capturar.");
+            handleGameResult(getString(R.string.result_no_failed_discards_to_capture));
             return;
         }
         showSingleCardChoiceDialog(
-                "Cangrejo violinista",
+                getString(R.string.dialog_violinist_title),
                 cards,
                 gameState::chooseViolinistCard,
                 gameState::cancelViolinistAbility
@@ -4978,7 +5028,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         int sides = gameState.getHorseshoeDieSides();
         DieType dieType = gameState.getHorseshoeDieType();
         if (sides <= 0 || dieType == null) {
-            handleGameResult("Cangrejo herradura: no hay dado válido para ajustar.");
+            handleGameResult(getString(R.string.result_horseshoe_no_die_to_adjust));
             return;
         }
         List<Integer> values = new ArrayList<>();
@@ -5053,7 +5103,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         });
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Cangrejo herradura")
+                .setTitle(R.string.dialog_horseshoe_title)
                 .setView(gridView)
                 .setCancelable(false)
                 .create();
@@ -5072,7 +5122,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         int sides = gameState.getFocaMoteadaDieSides();
         DieType dieType = gameState.getFocaMoteadaDieType();
         if (sides <= 0 || dieType == null) {
-            handleGameResult("Foca moteada: no hay dado válido para ajustar.");
+            handleGameResult(getString(R.string.result_spotted_seal_no_die_to_adjust));
             return;
         }
         List<Integer> values = new ArrayList<>();
@@ -5147,7 +5197,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         });
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Foca moteada")
+                .setTitle(R.string.dialog_spotted_seal_title)
                 .setView(gridView)
                 .setCancelable(false)
                 .create();
@@ -5166,7 +5216,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         int sides = gameState.getD20CriticalDieSides();
         DieType dieType = gameState.getD20CriticalDieType();
         if (sides <= 0 || dieType == null) {
-            handleGameResult("D20 crítico: no hay dado válido para ajustar.");
+            handleGameResult(getString(R.string.result_d20_critical_no_die_to_adjust));
             return;
         }
         List<Integer> values = new ArrayList<>();
@@ -5241,7 +5291,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         });
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("D20 crítico")
+                .setTitle(R.string.dialog_d20_critical_title)
                 .setView(gridView)
                 .setCancelable(false)
                 .create();
@@ -5260,7 +5310,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         int sides = gameState.getCachaloteDieSides();
         DieType dieType = gameState.getCachaloteDieType();
         if (sides <= 0 || dieType == null) {
-            handleGameResult("Cachalote: no hay dado válido para ajustar.");
+            handleGameResult(getString(R.string.result_cachalote_no_die_to_adjust));
             return;
         }
         List<Integer> values = new ArrayList<>();
@@ -5335,7 +5385,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         });
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Cachalote")
+                .setTitle(R.string.dialog_cachalote_title)
                 .setView(gridView)
                 .setCancelable(false)
                 .create();
