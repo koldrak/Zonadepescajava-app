@@ -236,8 +236,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
         applySavedTextLanguage();
+        super.onCreate(savedInstanceState);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
