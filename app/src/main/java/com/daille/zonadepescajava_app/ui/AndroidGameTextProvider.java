@@ -10,7 +10,7 @@ public class AndroidGameTextProvider implements GameTextProvider {
     private final Context context;
 
     public AndroidGameTextProvider(Context context) {
-        this.context = context.getApplicationContext();
+        this.context = context;
     }
 
     @Override
