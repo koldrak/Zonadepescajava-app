@@ -1752,7 +1752,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_game_loop_step2_title,
                     R.string.tutorial_game_loop_step2_message,
-                    binding.gamePanel.reserveDiceContainer));
+                    binding.gamePanel.reserveDiceScroll));
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_game_loop_step3_title,
                     R.string.tutorial_game_loop_step3_message,
@@ -1764,7 +1764,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_game_loop_step5_title,
                     R.string.tutorial_game_loop_step5_message,
-                    binding.gamePanel.reserveDiceContainer,
+                    binding.gamePanel.reserveDiceScroll,
                     binding.gamePanel.boardRecycler));
         } else if (type == TutorialType.CARD_RELEASE) {
             tutorialSteps.add(new TutorialStep(
@@ -5823,6 +5823,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void completePlacement(int position) {
         boolean hadSelectedDie = gameState.getSelectedDie() != null;
         BoardSlot slot = gameState.getBoard()[position];
+        boolean wasFaceUp = slot != null && slot.isFaceUp();
         int diceBefore = slot != null ? slot.getDice().size() : 0;
         String result = gameState.placeSelectedDie(position);
         boolean placed = hadSelectedDie && gameState.consumeLastDiePlaced();
@@ -5832,6 +5833,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         handleGameResult(result);
         if (activeTutorial == TutorialType.GAME_LOOP) {
             if (tutorialStepIndex == 2 && placed) {
+                advanceTutorialStep();
+            } else if (tutorialStepIndex == 3 && placed && wasFaceUp) {
                 advanceTutorialStep();
             } else if (tutorialStepIndex == 4 && placed && diceBefore == 1) {
                 advanceTutorialStep();
