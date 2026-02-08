@@ -36,7 +36,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         gameState = new GameState();
         setupBoard();
         setupButtons();
-        refreshUi("Juego iniciado. Lanza un dado y toca una carta.");
+        refreshUi(getString(R.string.log_game_start));
     }
 
     private void setupBoard() {
@@ -70,20 +70,27 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void refreshUi(String log) {
         adapter.update(Arrays.asList(gameState.getBoard()));
-        binding.score.setText(String.format(Locale.getDefault(), "Puntaje: %d", gameState.getScore()));
-        binding.deckInfo.setText(String.format(Locale.getDefault(), "Mazo restante: %d", gameState.getDeckSize()));
-        binding.captures.setText(String.format(Locale.getDefault(), "Capturas: %d", gameState.getCaptures().size()));
+        binding.score.setText(getString(R.string.score_format, gameState.getScore()));
+        binding.deckInfo.setText(getString(R.string.deck_info_format, gameState.getDeckSize()));
+        binding.captures.setText(getString(R.string.captures_format, gameState.getCaptures().size()));
 
         binding.selection.setText(gameState.getSelectedDie() == null
-                ? "Selecciona un dado de la reserva"
-                : "Dado preparado: " + gameState.getSelectedDie().getLabel());
+                ? getString(R.string.selection_prompt)
+                : getString(R.string.die_ready_format, gameState.getSelectedDie().getLabel()));
 
-        binding.reserve.setText("Reserva: " + buildReserveText());
-        binding.lost.setText(String.format(Locale.getDefault(), "Perdidos: %d", gameState.getLostDice().size()));
+        int[] reserveCounts = buildReserveCounts();
+        binding.reserve.setText(getString(
+                R.string.reserve_format,
+                reserveCounts[0],
+                reserveCounts[1],
+                reserveCounts[2],
+                reserveCounts[3]
+        ));
+        binding.lost.setText(getString(R.string.lost_format, gameState.getLostDice().size()));
         binding.log.setText(log);
     }
 
-    private String buildReserveText() {
+    private int[] buildReserveCounts() {
         int d4 = 0, d6 = 0, d8 = 0, d12 = 0;
         for (DieType t : gameState.getReserve()) {
             switch (t) {
@@ -93,7 +100,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 case D12: d12++; break;
             }
         }
-        return String.format(Locale.getDefault(), "D4 x%d • D6 x%d • D8 x%d • D12 x%d", d4, d6, d8, d12);
+        return new int[] { d4, d6, d8, d12 };
     }
 
     @Override
@@ -118,7 +125,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (!wasFaceUp && updatedSlot.isFaceUp()) {
             playWhaleSound(updatedSlot.getCard());
         }
-        refreshUi("Has volteado la carta");
+        refreshUi(getString(R.string.log_card_flipped));
     }
 
     private void playWhaleSound(Card card) {
