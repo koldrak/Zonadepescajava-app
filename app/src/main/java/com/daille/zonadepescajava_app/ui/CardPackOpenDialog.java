@@ -278,7 +278,7 @@ public final class CardPackOpenDialog {
         }
         databaseHelper.removeCardCopies(cardId, 1);
         databaseHelper.addBonusPoints(sellPrice);
-        Toast.makeText(context, "Venta completada: +" + sellPrice + " puntos.", Toast.LENGTH_SHORT).show();
+        Toast.makeText(context, context.getString(R.string.card_sell_completed_format, sellPrice), Toast.LENGTH_SHORT).show();
         return currentCount - 1;
     }
 
