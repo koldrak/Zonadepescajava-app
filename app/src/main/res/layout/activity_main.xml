@@ -51,26 +51,128 @@
                 android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
 
             <LinearLayout
-                android:id="@+id/settingsButtons"
+                android:id="@+id/settingsSections"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:orientation="vertical">
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/textLanguageButton"
+                    android:id="@+id/userSectionHeader"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/text_language_button" />
+                    android:text="@string/settings_user_section" />
+
+                <LinearLayout
+                    android:id="@+id/userSectionContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/settings_user_name_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:hint="@string/settings_user_country_hint">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/imageLanguageButton"
+                    android:id="@+id/languageSectionHeader"
                     style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="@string/image_language_button" />
+                    android:text="@string/settings_language_section" />
+
+                <LinearLayout
+                    android:id="@+id/languageSectionContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/textLanguageButton"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/text_language_button" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/imageLanguageButton"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/image_language_button" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/audioSectionHeader"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/settings_audio_section" />
+
+                <LinearLayout
+                    android:id="@+id/audioSectionContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/audioSectionPlaceholder"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_audio_placeholder"
+                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/tutorialSectionHeader"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/settings_tutorial_section" />
+
+                <LinearLayout
+                    android:id="@+id/tutorialSectionContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/tutorialSectionPlaceholder"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_tutorial_placeholder"
+                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+                </LinearLayout>
             </LinearLayout>
 
             <TextView

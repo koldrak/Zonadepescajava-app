@@ -36,6 +36,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         gameState = new GameState();
         setupBoard();
         setupButtons();
+        setupSettingsSections();
         refreshUi(getString(R.string.log_game_start));
     }
 
@@ -61,6 +62,18 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.rollD6.setOnClickListener(v -> onRoll(DieType.D6));
         binding.rollD8.setOnClickListener(v -> onRoll(DieType.D8));
         binding.rollD12.setOnClickListener(v -> onRoll(DieType.D12));
+    }
+
+    private void setupSettingsSections() {
+        binding.userSectionHeader.setOnClickListener(v -> toggleSection(binding.userSectionContent));
+        binding.languageSectionHeader.setOnClickListener(v -> toggleSection(binding.languageSectionContent));
+        binding.audioSectionHeader.setOnClickListener(v -> toggleSection(binding.audioSectionContent));
+        binding.tutorialSectionHeader.setOnClickListener(v -> toggleSection(binding.tutorialSectionContent));
+    }
+
+    private void toggleSection(View sectionContent) {
+        int visibility = sectionContent.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE;
+        sectionContent.setVisibility(visibility);
     }
 
     private void onRoll(DieType type) {

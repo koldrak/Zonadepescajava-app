@@ -2,6 +2,14 @@
     <string name="app_name">Zona de Pesca Android</string>
     <string name="description">Emulación móvil de Zona de Pesca: lanza dados desde la reserva, tócalos sobre las cartas para intentar la captura y usa pulsación prolongada para voltear cartas boca arriba o abajo.</string>
     <string name="settings_title">Configuración</string>
+    <string name="settings_user_section">Usuario</string>
+    <string name="settings_language_section">Idioma</string>
+    <string name="settings_audio_section">Audio</string>
+    <string name="settings_tutorial_section">Tutoriales</string>
+    <string name="settings_user_name_hint">Nombre para ranking global</string>
+    <string name="settings_user_country_hint">País para ranking global</string>
+    <string name="settings_audio_placeholder">Opciones de audio próximamente.</string>
+    <string name="settings_tutorial_placeholder">Tutoriales disponibles próximamente.</string>
     <string name="text_language_button">Idioma de textos</string>
     <string name="image_language_button">Idioma de imágenes</string>
     <string name="roll_d4">Lanzar D4</string>
