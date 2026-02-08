@@ -3566,7 +3566,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 cardView.setContentDescription(card != null ? card.getName() : getString(R.string.card_image_content_description));
                 if (releaseBlocked) {
                     cardView.setColorFilter(Color.argb(170, 0, 0, 0), PorterDuff.Mode.SRC_ATOP);
-                    cardView.setAlpha(0.85f);
                 }
 
                 // ✅ CLICK NORMAL = LIBERAR PEZ
