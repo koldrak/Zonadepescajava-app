@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.daille.zonadepescajava_app.R;
 import com.daille.zonadepescajava_app.model.Card;
+import com.daille.zonadepescajava_app.model.GameTextProvider;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,8 +50,9 @@ public class AcquiredCardsAdapter extends RecyclerView.Adapter<AcquiredCardsAdap
             image = imageResolver.getCardBack();
         }
         holder.cardImage.setImageBitmap(image);
+        GameTextProvider textProvider = new AndroidGameTextProvider(holder.cardImage.getContext());
         holder.cardImage.setContentDescription(card != null
-                ? card.getName()
+                ? card.getName(textProvider)
                 : holder.cardImage.getContext().getString(R.string.card_image_content_description));
     }
 

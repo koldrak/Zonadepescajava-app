@@ -22,6 +22,7 @@ public class GameState {
     private final List<Die> lostDice = new ArrayList<>();
     private final List<DieType> reserve = new ArrayList<>();
     private final List<Card> failedDiscards = new ArrayList<>();
+    private GameTextProvider textProvider;
     private int captureComboMultiplier = 0;
     private int currentCaptureMultiplier = 1;
     private boolean captureOccurredThisTurn = false;
@@ -153,6 +154,10 @@ public class GameState {
     private int initialDeckSize = 0;
     private SeaZone lastAnnouncedZone = SeaZone.COASTAL;
     private static final int INITIAL_FISHING_ZONE_CARDS = 9;
+
+    public void setTextProvider(GameTextProvider textProvider) {
+        this.textProvider = textProvider;
+    }
 
     private enum AbilityTrigger {
         REVEAL,
@@ -755,7 +760,7 @@ public class GameState {
     public List<String> getPendingArenqueNames() {
         List<String> names = new ArrayList<>();
         for (Card c : pendingArenquePool) {
-            names.add(c.getName());
+            names.add(c.getName(textProvider));
         }
         return names;
     }
@@ -767,7 +772,7 @@ public class GameState {
     public List<String> getPendingDecoradorNames() {
         List<String> names = new ArrayList<>();
         for (Card c : pendingDecoradorOptions) {
-            names.add(c.getName());
+            names.add(c.getName(textProvider));
         }
         return names;
     }
@@ -779,7 +784,7 @@ public class GameState {
     public List<String> getPendingHermitNames() {
         List<String> names = new ArrayList<>();
         for (Card c : pendingHermitOptions) {
-            names.add(c.getName());
+            names.add(c.getName(textProvider));
         }
         return names;
     }
@@ -795,7 +800,7 @@ public class GameState {
     public List<String> getPendingSepiaNames() {
         List<String> names = new ArrayList<>();
         for (Card c : pendingSepiaOptions) {
-            names.add(c.getName());
+            names.add(c.getName(textProvider));
         }
         return names;
     }
@@ -811,7 +816,7 @@ public class GameState {
     public List<String> getPendingDragnetNames() {
         List<String> names = new ArrayList<>();
         for (Card c : pendingDragnetTargets) {
-            names.add(c.getName());
+            names.add(c.getName(textProvider));
         }
         return names;
     }
@@ -827,7 +832,7 @@ public class GameState {
     public List<String> getPendingHachaReleaseNames() {
         List<String> names = new ArrayList<>();
         for (Card c : pendingHachaReleaseChoices) {
-            names.add(c.getName());
+            names.add(c.getName(textProvider));
         }
         return names;
     }
@@ -843,7 +848,7 @@ public class GameState {
     public List<String> getPendingDamiselasNames() {
         List<String> names = new ArrayList<>();
         for (Card c : pendingDamiselasTop) {
-            names.add(c.getName());
+            names.add(c.getName(textProvider));
         }
         return names;
     }
@@ -863,7 +868,7 @@ public class GameState {
     public List<String> getPendingPeregrinoNames() {
         List<String> names = new ArrayList<>();
         for (Card c : pendingPeregrinoTop) {
-            names.add(c.getName());
+            names.add(c.getName(textProvider));
         }
         return names;
     }
@@ -895,7 +900,7 @@ public class GameState {
     public List<String> getPendingPulpoNames() {
         List<String> names = new ArrayList<>();
         for (Card c : pendingPulpoOptions) {
-            names.add(c.getName());
+            names.add(c.getName(textProvider));
         }
         return names;
     }
@@ -1004,8 +1009,8 @@ public class GameState {
         }
         Card first = board[ghostShrimpFirstChoice].getCard();
         Card second = board[ghostShrimpSecondChoice].getCard();
-        String firstName = first != null ? first.getName() : "?";
-        String secondName = second != null ? second.getName() : "?";
+        String firstName = first != null ? first.getName(textProvider) : "?";
+        String secondName = second != null ? second.getName(textProvider) : "?";
         return firstName + " y " + secondName;
     }
 
@@ -1478,7 +1483,7 @@ public class GameState {
 
         target.setFaceUp(true);
         markRevealed(slotIndex);
-        StringBuilder log = new StringBuilder("Pez Linterna reveló " + target.getCard().getName());
+        StringBuilder log = new StringBuilder("Pez Linterna reveló " + target.getCard().getName(textProvider));
         BoardSlot origin = lanternOriginSlot >= 0 && lanternOriginSlot < board.length ? board[lanternOriginSlot] : null;
         if (origin != null && origin.getDice().size() > 0) {
             if (target.getCard().getType() == CardType.PEZ_GRANDE && target.getDice().size() < 2) {
@@ -1708,7 +1713,7 @@ public class GameState {
         releasedCards.add(pendingReleaseCard);
         removeCapture(pendingReleaseCard);
 
-        String name = pendingReleaseCard.getName();
+        String name = pendingReleaseCard.getName(textProvider);
         if (pendingManualRelease) {
             manualReleaseUsedThisTurn = true;
         }
@@ -1900,7 +1905,7 @@ public class GameState {
         Card chosen = failedDiscards.remove(index);
         addCapture(chosen);
         awaitingViolinistChoice = false;
-        return "Cangrejo violinista capturó directamente " + chosen.getName() + ".";
+        return "Cangrejo violinista capturó directamente " + chosen.getName(textProvider) + ".";
     }
 
     public String cancelViolinistAbility() {
@@ -3370,7 +3375,7 @@ public class GameState {
         target.clearDice();
         target.setFaceUp(false);
 
-        String log = "Fletan ocultó " + target.getCard().getName() + " y recuperó sus dados.";
+        String log = "Fletan ocultó " + target.getCard().getName(textProvider) + " y recuperó sus dados.";
         String fletanLog = hideFletanAndRecover(pendingFletanSlot, "");
         clearPendingSelection();
         return fletanLog.isEmpty() ? log : log + " " + fletanLog;
@@ -4243,10 +4248,10 @@ public class GameState {
         AbilityActivation activation = new AbilityActivation(trigger, slotIndex, placedValue, diceOnCard, card, detail);
         if (pendingAbilityConfirmation == null) {
             pendingAbilityConfirmation = activation;
-            return "Habilidad activada: " + card.getName() + ".";
+            return "Habilidad activada: " + card.getName(textProvider) + ".";
         }
         pendingAbilityQueue.add(activation);
-        return "Habilidad activada: " + card.getName() + ". Queda en espera.";
+        return "Habilidad activada: " + card.getName(textProvider) + ". Queda en espera.";
     }
 
     private String buildAbilityDetail(Card card) {
@@ -4693,7 +4698,7 @@ public class GameState {
     public List<String> getFailedDiscardNames() {
         List<String> names = new ArrayList<>();
         for (Card c : failedDiscards) {
-            names.add(c.getName());
+            names.add(c.getName(textProvider));
         }
         return names;
     }
@@ -4712,7 +4717,7 @@ public class GameState {
 
         pendingSpiderCrabCard = failedDiscards.remove(index);
         pendingSelection = PendingSelection.SPIDER_CRAB_CHOOSE_SLOT;
-        return "Elige una carta boca abajo para reemplazar por " + pendingSpiderCrabCard.getName() + ".";
+        return "Elige una carta boca abajo para reemplazar por " + pendingSpiderCrabCard.getName(textProvider) + ".";
     }
 
     private List<Integer> adjacentIndices(int slotIndex, boolean includeDiagonals) {
@@ -4920,7 +4925,7 @@ public class GameState {
         }
 
         clearPendingSelection();
-        return "Botella de Plástico modificó los dados de " + target.getCard().getName() + " (+3, con tope). [" + detail + "]";
+        return "Botella de Plástico modificó los dados de " + target.getCard().getName(textProvider) + " (+3, con tope). [" + detail + "]";
     }
 
     private String chooseGlassBottleTarget(int slotIndex) {
@@ -4958,7 +4963,7 @@ public class GameState {
         }
 
         clearPendingSelection();
-        return "Botella de vidrio modificó los dados de " + target.getCard().getName() + " (−3). [" + detail + "]";
+        return "Botella de vidrio modificó los dados de " + target.getCard().getName(textProvider) + " (−3). [" + detail + "]";
     }
 
 
@@ -5005,7 +5010,7 @@ public class GameState {
             return "Trucha Arcoíris: la carta debe estar boca abajo.";
         }
         String reveal = revealAndTrigger(slotIndex);
-        StringBuilder log = new StringBuilder("Trucha Arcoíris reveló " + target.getCard().getName() + ".");
+        StringBuilder log = new StringBuilder("Trucha Arcoíris reveló " + target.getCard().getName(textProvider) + ".");
         if (!reveal.isEmpty()) {
             log.append(" ").append(reveal);
         }
@@ -5136,7 +5141,7 @@ public class GameState {
         }
         clearPendingSelection();
         recomputeBottleAdjustments();
-        return "Pez Lobo descartó " + removed.getName() + " y regresó al mazo.";
+        return "Pez Lobo descartó " + removed.getName(textProvider) + " y regresó al mazo.";
     }
 
     private String startPezBorronMove(int slotIndex) {
@@ -5257,7 +5262,7 @@ public class GameState {
         }
         pendingSepiaSlot = -1;
         recomputeBottleAdjustments();
-        return "Sepia capturó " + chosen.getName() + " y regresó al mazo.";
+        return "Sepia capturó " + chosen.getName(textProvider) + " y regresó al mazo.";
     }
 
     private String startLeonMarinoCapture() {
@@ -5523,8 +5528,8 @@ public class GameState {
         }
         ghostShrimpSecondChoice = slotIndex;
         awaitingGhostShrimpDecision = true;
-        String firstName = board[ghostShrimpFirstChoice].getCard().getName();
-        String secondName = board[ghostShrimpSecondChoice].getCard().getName();
+        String firstName = board[ghostShrimpFirstChoice].getCard().getName(textProvider);
+        String secondName = board[ghostShrimpSecondChoice].getCard().getName(textProvider);
         clearPendingSelection();
         return "Camarón fantasma vio " + firstName + " y " + secondName + ". ¿Intercambiarlas?";
     }
@@ -6331,7 +6336,7 @@ public class GameState {
             }
             Die adjusted = new Die(pendingLocoDie.getType(), newVal);
             String reveal = addDieToSlotInternal(adjustmentSlotIndex, adjusted, false);
-            String base = "Loco movió un dado a " + slot.getCard().getName() + " (" + newVal + ").";
+            String base = "Loco movió un dado a " + slot.getCard().getName(textProvider) + " (" + newVal + ").";
 
             pendingLocoDie = null;
             awaitingValueAdjustment = false;
@@ -6559,7 +6564,7 @@ public class GameState {
                 reserve.add(d.getType());
             }
         }
-        String base = "Piraña descartó a " + removed.getName() + " sin perder sus dados.";
+        String base = "Piraña descartó a " + removed.getName(textProvider) + " sin perder sus dados.";
         if (pendingSelection == PendingSelection.PIRANA_TARGET) {
             clearPendingSelection();
         }
@@ -6662,8 +6667,8 @@ public class GameState {
         markRevealed(pulpoSlotIndex);
         String reveal = handleOnReveal(pulpoSlotIndex, pulpoPlacedValue);
         String result = reveal.isEmpty()
-                ? "Pulpo fue reemplazado por " + replacement.getName() + "."
-                : "Pulpo fue reemplazado por " + replacement.getName() + ". " + reveal;
+                ? "Pulpo fue reemplazado por " + replacement.getName(textProvider) + "."
+                : "Pulpo fue reemplazado por " + replacement.getName(textProvider) + ". " + reveal;
         clearPulpoState();
         shuffleDeck();
         return result;
@@ -6741,8 +6746,8 @@ public class GameState {
         markRevealed(morsaTargetSlotIndex);
         String reveal = handleOnReveal(morsaTargetSlotIndex, 0);
         String result = reveal.isEmpty()
-                ? "Morsa reemplazó la carta eliminada por " + replacement.getName() + "."
-                : "Morsa reemplazó la carta eliminada por " + replacement.getName() + ". " + reveal;
+                ? "Morsa reemplazó la carta eliminada por " + replacement.getName(textProvider) + "."
+                : "Morsa reemplazó la carta eliminada por " + replacement.getName(textProvider) + ". " + reveal;
         clearMorsaState();
         shuffleDeck();
         return result;
@@ -8205,7 +8210,7 @@ public class GameState {
         }
         clearPendingSelection();
         String reveal = revealAndTrigger(slotIndex);
-        String base = "Revelaste " + slot.getCard().getName() + ".";
+        String base = "Revelaste " + slot.getCard().getName(textProvider) + ".";
         if (reveal != null && !reveal.isEmpty()) {
             base += " " + reveal;
         }

@@ -17,6 +17,7 @@ import com.daille.zonadepescajava_app.R;
 import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardId;
 import com.daille.zonadepescajava_app.model.GameUtils;
+import com.daille.zonadepescajava_app.model.GameTextProvider;
 import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 
 import java.util.ArrayList;
@@ -82,7 +83,8 @@ public class CollectionCardAdapter extends RecyclerView.Adapter<CollectionCardAd
             image = imageResolver.getCardBack();
         }
         holder.cardImage.setImageBitmap(image);
-        holder.cardImage.setContentDescription(card != null ? card.getName()
+        GameTextProvider textProvider = new AndroidGameTextProvider(holder.cardImage.getContext());
+        holder.cardImage.setContentDescription(card != null ? card.getName(textProvider)
                 : holder.cardImage.getContext().getString(R.string.card_image_content_description));
 
         CardId cardId = card != null ? card.getId() : null;
