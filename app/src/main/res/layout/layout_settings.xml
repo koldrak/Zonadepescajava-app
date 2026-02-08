@@ -136,6 +136,21 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/settingsLanguageTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/settings_language_title"
+            style="@style/App.Text.Title.Ocean.Sub" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/settingsLanguageToggle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/settings_language_toggle" />
+
+        <TextView
             android:id="@+id/settingsTutorialsTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -231,7 +246,7 @@
                 android:background="@drawable/botonvolver"
                 android:gravity="center_vertical"
                 android:padding="10dp"
-                android:text="    Volver"
+                android:text="@string/back"
                 android:textAllCaps="false"
                 android:textColor="@android:color/black"
                 android:textSize="18sp"

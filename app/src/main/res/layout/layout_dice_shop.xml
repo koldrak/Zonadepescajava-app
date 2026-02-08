@@ -43,7 +43,7 @@
             android:background="@drawable/botonventacartas"
             android:gravity="center_vertical"
             android:padding="0dp"
-            android:text="       Vender Cartas"
+            android:text="@string/dice_shop_sell_cards"
             android:textAllCaps="false"
             android:textColor="@android:color/black"
             android:textSize="18sp"
@@ -106,7 +106,7 @@
                     android:background="@drawable/botoncomprar"
                     android:gravity="center"
                     android:padding="0dp"
-                    android:text="comprar"
+                    android:text="@string/buy"
                     android:textAllCaps="false"
                     android:textColor="@android:color/black"
                     android:textSize="18sp"
@@ -158,7 +158,7 @@
                     android:background="@drawable/botoncomprar"
                     android:gravity="center"
                     android:padding="0dp"
-                    android:text="comprar"
+                    android:text="@string/buy"
                     android:textAllCaps="false"
                     android:textColor="@android:color/black"
                     android:textSize="18sp"
@@ -210,7 +210,7 @@
                     android:background="@drawable/botoncomprar"
                     android:gravity="center"
                     android:padding="0dp"
-                    android:text="comprar"
+                    android:text="@string/buy"
                     android:textAllCaps="false"
                     android:textColor="@android:color/black"
                     android:textSize="18sp"
@@ -262,7 +262,7 @@
                     android:background="@drawable/botoncomprar"
                     android:gravity="center"
                     android:padding="0dp"
-                    android:text="comprar"
+                    android:text="@string/buy"
                     android:textAllCaps="false"
                     android:textColor="@android:color/black"
                     android:textSize="18sp"
@@ -314,7 +314,7 @@
                     android:background="@drawable/botoncomprar"
                     android:gravity="center"
                     android:padding="0dp"
-                    android:text="comprar"
+                    android:text="@string/buy"
                     android:textAllCaps="false"
                     android:textColor="@android:color/black"
                     android:textSize="18sp"
@@ -365,7 +365,7 @@
                     android:background="@drawable/botoncomprar"
                     android:gravity="center"
                     android:padding="0dp"
-                    android:text="comprar"
+                    android:text="@string/buy"
                     android:textAllCaps="false"
                     android:textColor="@android:color/black"
                     android:textSize="18sp"
@@ -402,7 +402,7 @@
                 android:background="@drawable/botoncomprar"
                 android:gravity="center"
                 android:padding="0dp"
-                android:text="comprar"
+                android:text="@string/buy"
                 android:textAllCaps="false"
                 android:textColor="@android:color/black"
                 android:textSize="18sp"
@@ -452,19 +452,19 @@
                             android:layout_marginTop="8dp"
                             android:text="@string/card_pack_random_price" />
 
-                        <androidx.appcompat.widget.AppCompatButton
-                            android:id="@+id/cardPackRandomBuy"
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/cardPackRandomBuy"
                             android:layout_width="120dp"
                             android:layout_height="40dp"
                             android:layout_marginTop="0dp"
                             android:background="@drawable/botoncomprar"
-                            android:gravity="center"
-                            android:padding="0dp"
-                            android:text="comprar"
-                            android:textAllCaps="false"
-                            android:textColor="@android:color/black"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
+                        android:gravity="center"
+                        android:padding="0dp"
+                        android:text="@string/buy"
+                        android:textAllCaps="false"
+                        android:textColor="@android:color/black"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
 
                     </LinearLayout>
 
@@ -492,19 +492,19 @@
                             android:layout_marginTop="8dp"
                             android:text="@string/card_pack_crustaceo_price" />
 
-                        <androidx.appcompat.widget.AppCompatButton
-                            android:id="@+id/cardPackCrustaceoBuy"
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/cardPackCrustaceoBuy"
                             android:layout_width="120dp"
                             android:layout_height="40dp"
                             android:layout_marginTop="0dp"
                             android:background="@drawable/botoncomprar"
-                            android:gravity="center"
-                            android:padding="0dp"
-                            android:text="comprar"
-                            android:textAllCaps="false"
-                            android:textColor="@android:color/black"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
+                        android:gravity="center"
+                        android:padding="0dp"
+                        android:text="@string/buy"
+                        android:textAllCaps="false"
+                        android:textColor="@android:color/black"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
 
                     </LinearLayout>
 
@@ -533,19 +533,19 @@
                             android:layout_marginTop="8dp"
                             android:text="@string/card_pack_small_fish_price" />
 
-                        <androidx.appcompat.widget.AppCompatButton
-                            android:id="@+id/cardPackSmallFishBuy"
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/cardPackSmallFishBuy"
                             android:layout_width="120dp"
                             android:layout_height="40dp"
                             android:layout_marginTop="0dp"
                             android:background="@drawable/botoncomprar"
-                            android:gravity="center"
-                            android:padding="0dp"
-                            android:text="comprar"
-                            android:textAllCaps="false"
-                            android:textColor="@android:color/black"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
+                        android:gravity="center"
+                        android:padding="0dp"
+                        android:text="@string/buy"
+                        android:textAllCaps="false"
+                        android:textColor="@android:color/black"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
 
                     </LinearLayout>
 
@@ -573,19 +573,19 @@
                             android:layout_marginTop="8dp"
                             android:text="@string/card_pack_big_fish_price" />
 
-                        <androidx.appcompat.widget.AppCompatButton
-                            android:id="@+id/cardPackBigFishBuy"
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/cardPackBigFishBuy"
                             android:layout_width="120dp"
                             android:layout_height="40dp"
                             android:layout_marginTop="0dp"
                             android:background="@drawable/botoncomprar"
-                            android:gravity="center"
-                            android:padding="0dp"
-                            android:text="comprar"
-                            android:textAllCaps="false"
-                            android:textColor="@android:color/black"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
+                        android:gravity="center"
+                        android:padding="0dp"
+                        android:text="@string/buy"
+                        android:textAllCaps="false"
+                        android:textColor="@android:color/black"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
 
                     </LinearLayout>
 
@@ -611,19 +611,19 @@
                             android:layout_marginTop="8dp"
                             android:text="@string/card_pack_object_price" />
 
-                        <androidx.appcompat.widget.AppCompatButton
-                            android:id="@+id/cardPackObjectBuy"
+                    <androidx.appcompat.widget.AppCompatButton
+                        android:id="@+id/cardPackObjectBuy"
                             android:layout_width="120dp"
                             android:layout_height="40dp"
                             android:layout_marginTop="0dp"
                             android:background="@drawable/botoncomprar"
-                            android:gravity="center"
-                            android:padding="0dp"
-                            android:text="comprar"
-                            android:textAllCaps="false"
-                            android:textColor="@android:color/black"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
+                        android:gravity="center"
+                        android:padding="0dp"
+                        android:text="@string/buy"
+                        android:textAllCaps="false"
+                        android:textColor="@android:color/black"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
 
                     </LinearLayout>
 
@@ -633,18 +633,18 @@
         </LinearLayout>
     </ScrollView>
 
-        <androidx.appcompat.widget.AppCompatButton
+            <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/diceShopBack"
             android:layout_width="150dp"
             android:layout_height="60dp"
             android:layout_marginTop="0dp"
-            android:background="@drawable/botonvolver"
-            android:gravity="center_vertical"
-            android:padding="10dp"
-            android:text="    Volver"
-            android:textAllCaps="false"
-            android:textColor="@android:color/black"
-            android:textSize="18sp"
+                android:background="@drawable/botonvolver"
+                android:gravity="center_vertical"
+                android:padding="10dp"
+                android:text="@string/back"
+                android:textAllCaps="false"
+                android:textColor="@android:color/black"
+                android:textSize="18sp"
             android:textStyle="bold" />
 
     </LinearLayout>
