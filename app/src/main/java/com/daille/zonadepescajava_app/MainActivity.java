@@ -1455,6 +1455,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void setupSettingsPanel() {
         setButtonClickListener(binding.settingsPanel.settingsBack, this::showStartMenu);
+        setupSettingsAccordion();
         binding.settingsPanel.settingsMusicToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
             musicEnabled = !isChecked;
             applyAudioSettings();
@@ -1515,6 +1516,43 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
         });
         setupRankingProfileSettings();
+    }
+
+    private void setupSettingsAccordion() {
+        configureSettingsSection(
+                binding.settingsPanel.settingsUserHeader,
+                binding.settingsPanel.settingsUserContent,
+                binding.settingsPanel.settingsUserChevron,
+                true
+        );
+        configureSettingsSection(
+                binding.settingsPanel.settingsLanguageHeader,
+                binding.settingsPanel.settingsLanguageContent,
+                binding.settingsPanel.settingsLanguageChevron,
+                false
+        );
+        configureSettingsSection(
+                binding.settingsPanel.settingsAudioHeader,
+                binding.settingsPanel.settingsAudioContent,
+                binding.settingsPanel.settingsAudioChevron,
+                true
+        );
+        configureSettingsSection(
+                binding.settingsPanel.settingsTutorialsHeader,
+                binding.settingsPanel.settingsTutorialsContent,
+                binding.settingsPanel.settingsTutorialsChevron,
+                false
+        );
+    }
+
+    private void configureSettingsSection(View header, View content, ImageView chevron, boolean expanded) {
+        content.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        chevron.setRotation(expanded ? 180f : 0f);
+        header.setOnClickListener(v -> {
+            boolean isExpanded = content.getVisibility() == View.VISIBLE;
+            content.setVisibility(isExpanded ? View.GONE : View.VISIBLE);
+            chevron.setRotation(isExpanded ? 0f : 180f);
+        });
     }
 
     private void setupRankingProfileSettings() {
