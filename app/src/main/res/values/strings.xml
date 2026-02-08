@@ -170,6 +170,17 @@
     <string name="ranking_loading">Cargando...</string>
     <string name="ranking_no_connection">— Sin conexión —</string>
     <string name="ranking_unavailable">— No disponible —</string>
+    <string name="final_score_title">Resumen final</string>
+    <string name="final_score_captures_subtotal">Subtotal capturas</string>
+    <string name="final_score_bonus">Bonos</string>
+    <string name="final_score_captures_title">Detalle de capturas</string>
+    <string name="final_score_acquired_cards_title">Cartas adquiridas</string>
+    <string name="final_score_ranking_title">Ranking global</string>
+    <string name="final_score_ranking_loading">Consultando ranking...</string>
+    <string name="final_score_continue">Continuar</string>
+    <string name="final_score_capture_points_format">%1$s → %2$d</string>
+    <string name="final_score_capture_image_description">Carta capturada</string>
+    <string name="final_score_unknown_card">Carta desconocida</string>
     <string name="tutorial_next">Siguiente</string>
     <string name="tutorial_step_format">Paso %1$d de %2$d</string>
     <string name="tutorial_dice_step1_title">Selecciona tus dados</string>

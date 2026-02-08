@@ -45,6 +45,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.daille.zonadepescajava_app.databinding.ActivityMainBinding;
@@ -70,6 +71,7 @@ import com.daille.zonadepescajava_app.ui.CardPackOpenDialog;
 import com.daille.zonadepescajava_app.ui.CollectionCardAdapter;
 import com.daille.zonadepescajava_app.ui.DeckSelectionAdapter;
 import com.daille.zonadepescajava_app.ui.DiceImageResolver;
+import com.daille.zonadepescajava_app.ui.FinalScoreCaptureAdapter;
 import com.daille.zonadepescajava_app.ui.TideParticlesView;
 import com.google.android.material.card.MaterialCardView;
 import android.view.animation.DecelerateInterpolator;
@@ -3033,91 +3035,107 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     }
 
     private void showCaptureScoringSequence() {
+        showFinalScoreScreen();
+    }
+
+    private void showFinalScoreScreen() {
         List<Card> captures = new ArrayList<>(gameState.getCaptures());
+        List<FinalScoreCaptureAdapter.Entry> entries = new ArrayList<>();
         int running = 0;
-        List<Integer> cumulative = new ArrayList<>();
         for (Card card : captures) {
-            running += card.getPoints();
-            cumulative.add(running);
+            int points = card.getPoints();
+            running += points;
+            entries.add(new FinalScoreCaptureAdapter.Entry(card, points, running));
         }
         int finalScore = gameState.getScore();
-        continueCaptureScoring(0, captures, cumulative, running, finalScore);
-    }
-
-    private void continueCaptureScoring(int index, List<Card> captures,
-                                        List<Integer> cumulative, int baseTotal, int finalScore) {
-        if (index >= captures.size()) {
-            showBonusScoreDialog(baseTotal, finalScore);
-            return;
-        }
-        Card card = captures.get(index);
-        Bitmap image = cardImageResolver.getImageFor(card, true);
-        if (image == null) {
-            image = cardImageResolver.getCardBack();
-        }
-        int cardPoints = card.getPoints();
-        int cumulativeScore = cumulative.get(index);
-        String overlay = (cardPoints >= 0 ? "+" : "") + cardPoints + " → " + cumulativeScore;
-        CardFullscreenDialog.show(this, image, overlay,
-                () -> continueCaptureScoring(index + 1, captures, cumulative, baseTotal, finalScore));
-    }
-
-    private void showBonusScoreDialog(int baseTotal, int finalScore) {
-        int bonus = finalScore - baseTotal;
+        int bonus = finalScore - running;
         boolean brokeRecord = persistFinalScore(finalScore);
-        String overlay = bonus != 0
-                ? "Bonos: " + (bonus > 0 ? "+" : "") + bonus + "\nTotal: " + finalScore
-                : "Total final: " + finalScore;
-        Bitmap image = cardImageResolver.getCardBack();
-        CardFullscreenDialog.show(this, image, overlay, () -> {
-            Runnable finish = () -> {
-                if (brokeRecord) {
-                    awardRecordBreakPack();
-                } else {
-                    showStartMenu();
-                }
-            };
-            showAcquiredCardsDialogIfNeeded(() -> showGlobalRankingDialogIfNeeded(finalScore, finish));
-        });
-    }
 
-    private void showGlobalRankingDialogIfNeeded(int finalScore, Runnable onComplete) {
-        if (!RankingApiClient.hasInternet(this)) {
-            if (onComplete != null) {
-                onComplete.run();
-            }
-            return;
+        Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.setContentView(R.layout.dialog_final_score);
+
+        TextView totalValue = dialog.findViewById(R.id.finalScoreTotalValue);
+        TextView capturesValue = dialog.findViewById(R.id.finalScoreCapturesValue);
+        TextView bonusValue = dialog.findViewById(R.id.finalScoreBonusValue);
+        View bonusRow = dialog.findViewById(R.id.finalScoreBonusRow);
+        RecyclerView capturesRecycler = dialog.findViewById(R.id.finalScoreCapturesRecycler);
+        View acquiredSection = dialog.findViewById(R.id.finalScoreAcquiredSection);
+        RecyclerView acquiredRecycler = dialog.findViewById(R.id.finalScoreAcquiredRecycler);
+        View rankingSection = dialog.findViewById(R.id.finalScoreRankingSection);
+        TextView rankingValue = dialog.findViewById(R.id.finalScoreRankingValue);
+        Button continueButton = dialog.findViewById(R.id.finalScoreContinue);
+
+        totalValue.setText(String.valueOf(finalScore));
+        capturesValue.setText(String.valueOf(running));
+        if (bonus != 0) {
+            bonusValue.setText((bonus > 0 ? "+" : "") + bonus);
+            bonusRow.setVisibility(View.VISIBLE);
+        } else {
+            bonusRow.setVisibility(View.GONE);
         }
 
-        RankingApiClient.fetchTopAsync(900, (top, err) -> {
-            Integer rank = null;
-            if (err == null) {
-                if (top != null && !top.isEmpty()) {
-                    for (int i = 0; i < top.size(); i++) {
-                        if (finalScore >= top.get(i).puntaje) {
-                            rank = i + 1;
-                            break;
+        capturesRecycler.setLayoutManager(new LinearLayoutManager(this));
+        capturesRecycler.setNestedScrollingEnabled(false);
+        FinalScoreCaptureAdapter captureAdapter = new FinalScoreCaptureAdapter(this, cardImageResolver);
+        captureAdapter.submitList(entries);
+        capturesRecycler.setAdapter(captureAdapter);
+
+        if (acquiredCopiesInMatch.isEmpty()) {
+            acquiredSection.setVisibility(View.GONE);
+        } else {
+            acquiredSection.setVisibility(View.VISIBLE);
+            acquiredRecycler.setLayoutManager(new GridLayoutManager(this, 3));
+            acquiredRecycler.setNestedScrollingEnabled(false);
+            AcquiredCardsAdapter acquiredAdapter = new AcquiredCardsAdapter(this);
+            acquiredAdapter.submitList(new ArrayList<>(acquiredCopiesInMatch));
+            acquiredRecycler.setAdapter(acquiredAdapter);
+        }
+
+        if (!RankingApiClient.hasInternet(this)) {
+            rankingSection.setVisibility(View.GONE);
+        } else {
+            rankingSection.setVisibility(View.VISIBLE);
+            rankingValue.setText(R.string.final_score_ranking_loading);
+            RankingApiClient.fetchTopAsync(900, (top, err) -> {
+                Integer rank = null;
+                if (err == null) {
+                    if (top != null && !top.isEmpty()) {
+                        for (int i = 0; i < top.size(); i++) {
+                            if (finalScore >= top.get(i).puntaje) {
+                                rank = i + 1;
+                                break;
+                            }
                         }
+                        if (rank == null && top.size() < 900) {
+                            rank = top.size() + 1;
+                        }
+                    } else if (top != null && top.isEmpty()) {
+                        rank = 1;
                     }
-                    if (rank == null && top.size() < 900) {
-                        rank = top.size() + 1;
-                    }
-                } else if (top != null && top.isEmpty()) {
-                    rank = 1;
                 }
-            }
 
-            if (rank == null) {
-                if (onComplete != null) {
-                    onComplete.run();
+                if (rank == null) {
+                    rankingSection.setVisibility(View.GONE);
+                    return;
                 }
-                return;
-            }
+                rankingValue.setText(getString(R.string.global_ranking_congrats, rank));
+            });
+        }
 
-            String overlay = getString(R.string.global_ranking_congrats, rank);
-            Bitmap image = cardImageResolver.getCardBack();
-            CardFullscreenDialog.show(this, image, overlay, onComplete);
+        Runnable finish = () -> {
+            acquiredCopiesInMatch.clear();
+            if (brokeRecord) {
+                awardRecordBreakPack();
+            } else {
+                showStartMenu();
+            }
+        };
+        continueButton.setOnClickListener(v -> {
+            dialog.dismiss();
+            finish.run();
         });
+        dialog.setOnCancelListener(cancel -> finish.run());
+        dialog.show();
     }
 
     private void handleReserveDieTap(DieType type) {
@@ -3474,37 +3492,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 && gameState.getCaptures().size() >= 5) {
             binding.gamePanel.getRoot().post(() -> maybeStartTutorial(TutorialType.CARD_RELEASE));
         }
-    }
-
-    private void showAcquiredCardsDialogIfNeeded(Runnable onComplete) {
-        if (acquiredCopiesInMatch.isEmpty()) {
-            if (onComplete != null) {
-                onComplete.run();
-            }
-            return;
-        }
-        Dialog dialog = new Dialog(this);
-        dialog.setContentView(R.layout.dialog_acquired_cards);
-        RecyclerView recyclerView = dialog.findViewById(R.id.acquiredCardsRecycler);
-        recyclerView.setLayoutManager(new GridLayoutManager(this, 3));
-        AcquiredCardsAdapter adapter = new AcquiredCardsAdapter(this);
-        adapter.submitList(new ArrayList<>(acquiredCopiesInMatch));
-        recyclerView.setAdapter(adapter);
-        Button continueButton = dialog.findViewById(R.id.acquiredCardsContinue);
-        continueButton.setOnClickListener(v -> {
-            dialog.dismiss();
-            acquiredCopiesInMatch.clear();
-            if (onComplete != null) {
-                onComplete.run();
-            }
-        });
-        dialog.setOnCancelListener(cancel -> {
-            acquiredCopiesInMatch.clear();
-            if (onComplete != null) {
-                onComplete.run();
-            }
-        });
-        dialog.show();
     }
 
     private void renderCapturedCards() {
