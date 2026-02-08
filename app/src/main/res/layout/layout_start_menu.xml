@@ -20,7 +20,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="3dp"
-            android:text="Pezcard"
+            android:text="@string/app_name"
             android:textSize="35sp"
             style="@style/App.Text.Title.Ocean" />
 
@@ -30,7 +30,7 @@
             android:layout_height="80dp"
             android:layout_marginTop="1dp"
             android:background="@drawable/botonnuevojuego"
-            android:text="Nuevo juego"
+            android:text="@string/start_menu_new_game"
             android:textAllCaps="false"
             android:textStyle="bold"
             android:textSize="18sp"
@@ -45,7 +45,7 @@
             android:layout_height="70dp"
             android:layout_marginTop="0dp"
             android:background="@drawable/botontienda"
-            android:text="Tienda"
+            android:text="@string/start_menu_shop"
             android:textAllCaps="false"
             android:textStyle="bold"
             android:textSize="18sp"
@@ -59,7 +59,7 @@
             android:layout_height="70dp"
             android:layout_marginTop="0dp"
             android:background="@drawable/botonconfiguracion"
-            android:text="Configuración"
+            android:text="@string/start_menu_settings"
             android:textAllCaps="false"
             android:textStyle="bold"
             android:textSize="18sp"
@@ -73,7 +73,7 @@
             android:layout_height="80dp"
             android:layout_marginTop="0dp"
             android:background="@drawable/botoncoleccion"
-            android:text="Colección"
+            android:text="@string/start_menu_collection"
             android:textAllCaps="false"
             android:textStyle="bold"
             android:textSize="18sp"
@@ -87,7 +87,7 @@
             android:layout_height="70dp"
             android:layout_marginTop="0dp"
             android:background="@drawable/botonrecord"
-            android:text="Clasificación"
+            android:text="@string/start_menu_ranking"
             android:textAllCaps="false"
             android:textStyle="bold"
             android:textSize="18sp"
@@ -99,7 +99,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="Records de puntaje"
+            android:text="@string/start_menu_score_records_title"
             style="@style/App.Text.Title.Ocean.Sub" />
 
         <ListView
@@ -117,7 +117,7 @@
             android:id="@+id/scoreRecordsEmpty"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Aún no hay puntajes registrados"
+            android:text="@string/start_menu_score_records_empty"
             android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
             android:textColor="@android:color/darker_gray"
             android:visibility="gone" />

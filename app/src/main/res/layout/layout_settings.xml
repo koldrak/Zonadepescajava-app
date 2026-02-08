@@ -231,7 +231,7 @@
                 android:background="@drawable/botonvolver"
                 android:gravity="center_vertical"
                 android:padding="10dp"
-                android:text="    Volver"
+                android:text="@string/back"
                 android:textAllCaps="false"
                 android:textColor="@android:color/black"
                 android:textSize="18sp"
