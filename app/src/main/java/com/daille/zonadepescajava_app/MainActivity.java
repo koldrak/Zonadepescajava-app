@@ -1594,13 +1594,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void saveTextLanguagePreference(String language) {
         SharedPreferences preferences = getSharedPreferences(PREF_SETTINGS, MODE_PRIVATE);
-        String currentLanguage = preferences.getString(KEY_TEXT_LANGUAGE, LANGUAGE_SPANISH);
-        if (language.equals(currentLanguage)) {
-            return;
+        String storedLanguage = preferences.getString(KEY_TEXT_LANGUAGE, LANGUAGE_SPANISH);
+        if (!language.equals(storedLanguage)) {
+            preferences.edit().putString(KEY_TEXT_LANGUAGE, language).apply();
         }
-        preferences.edit().putString(KEY_TEXT_LANGUAGE, language).apply();
-        updateAppLocalesIfNeeded(language);
-        recreate();
+        if (updateAppLocalesIfNeeded(language)) {
+            recreate();
+        }
     }
 
     private void applySavedTextLanguage() {
@@ -1609,12 +1609,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         updateAppLocalesIfNeeded(language);
     }
 
-    private void updateAppLocalesIfNeeded(String language) {
+    private boolean updateAppLocalesIfNeeded(String language) {
         LocaleListCompat currentLocales = AppCompatDelegate.getApplicationLocales();
         String currentLanguage = currentLocales.isEmpty() ? "" : currentLocales.get(0).getLanguage();
         if (!language.equals(currentLanguage)) {
             AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(language));
+            return true;
         }
+        return false;
     }
 
     private void setupRankingProfileSettings() {
