@@ -2,8 +2,10 @@ package com.daille.zonadepescajava_app.ui;
 
 import android.content.Context;
 import android.content.res.AssetManager;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 
 import com.daille.zonadepescajava_app.model.Card;
 import com.daille.zonadepescajava_app.model.CardId;
@@ -18,7 +20,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import android.content.res.Resources;
 /**
  * Helper that mirrors the asset resolution strategy from the desktop example, but adapted to Android assets.
  */
@@ -28,11 +29,13 @@ public class CardImageResolver {
     private static final String CARD_BACK_FILE = "cartabocaabajo.png";
 
     private final AssetManager assets;
+    private final Context context;
     private final Map<String, Bitmap> cache = new HashMap<>();
     private final Map<CardId, String> explicitMap = new HashMap<>();
     private final Set<String> assetIndex = new HashSet<>();
 
     public CardImageResolver(Context context) {
+        this.context = context;
         this.assets = context.getAssets();
         seedExplicitMap();
         indexAssets();
@@ -57,14 +60,20 @@ public class CardImageResolver {
     private String resolveFrontFile(Card card) {
         if (card == null) return null;
 
+        String prefix = getLanguagePrefix();
+
         String mapped = explicitMap.get(card.getId());
+        String prefixedMapped = applyLanguagePrefix(mapped, prefix);
+        if (assetExists(prefixedMapped)) return prefixedMapped;
         if (assetExists(mapped)) return mapped;
 
         for (String candidate : buildCandidates(card)) {
+            String prefixedCandidate = applyLanguagePrefix(candidate, prefix);
+            if (assetExists(prefixedCandidate)) return prefixedCandidate;
             if (assetExists(candidate)) return candidate;
         }
 
-        return mapped;
+        return prefixedMapped != null ? prefixedMapped : mapped;
     }
 
     private List<String> buildCandidates(Card card) {
@@ -95,6 +104,26 @@ public class CardImageResolver {
 
     private boolean assetExists(String fileName) {
         return fileName != null && assetIndex.contains(fileName);
+    }
+
+    private String applyLanguagePrefix(String fileName, String prefix) {
+        if (fileName == null || prefix == null || prefix.isEmpty()) return fileName;
+        if (fileName.startsWith(prefix)) return fileName;
+        return prefix + fileName;
+    }
+
+    private String getLanguagePrefix() {
+        Resources res = context.getResources();
+        Locale locale;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            locale = res.getConfiguration().getLocales().get(0);
+        } else {
+            locale = res.getConfiguration().locale;
+        }
+        if (locale != null && "en".equals(locale.getLanguage())) {
+            return "in_";
+        }
+        return "";
     }
 
     private void seedExplicitMap() {
