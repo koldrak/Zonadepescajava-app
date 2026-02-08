@@ -6,20 +6,20 @@ public class Card {
     private final CardType type;
     private final int points;
     private final Condition condition;
-    private final String onCatch;
-    private final String onFail;
-    private final String bonus;
+    private final int onCatchResId;
+    private final int onFailResId;
+    private final int bonusResId;
 
     public Card(CardId id, int nameResId, CardType type, int points,
-                Condition condition, String onCatch, String onFail, String bonus) {
+                Condition condition, int onCatchResId, int onFailResId, int bonusResId) {
         this.id = id;
         this.nameResId = nameResId;
         this.type = type;
         this.points = points;
         this.condition = condition;
-        this.onCatch = onCatch;
-        this.onFail = onFail;
-        this.bonus = bonus;
+        this.onCatchResId = onCatchResId;
+        this.onFailResId = onFailResId;
+        this.bonusResId = bonusResId;
     }
 
     public CardId getId() {
@@ -45,15 +45,22 @@ public class Card {
         return condition;
     }
 
-    public String getOnCatch() {
-        return onCatch;
+    public String getOnCatch(GameTextProvider provider) {
+        return resolveText(provider, onCatchResId);
     }
 
-    public String getOnFail() {
-        return onFail;
+    public String getOnFail(GameTextProvider provider) {
+        return resolveText(provider, onFailResId);
     }
 
-    public String getBonus() {
-        return bonus;
+    public String getBonus(GameTextProvider provider) {
+        return resolveText(provider, bonusResId);
+    }
+
+    private String resolveText(GameTextProvider provider, int resId) {
+        if (provider == null || resId == 0) {
+            return "";
+        }
+        return provider.getString(resId);
     }
 }
