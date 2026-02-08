@@ -160,10 +160,30 @@
                     android:visibility="gone">
 
                     <TextView
-                        android:id="@+id/settingsLanguagePlaceholder"
+                        android:id="@+id/settingsLanguageTextTitle"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/settings_language_placeholder" />
+                        android:text="@string/settings_language_texts_title" />
+
+                    <RadioGroup
+                        android:id="@+id/settingsLanguageGroup"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="vertical">
+
+                        <RadioButton
+                            android:id="@+id/settingsLanguageSpanishOption"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_language_spanish" />
+
+                        <RadioButton
+                            android:id="@+id/settingsLanguageEnglishOption"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_language_english" />
+                    </RadioGroup>
                 </LinearLayout>
             </LinearLayout>
 

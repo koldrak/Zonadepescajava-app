@@ -43,6 +43,8 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
+import androidx.core.os.LocaleListCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -233,6 +235,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        applySavedTextLanguage();
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
@@ -815,6 +818,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final String PREF_RANKING = "ranking_prefs";
     private static final String KEY_PLAYER_NAME = "player_name";
     private static final String KEY_PLAYER_COUNTRY = "player_country";
+    private static final String PREF_SETTINGS = "settings_prefs";
+    private static final String KEY_TEXT_LANGUAGE = "text_language";
+    private static final String LANGUAGE_SPANISH = "es";
+    private static final String LANGUAGE_ENGLISH = "en";
 
     private void submitScoreOnlineIfPossible(int finalScore) {
         if (!RankingApiClient.hasInternet(this)) return;
@@ -1456,6 +1463,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void setupSettingsPanel() {
         setButtonClickListener(binding.settingsPanel.settingsBack, this::showStartMenu);
         setupSettingsAccordion();
+        setupTextLanguageSettings();
         binding.settingsPanel.settingsMusicToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
             musicEnabled = !isChecked;
             applyAudioSettings();
@@ -1553,6 +1561,45 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             content.setVisibility(isExpanded ? View.GONE : View.VISIBLE);
             chevron.setRotation(isExpanded ? 0f : 180f);
         });
+    }
+
+    private void setupTextLanguageSettings() {
+        String language = getSharedPreferences(PREF_SETTINGS, MODE_PRIVATE)
+                .getString(KEY_TEXT_LANGUAGE, LANGUAGE_SPANISH);
+        int selectedId = LANGUAGE_ENGLISH.equals(language)
+                ? R.id.settingsLanguageEnglishOption
+                : R.id.settingsLanguageSpanishOption;
+        binding.settingsPanel.settingsLanguageGroup.check(selectedId);
+        binding.settingsPanel.settingsLanguageGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            String selectedLanguage = checkedId == R.id.settingsLanguageEnglishOption
+                    ? LANGUAGE_ENGLISH
+                    : LANGUAGE_SPANISH;
+            saveTextLanguagePreference(selectedLanguage);
+        });
+    }
+
+    private void saveTextLanguagePreference(String language) {
+        SharedPreferences preferences = getSharedPreferences(PREF_SETTINGS, MODE_PRIVATE);
+        String currentLanguage = preferences.getString(KEY_TEXT_LANGUAGE, LANGUAGE_SPANISH);
+        if (language.equals(currentLanguage)) {
+            return;
+        }
+        preferences.edit().putString(KEY_TEXT_LANGUAGE, language).apply();
+        updateAppLocalesIfNeeded(language);
+    }
+
+    private void applySavedTextLanguage() {
+        String language = getSharedPreferences(PREF_SETTINGS, MODE_PRIVATE)
+                .getString(KEY_TEXT_LANGUAGE, LANGUAGE_SPANISH);
+        updateAppLocalesIfNeeded(language);
+    }
+
+    private void updateAppLocalesIfNeeded(String language) {
+        LocaleListCompat currentLocales = AppCompatDelegate.getApplicationLocales();
+        String currentLanguage = currentLocales.isEmpty() ? "" : currentLocales.get(0).getLanguage();
+        if (!language.equals(currentLanguage)) {
+            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(language));
+        }
     }
 
     private void setupRankingProfileSettings() {
