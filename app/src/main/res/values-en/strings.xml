@@ -476,7 +476,7 @@
     <string name="card_ability_pez_globo_on_catch">You can inflate any die result to its maximum value.</string>
     <string name="card_ability_morena_on_catch">Move 1 die from an adjacent card to another adjacent card.</string>
     <string name="card_ability_caballito_de_mar_on_catch">You can recover a lost D4.</string>
-    <string name="card_ability_pez_linterna_on_catch">Select 1 face-down card: if it's a green card, move the die; if it's a black card, you lose the die.</string>
+    <string name="card_ability_pez_linterna_on_catch">Select 1 face-down card: if it is a green card, move the die; if it is a black card, you lose the die.</string>
     <string name="card_ability_koi_on_catch">Swap a die on this card with one from an adjacent face-up card with 1 die.</string>
     <string name="card_ability_pez_volador_on_catch">Reveal a line: if the even die is higher, it is vertical; if it is lower, it is horizontal.</string>
     <string name="card_ability_pirana_on_catch">Discard 1 adjacent face-up light blue card and replace it without losing its dice.</string>
@@ -487,7 +487,7 @@
     <string name="card_ability_congrio_bonus">Grants +1 for each light blue card discarded on a fail.</string>
     <string name="card_ability_pez_betta_on_catch">While face up, you can only place dice in its row.</string>
     <string name="card_ability_trucha_arcoiris_on_catch">Flip an adjacent card; if it is a light blue card, place 1 lost die.</string>
-    <string name="card_ability_pez_piedra_on_catch">The column it's in is not affected by the tide.</string>
+    <string name="card_ability_pez_piedra_on_catch">The column it is in is not affected by the tide.</string>
     <string name="card_ability_pez_leon_on_catch">Double the result of one die.</string>
     <string name="card_ability_pez_dragon_azul_on_catch">Return dice with value ≥ 6 when flipped.</string>
     <string name="card_ability_pez_pipa_on_catch">If you use a D12 to capture it, recover 1 die.</string>
@@ -495,7 +495,7 @@
     <string name="card_ability_carpa_dorada_on_catch">The tide only affects dice; any that leave are lost.</string>
     <string name="card_ability_fletan_on_catch">When the tide activates, choose a face-up fish and turn it face down; recover its die.</string>
     <string name="card_ability_pez_lobo_on_catch">Discard an adjacent face-up card and replace it without losing its dice; then return to the deck.</string>
-    <string name="card_ability_pez_borron_on_catch">Choose 1 face-down card and move this card's die to it without flipping it.</string>
+    <string name="card_ability_pez_borron_on_catch">Choose 1 face-down card and move the die on this card to it without flipping it.</string>
     <string name="card_ability_sepia_on_catch">If the die is odd, look at 3 cards and capture 1 orange one; then shuffle this card into the deck.</string>
     <string name="card_ability_damiselas_on_catch">Look at the top 6 cards of the deck and reorder them.</string>
     <string name="card_ability_lamprea_on_catch">It attaches to a green card and lets you adjust its die ±1 when placing.</string>
