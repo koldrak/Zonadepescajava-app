@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="18dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/globalDetailTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Detalle de partida"
+            android:textStyle="bold"
+            android:textSize="20sp"
+            android:paddingBottom="10dp"/>
+
+        <TextView
+            android:id="@+id/globalDetailPlayer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Jugador:"
+            android:textSize="16sp"
+            android:paddingBottom="6dp"/>
+
+        <TextView
+            android:id="@+id/globalDetailScore"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Puntaje:"
+            android:textSize="16sp"
+            android:paddingBottom="6dp"/>
+
+        <TextView
+            android:id="@+id/globalDetailDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Fecha:"
+            android:textSize="16sp"
+            android:paddingBottom="10dp"/>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#33000000"
+            android:layout_marginBottom="10dp"/>
+
+        <TextView
+            android:id="@+id/globalDetailCaptures"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Cartas capturadas:"
+            android:textSize="16sp"
+            android:paddingBottom="6dp"/>
+
+        <TextView
+            android:id="@+id/globalDetailDuration"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Duración:"
+            android:textSize="16sp"
+            android:paddingBottom="6dp"/>
+
+        <TextView
+            android:id="@+id/globalDetailDice"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Dados:"
+            android:textSize="16sp"
+            android:paddingBottom="6dp"/>
+
+        <TextView
+            android:id="@+id/globalDetailDeck"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Mazo:"
+            android:textSize="16sp"
+            android:paddingBottom="16dp"/>
+
+        <Button
+            android:id="@+id/globalDetailClose"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Cerrar" />
+    </LinearLayout>
+</ScrollView>
