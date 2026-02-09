@@ -930,10 +930,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         return null;
     }
 
-    private int dpToPx(int dp) {
-        float density = getResources().getDisplayMetrics().density;
-        return Math.round(dp * density);
-    }
     private static void setListViewHeightBasedOnChildren(android.widget.ListView listView) {
         android.widget.ListAdapter listAdapter = listView.getAdapter();
         if (listAdapter == null) return;
