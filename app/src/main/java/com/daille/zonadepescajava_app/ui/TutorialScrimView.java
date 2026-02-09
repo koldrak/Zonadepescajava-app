@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TutorialScrimView extends View {
-    private static final int SCRIM_COLOR = 0xB3000000;
+    private static final int SCRIM_COLOR = 0x00000000;
     private final Paint scrimPaint = new Paint();
     private final Paint clearPaint = new Paint();
     private final List<RectF> highlightRects = new ArrayList<>();
@@ -53,6 +53,9 @@ public class TutorialScrimView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+        if (scrimPaint.getAlpha() == 0) {
+            return;
+        }
         canvas.drawRect(0f, 0f, getWidth(), getHeight(), scrimPaint);
         for (RectF rect : highlightRects) {
             if (rect != null) {

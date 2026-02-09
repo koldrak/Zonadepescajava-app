@@ -1999,18 +1999,25 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
             view.setScaleX(1f);
             view.setScaleY(1f);
-            ObjectAnimator scaleX = ObjectAnimator.ofFloat(view, View.SCALE_X, 1f, 1.03f);
-            scaleX.setDuration(600);
+            view.setAlpha(1f);
+            ObjectAnimator scaleX = ObjectAnimator.ofFloat(view, View.SCALE_X, 1f, 1.08f);
+            scaleX.setDuration(500);
             scaleX.setRepeatCount(ObjectAnimator.INFINITE);
             scaleX.setRepeatMode(ObjectAnimator.REVERSE);
-            ObjectAnimator scaleY = ObjectAnimator.ofFloat(view, View.SCALE_Y, 1f, 1.03f);
-            scaleY.setDuration(600);
+            ObjectAnimator scaleY = ObjectAnimator.ofFloat(view, View.SCALE_Y, 1f, 1.08f);
+            scaleY.setDuration(500);
             scaleY.setRepeatCount(ObjectAnimator.INFINITE);
             scaleY.setRepeatMode(ObjectAnimator.REVERSE);
+            ObjectAnimator alpha = ObjectAnimator.ofFloat(view, View.ALPHA, 1f, 0.65f);
+            alpha.setDuration(500);
+            alpha.setRepeatCount(ObjectAnimator.INFINITE);
+            alpha.setRepeatMode(ObjectAnimator.REVERSE);
             scaleX.start();
             scaleY.start();
+            alpha.start();
             tutorialHighlightAnimators.add(scaleX);
             tutorialHighlightAnimators.add(scaleY);
+            tutorialHighlightAnimators.add(alpha);
             tutorialHighlightedViews.add(view);
         }
         binding.tutorialOverlay.getRoot().post(this::updateTutorialScrim);
@@ -2082,6 +2089,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             if (view != null) {
                 view.setScaleX(1f);
                 view.setScaleY(1f);
+                view.setAlpha(1f);
             }
         }
         tutorialHighlightedViews.clear();
