@@ -1551,7 +1551,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 binding.settingsPanel.settingsAudioHeader,
                 binding.settingsPanel.settingsAudioContent,
                 binding.settingsPanel.settingsAudioChevron,
-                true
+                false
         );
         configureSettingsSection(
                 binding.settingsPanel.settingsTutorialsHeader,

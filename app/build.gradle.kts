@@ -22,7 +22,8 @@ android {
           8. Ajuste de habilidades de "Pulpo, Sepia, cangrejo herradura cangrejo ermitaño, ballena jorobada"
           9. Nuevas Cartas de Morsa, Foca moteada, León marino y Manati
           10. incorporacion de combos de capturas
-          11. incorporacion de zonas de pesca
+          11. incorporacion de zonas de pesca con dificultad escalable
+          12. Traduccion al ingles y ruso
          */
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
