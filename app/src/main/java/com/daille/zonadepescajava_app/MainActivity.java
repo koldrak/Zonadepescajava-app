@@ -114,6 +114,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private CollectionCardAdapter collectionCardAdapter;
     private DeckSelectionAdapter deckSelectionAdapter;
     private DeckSelectionAdapter cardSellAdapter;
+    private final List<RankingApiClient.RemoteScore> globalRankingScores = new ArrayList<>();
+    private final Map<CardId, Card> cardLookup = new EnumMap<>(CardId.class);
     private final List<String> deckPresetNames = new ArrayList<>();
     private final List<ImageView> diceTokens = new ArrayList<>();
     private final Card[] lastBoardCards = new Card[9];
@@ -248,6 +250,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         endScoringShown = viewModel.isFinalScoreRecorded();
         cardImageResolver = new CardImageResolver(this);
         diceImageResolver = new DiceImageResolver(this);
+        for (Card card : GameUtils.createAllCards()) {
+            cardLookup.put(card.getId(), card);
+        }
         animationHandler = new Handler(Looper.getMainLooper());
         scoreDatabaseHelper = new ScoreDatabaseHelper(this);
         tutorialPreferences = getSharedPreferences(TUTORIAL_PREFS, MODE_PRIVATE);
@@ -428,6 +433,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         rankingAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>());
         binding.rankingPanel.rankingList.setAdapter(rankingAdapter);
         binding.rankingPanel.rankingList.setEmptyView(binding.rankingPanel.rankingEmpty);
+        binding.rankingPanel.rankingList.setOnItemClickListener((parent, view, position, id) -> {
+            int index = position - 1;
+            if (index < 0 || index >= globalRankingScores.size()) {
+                return;
+            }
+            showGlobalRankingDetail(globalRankingScores.get(index));
+        });
         setButtonClickListener(binding.rankingPanel.rankingBack, this::showStartMenu);
     }
 
@@ -762,6 +774,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void refreshRankingList() {
         List<String> labels = new ArrayList<>();
         labels.add(getString(R.string.ranking_title) + " (TOP 900)");
+        globalRankingScores.clear();
 
         if (!RankingApiClient.hasInternet(this)) {
             labels.add(getString(R.string.ranking_no_connection));
@@ -781,8 +794,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             merged.add(getString(R.string.ranking_title) + " (TOP 900)");
 
             if (err != null || top == null || top.isEmpty()) {
+                globalRankingScores.clear();
                 merged.add(getString(R.string.ranking_unavailable));
             } else {
+                globalRankingScores.clear();
+                globalRankingScores.addAll(top);
                 for (int i = 0; i < top.size(); i++) {
                     RankingApiClient.RemoteScore r = top.get(i);
                     merged.add(String.format(Locale.getDefault(),
@@ -801,6 +817,119 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             rankingAdapter.notifyDataSetChanged();
         });
     }
+
+    private void showGlobalRankingDetail(RankingApiClient.RemoteScore score) {
+        if (score == null) {
+            return;
+        }
+        View dialogView = getLayoutInflater().inflate(R.layout.detalleglobal, null);
+        TextView player = dialogView.findViewById(R.id.globalDetailPlayer);
+        TextView scoreView = dialogView.findViewById(R.id.globalDetailScore);
+        TextView date = dialogView.findViewById(R.id.globalDetailDate);
+        TextView captures = dialogView.findViewById(R.id.globalDetailCaptures);
+        TextView duration = dialogView.findViewById(R.id.globalDetailDuration);
+        LinearLayout diceContainer = dialogView.findViewById(R.id.globalDetailDiceContainer);
+        LinearLayout deckContainer = dialogView.findViewById(R.id.globalDetailDeckContainer);
+        TextView diceEmpty = dialogView.findViewById(R.id.globalDetailDiceEmpty);
+        TextView deckEmpty = dialogView.findViewById(R.id.globalDetailDeckEmpty);
+
+        player.setText(String.format(Locale.getDefault(), "Jugador: %s %s",
+                score.nombre, countryCodeToFlag(score.pais)));
+        scoreView.setText(String.format(Locale.getDefault(), "Puntaje: %d", score.puntaje));
+        date.setText(String.format(Locale.getDefault(), "Fecha: %s", score.fecha));
+        captures.setText(String.format(Locale.getDefault(), "Cartas capturadas: %d", score.capturedCount));
+        duration.setText(String.format(Locale.getDefault(), "Duración: %d min", score.durationMinutes));
+
+        populateDiceThumbnails(diceContainer, diceEmpty, score.diceSides);
+        populateDeckThumbnails(deckContainer, deckEmpty, score.deckCardIds);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(dialogView)
+                .create();
+        Button close = dialogView.findViewById(R.id.globalDetailClose);
+        close.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+    }
+
+    private void populateDiceThumbnails(LinearLayout container, TextView emptyView, List<Integer> diceSides) {
+        container.removeAllViews();
+        if (diceSides == null || diceSides.isEmpty()) {
+            emptyView.setVisibility(View.VISIBLE);
+            return;
+        }
+        int sizePx = dpToPx(36);
+        int marginPx = dpToPx(6);
+        for (Integer side : diceSides) {
+            DieType type = findDieTypeBySides(side == null ? 0 : side);
+            if (type == null) {
+                continue;
+            }
+            Bitmap bmp = diceImageResolver.getTypePreview(type);
+            if (bmp == null) {
+                continue;
+            }
+            ImageView imageView = new ImageView(this);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(sizePx, sizePx);
+            params.setMarginEnd(marginPx);
+            imageView.setLayoutParams(params);
+            imageView.setImageBitmap(bmp);
+            imageView.setContentDescription(type.getLabel());
+            container.addView(imageView);
+        }
+        emptyView.setVisibility(container.getChildCount() == 0 ? View.VISIBLE : View.GONE);
+    }
+
+    private void populateDeckThumbnails(LinearLayout container, TextView emptyView, List<String> deckCardIds) {
+        container.removeAllViews();
+        if (deckCardIds == null || deckCardIds.isEmpty()) {
+            emptyView.setVisibility(View.VISIBLE);
+            return;
+        }
+        int widthPx = dpToPx(52);
+        int heightPx = dpToPx(74);
+        int marginPx = dpToPx(6);
+        for (String id : deckCardIds) {
+            Card card = resolveCardById(id);
+            if (card == null) {
+                continue;
+            }
+            Bitmap bmp = cardImageResolver.getImageFor(card, true);
+            if (bmp == null) {
+                bmp = cardImageResolver.getCardBack();
+            }
+            ImageView imageView = new ImageView(this);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(widthPx, heightPx);
+            params.setMarginEnd(marginPx);
+            imageView.setLayoutParams(params);
+            imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            imageView.setImageBitmap(bmp);
+            imageView.setContentDescription(card.getName(getTextProvider()));
+            container.addView(imageView);
+        }
+        emptyView.setVisibility(container.getChildCount() == 0 ? View.VISIBLE : View.GONE);
+    }
+
+    private Card resolveCardById(String rawId) {
+        if (rawId == null || rawId.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            CardId id = CardId.valueOf(rawId.trim());
+            return cardLookup.get(id);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
+    }
+
+    private DieType findDieTypeBySides(int sides) {
+        for (DieType type : DieType.values()) {
+            if (type.getSides() == sides) {
+                return type;
+            }
+        }
+        return null;
+    }
+
     private static void setListViewHeightBasedOnChildren(android.widget.ListView listView) {
         android.widget.ListAdapter listAdapter = listView.getAdapter();
         if (listAdapter == null) return;
