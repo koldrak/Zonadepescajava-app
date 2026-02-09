@@ -64,6 +64,24 @@ public final class RankingApiClient {
             String fechaYYYYMMDD,
             Callback<Boolean> cb
     ) {
+        submitScoreAsync(
+                nombre, pais, puntaje, fechaYYYYMMDD,
+                0, null, null, 0,
+                cb
+        );
+    }
+
+    public static void submitScoreAsync(
+            String nombre,
+            String pais,
+            int puntaje,
+            String fechaYYYYMMDD,
+            int capturedCount,
+            List<String> deckCardIds,
+            List<Integer> diceSides,
+            int durationMinutes,
+            Callback<Boolean> cb
+    ) {
         IO.execute(() -> {
             Exception error = null;
             boolean ok = false;
@@ -83,6 +101,21 @@ public final class RankingApiClient {
                 body.put("pais", pais);
                 body.put("puntaje", puntaje);
                 body.put("fecha", fechaYYYYMMDD);
+
+                body.put("capturedCount", capturedCount);
+                body.put("durationMinutes", durationMinutes);
+
+                JSONArray deckArr = new JSONArray();
+                if (deckCardIds != null) {
+                    for (String id : deckCardIds) deckArr.put(id);
+                }
+                body.put("deckCardIds", deckArr);
+
+                JSONArray diceArr = new JSONArray();
+                if (diceSides != null) {
+                    for (Integer s : diceSides) diceArr.put(s == null ? 0 : s);
+                }
+                body.put("diceSides", diceArr);
 
                 byte[] payload = body.toString().getBytes(StandardCharsets.UTF_8);
                 try (OutputStream os = conn.getOutputStream()) {
@@ -107,6 +140,7 @@ public final class RankingApiClient {
             MAIN.post(() -> cb.onResult(finalOk, finalErr));
         });
     }
+
 
     public static class RemoteScore {
         public final String nombre;

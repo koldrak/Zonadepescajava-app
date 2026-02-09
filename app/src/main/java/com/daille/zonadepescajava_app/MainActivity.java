@@ -363,8 +363,26 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 );
                 selectedDeck = autoDeck;
             }
+            // ===== snapshot de la partida (mazo + dados + inicio) =====
+            matchStartElapsedMs = android.os.SystemClock.elapsedRealtime();
+
+// mazo del jugador (IDs) — preserva duplicados: ["ATUN","ATUN",...]
+            matchDeckCardIds.clear();
+            for (Card c : selectedDeck) {
+                if (c != null && c.getId() != null) {
+                    matchDeckCardIds.add(c.getId().name());
+                }
+            }
+
+// dados elegidos al inicio (caras)
+            matchDiceSides.clear();
+            for (DieType dt : startingReserve) {
+                if (dt != null) matchDiceSides.add(dt.getSides());
+            }
+
             viewModel.startNewGame(startingReserve, ownedCounts, selectedDeck);
             gameState = viewModel.getGameState();
+
             gameState.setTextProvider(getTextProvider());
             endScoringShown = false;
             acquiredCopiesInMatch.clear();
@@ -807,17 +825,27 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private boolean persistFinalScore(int finalScore) {
         if (!viewModel.isFinalScoreRecorded()) {
             int previousBest = scoreDatabaseHelper.getHighestScore();
+            boolean brokeRecord = finalScore > previousBest;
+
             scoreDatabaseHelper.saveScore(finalScore);
 
-            // ✅ NUEVO: intenta subir al ranking online (solo si hay internet)
-            submitScoreOnlineIfPossible(finalScore);
+            // ✅ Sube online SOLO si rompió récord (misma lógica actual)
+            if (brokeRecord) {
+                submitScoreOnlineIfPossible(finalScore);
+            }
 
             viewModel.markFinalScoreRecorded();
             refreshScoreRecords();
-            return finalScore > previousBest;
+            return brokeRecord;
         }
         return false;
     }
+
+
+    // ===== Match telemetry (para ranking online) =====
+    private long matchStartElapsedMs = 0L;
+    private final java.util.List<String> matchDeckCardIds = new java.util.ArrayList<>();
+    private final java.util.List<Integer> matchDiceSides = new java.util.ArrayList<>();
 
     // ===== RANKING ONLINE =====
     private static final String PREF_RANKING = "ranking_prefs";
@@ -847,11 +875,38 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         String fecha = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
                 .format(new java.util.Date());
 
-        RankingApiClient.submitScoreAsync(nombre, pais, finalScore, fecha, (ok, err) -> {
-            // silencioso: si quieres, aquí puedes mostrar Toast cuando falle
-            // if (!ok && err != null) { ... }
-        });
+        // ===== nuevos datos =====
+        int capturedCount = 0;
+        if (gameState != null && gameState.getCaptures() != null) {
+            capturedCount = gameState.getCaptures().size();
+        }
+
+        int durationMinutes = 0;
+        if (matchStartElapsedMs > 0L) {
+            long elapsedMs = android.os.SystemClock.elapsedRealtime() - matchStartElapsedMs;
+            if (elapsedMs < 0) elapsedMs = 0;
+            durationMinutes = (int) (elapsedMs / 60000L); // minutos (truncado)
+        }
+
+        // clonar listas por seguridad (y preserva duplicados)
+        java.util.List<String> deckToSend = new java.util.ArrayList<>(matchDeckCardIds);
+        java.util.List<Integer> diceToSend = new java.util.ArrayList<>(matchDiceSides);
+
+        RankingApiClient.submitScoreAsync(
+                nombre,
+                pais,
+                finalScore,
+                fecha,
+                capturedCount,
+                deckToSend,
+                diceToSend,
+                durationMinutes,
+                (ok, err) -> {
+                    // silencioso
+                }
+        );
     }
+
 
     private void promptPlayerProfileThenSubmit(int finalScore) {
         android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
@@ -2000,12 +2055,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             view.setScaleX(1f);
             view.setScaleY(1f);
             view.setAlpha(1f);
-            ObjectAnimator scaleX = ObjectAnimator.ofFloat(view, View.SCALE_X, 1f, 1.08f);
-            scaleX.setDuration(500);
+            ObjectAnimator scaleX = ObjectAnimator.ofFloat(view, View.SCALE_X, 1f, 1.04f);
+            scaleX.setDuration(600);
             scaleX.setRepeatCount(ObjectAnimator.INFINITE);
             scaleX.setRepeatMode(ObjectAnimator.REVERSE);
-            ObjectAnimator scaleY = ObjectAnimator.ofFloat(view, View.SCALE_Y, 1f, 1.08f);
-            scaleY.setDuration(500);
+            ObjectAnimator scaleY = ObjectAnimator.ofFloat(view, View.SCALE_Y, 1f, 1.04f);
+            scaleY.setDuration(600);
             scaleY.setRepeatCount(ObjectAnimator.INFINITE);
             scaleY.setRepeatMode(ObjectAnimator.REVERSE);
             ObjectAnimator alpha = ObjectAnimator.ofFloat(view, View.ALPHA, 1f, 0.65f);
