@@ -1983,6 +1983,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void resetTutorialCardPosition() {
         FrameLayout.LayoutParams params =
                 (FrameLayout.LayoutParams) binding.tutorialOverlay.tutorialCard.getLayoutParams();
+        if (activeTutorial == TutorialType.GAME_LOOP && tutorialStepIndex == 3) {
+            params.gravity = Gravity.BOTTOM;
+            int margin = dpToPx(20);
+            params.topMargin = margin;
+            params.bottomMargin = margin;
+            binding.tutorialOverlay.tutorialCard.setLayoutParams(params);
+            return;
+        }
         params.gravity = Gravity.BOTTOM;
         int margin = dpToPx(20);
         params.topMargin = margin;
