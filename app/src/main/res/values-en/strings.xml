@@ -762,7 +762,7 @@
     <string name="game_state_auto_e86b3e03d9">Plastic Bottle: no adjacent face-up light blue cards to mark.</string>
     <string name="game_state_auto_e921e6658e">Choose the card from the deck to replace with the Hermit crab before continuing.</string>
     <string name="game_state_auto_e9283f5e0e">Select a valid slot.</string>
-    <string name="game_state_auto_e9e1dd9250">You haven't rolled any die.</string>
+    <string name="game_state_auto_e9e1dd9250">You haven t rolled any die.</string>
     <string name="game_state_auto_ea0b3f43ca">No Sailfish choice pending.</string>
     <string name="game_state_auto_eadb4f11a2">Lionfish: no dice to multiply.</string>
     <string name="game_state_auto_eb18fa953d">Dolphin prevented the discard: the card returns face down and you recover the dice.</string>
