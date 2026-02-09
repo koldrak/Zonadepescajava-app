@@ -65,20 +65,64 @@
             android:paddingBottom="6dp"/>
 
         <TextView
-            android:id="@+id/globalDetailDice"
+            android:id="@+id/globalDetailDiceLabel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Dados:"
             android:textSize="16sp"
             android:paddingBottom="6dp"/>
 
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:paddingBottom="4dp">
+
+            <LinearLayout
+                android:id="@+id/globalDetailDiceContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
+
         <TextView
-            android:id="@+id/globalDetailDeck"
+            android:id="@+id/globalDetailDiceEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sin datos de dados"
+            android:textSize="14sp"
+            android:paddingBottom="10dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/globalDetailDeckLabel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Mazo:"
             android:textSize="16sp"
-            android:paddingBottom="16dp"/>
+            android:paddingBottom="6dp"/>
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:paddingBottom="4dp">
+
+            <LinearLayout
+                android:id="@+id/globalDetailDeckContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
+
+        <TextView
+            android:id="@+id/globalDetailDeckEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sin datos de cartas"
+            android:textSize="14sp"
+            android:paddingBottom="16dp"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/globalDetailClose"

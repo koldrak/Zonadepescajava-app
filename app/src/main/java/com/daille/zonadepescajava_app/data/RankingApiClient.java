@@ -148,12 +148,22 @@ public final class RankingApiClient {
         public final String pais;
         public final int puntaje;
         public final String fecha;
+        public final int capturedCount;
+        public final List<String> deckCardIds;
+        public final List<Integer> diceSides;
+        public final int durationMinutes;
 
-        public RemoteScore(String nombre, String pais, int puntaje, String fecha) {
+        public RemoteScore(String nombre, String pais, int puntaje, String fecha,
+                           int capturedCount, List<String> deckCardIds,
+                           List<Integer> diceSides, int durationMinutes) {
             this.nombre = nombre;
             this.pais = pais;
             this.puntaje = puntaje;
             this.fecha = fecha;
+            this.capturedCount = capturedCount;
+            this.deckCardIds = deckCardIds;
+            this.diceSides = diceSides;
+            this.durationMinutes = durationMinutes;
         }
     }
 
@@ -180,11 +190,19 @@ public final class RankingApiClient {
                     if (arr != null) {
                         for (int i = 0; i < arr.length(); i++) {
                             JSONObject row = arr.getJSONObject(i);
+                            JSONArray deckArr = row.optJSONArray("deckCardIds");
+                            JSONArray diceArr = row.optJSONArray("diceSides");
+                            List<String> deckCardIds = parseStringArray(deckArr);
+                            List<Integer> diceSides = parseIntArray(diceArr);
                             out.add(new RemoteScore(
                                     row.optString("nombre", "?"),
                                     row.optString("pais", "?"),
                                     row.optInt("puntaje", 0),
-                                    row.optString("fecha", "")
+                                    row.optString("fecha", ""),
+                                    row.optInt("capturedCount", 0),
+                                    deckCardIds,
+                                    diceSides,
+                                    row.optInt("durationMinutes", 0)
                             ));
                         }
                     }
@@ -211,5 +229,29 @@ public final class RankingApiClient {
             while ((line = br.readLine()) != null) sb.append(line);
         }
         return sb.toString();
+    }
+
+    private static List<String> parseStringArray(JSONArray arr) {
+        List<String> out = new ArrayList<>();
+        if (arr == null) return out;
+        for (int i = 0; i < arr.length(); i++) {
+            String value = arr.optString(i, "").trim();
+            if (!value.isEmpty()) {
+                out.add(value);
+            }
+        }
+        return out;
+    }
+
+    private static List<Integer> parseIntArray(JSONArray arr) {
+        List<Integer> out = new ArrayList<>();
+        if (arr == null) return out;
+        for (int i = 0; i < arr.length(); i++) {
+            int value = arr.optInt(i, -1);
+            if (value > 0) {
+                out.add(value);
+            }
+        }
+        return out;
     }
 }
