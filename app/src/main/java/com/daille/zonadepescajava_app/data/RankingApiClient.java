@@ -135,6 +135,7 @@ public final class RankingApiClient {
                 if (conn != null) conn.disconnect();
             }
 
+
             boolean finalOk = ok;
             Exception finalErr = error;
             MAIN.post(() -> cb.onResult(finalOk, finalErr));
