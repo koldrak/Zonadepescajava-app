@@ -1680,25 +1680,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
             View target = getActiveTutorialTouchTarget(event.getRawX(), event.getRawY());
             if (target == null) {
+                View scrollableTarget = findScrollableViewAt(binding.frameLayout, event.getRawX(), event.getRawY());
+                if (scrollableTarget != null) {
+                    return dispatchTouchToView(scrollableTarget, event);
+                }
                 return true;
             }
-            int[] location = new int[2];
-            target.getLocationOnScreen(location);
-            float rawX = event.getRawX();
-            float rawY = event.getRawY();
-            boolean inside =
-                    rawX >= location[0]
-                            && rawX <= location[0] + target.getWidth()
-                            && rawY >= location[1]
-                            && rawY <= location[1] + target.getHeight();
-            if (!inside) {
-                return true;
-            }
-            MotionEvent transformed = MotionEvent.obtain(event);
-            transformed.setLocation(rawX - location[0], rawY - location[1]);
-            boolean handled = target.dispatchTouchEvent(transformed);
-            transformed.recycle();
-            return handled;
+            return dispatchTouchToView(target, event);
         });
     }
 
@@ -1905,7 +1893,61 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         allowed.add(binding.tutorialOverlay.tutorialCard);
         return allowed;
     }
+    private View findScrollableViewAt(View rootView, float rawX, float rawY) {
+        if (rootView == null || rootView.getVisibility() != View.VISIBLE) {
+            return null;
+        }
+        if (rootView == binding.tutorialOverlay.getRoot()) {
+            return null;
+        }
+        int[] location = new int[2];
+        rootView.getLocationOnScreen(location);
+        boolean inside =
+                rawX >= location[0]
+                        && rawX <= location[0] + rootView.getWidth()
+                        && rawY >= location[1]
+                        && rawY <= location[1] + rootView.getHeight();
+        if (!inside) {
+            return null;
+        }
+        if (rootView.canScrollVertically(1)
+                || rootView.canScrollVertically(-1)
+                || rootView.canScrollHorizontally(1)
+                || rootView.canScrollHorizontally(-1)) {
+            return rootView;
+        }
+        if (rootView instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) rootView;
+            for (int i = group.getChildCount() - 1; i >= 0; i--) {
+                View child = group.getChildAt(i);
+                View scrollable = findScrollableViewAt(child, rawX, rawY);
+                if (scrollable != null) {
+                    return scrollable;
+                }
+            }
+        }
+        return null;
+    }
 
+    private boolean dispatchTouchToView(View target, MotionEvent event) {
+        int[] location = new int[2];
+        target.getLocationOnScreen(location);
+        float rawX = event.getRawX();
+        float rawY = event.getRawY();
+        boolean inside =
+                rawX >= location[0]
+                        && rawX <= location[0] + target.getWidth()
+                        && rawY >= location[1]
+                        && rawY <= location[1] + target.getHeight();
+        if (!inside) {
+            return true;
+        }
+        MotionEvent transformed = MotionEvent.obtain(event);
+        transformed.setLocation(rawX - location[0], rawY - location[1]);
+        boolean handled = target.dispatchTouchEvent(transformed);
+        transformed.recycle();
+        return handled;
+    }
     private void highlightTutorialTargets() {
         clearTutorialHighlights();
         if (activeTutorial == null || tutorialStepIndex < 0 || tutorialStepIndex >= tutorialSteps.size()) {
