@@ -279,6 +279,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         } else {
             showStartMenu();
         }
+        showInitialLanguageDialogIfNeeded();
     }
 
     @Override
@@ -826,6 +827,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final String KEY_TEXT_LANGUAGE = "text_language";
     private static final String LANGUAGE_SPANISH = "es";
     private static final String LANGUAGE_ENGLISH = "en";
+    private static final String LANGUAGE_RUSSIAN = "ru";
 
     private void submitScoreOnlineIfPossible(int finalScore) {
         if (!RankingApiClient.hasInternet(this)) return;
@@ -1578,15 +1580,19 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .getString(KEY_TEXT_LANGUAGE, LANGUAGE_SPANISH);
         List<String> languageLabels = Arrays.asList(
                 getString(R.string.settings_language_spanish),
-                getString(R.string.settings_language_english)
+                getString(R.string.settings_language_english),
+                getString(R.string.settings_language_russian)
         );
-        List<String> languageCodes = Arrays.asList(LANGUAGE_SPANISH, LANGUAGE_ENGLISH);
+        List<String> languageCodes = Arrays.asList(LANGUAGE_SPANISH, LANGUAGE_ENGLISH, LANGUAGE_RUSSIAN);
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this,
                 android.R.layout.simple_list_item_1,
                 languageLabels
         );
-        int selectedIndex = LANGUAGE_ENGLISH.equals(language) ? 1 : 0;
+        int selectedIndex = languageCodes.indexOf(language);
+        if (selectedIndex < 0) {
+            selectedIndex = 0;
+        }
         binding.settingsPanel.settingsLanguageDropdown.setAdapter(adapter);
         binding.settingsPanel.settingsLanguageDropdown.setText(languageLabels.get(selectedIndex), false);
         binding.settingsPanel.settingsLanguageDropdown.setOnItemClickListener((parent, view, position, id) ->
@@ -1596,7 +1602,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void saveTextLanguagePreference(String language) {
         SharedPreferences preferences = getSharedPreferences(PREF_SETTINGS, MODE_PRIVATE);
         String storedLanguage = preferences.getString(KEY_TEXT_LANGUAGE, LANGUAGE_SPANISH);
-        if (!language.equals(storedLanguage)) {
+        if (!preferences.contains(KEY_TEXT_LANGUAGE) || !language.equals(storedLanguage)) {
             preferences.edit().putString(KEY_TEXT_LANGUAGE, language).apply();
         }
         if (updateAppLocalesIfNeeded(language)) {
@@ -1627,6 +1633,36 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             startActivity(launchIntent);
         }
         finishAffinity();
+    }
+
+    private void showInitialLanguageDialogIfNeeded() {
+        SharedPreferences preferences = getSharedPreferences(PREF_SETTINGS, MODE_PRIVATE);
+        if (preferences.contains(KEY_TEXT_LANGUAGE)) {
+            return;
+        }
+
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_language_selection, null);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.language_selection_title)
+                .setView(dialogView)
+                .setCancelable(false)
+                .create();
+        dialog.setCanceledOnTouchOutside(false);
+
+        dialogView.findViewById(R.id.languageOptionSpanish).setOnClickListener(v -> {
+            dialog.dismiss();
+            saveTextLanguagePreference(LANGUAGE_SPANISH);
+        });
+        dialogView.findViewById(R.id.languageOptionEnglish).setOnClickListener(v -> {
+            dialog.dismiss();
+            saveTextLanguagePreference(LANGUAGE_ENGLISH);
+        });
+        dialogView.findViewById(R.id.languageOptionRussian).setOnClickListener(v -> {
+            dialog.dismiss();
+            saveTextLanguagePreference(LANGUAGE_RUSSIAN);
+        });
+
+        dialog.show();
     }
 
     private void setupRankingProfileSettings() {

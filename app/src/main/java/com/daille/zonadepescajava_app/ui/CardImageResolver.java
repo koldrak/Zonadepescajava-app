@@ -120,8 +120,15 @@ public class CardImageResolver {
         } else {
             locale = res.getConfiguration().locale;
         }
-        if (locale != null && "en".equals(locale.getLanguage())) {
+        if (locale == null) {
+            return "";
+        }
+        String language = locale.getLanguage();
+        if ("en".equals(language)) {
             return "in_";
+        }
+        if ("ru".equals(language)) {
+            return "ru_";
         }
         return "";
     }

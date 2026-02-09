@@ -189,6 +189,8 @@
     <string name="settings_language_texts_title">Язык текста</string>
     <string name="settings_language_spanish">Испанский</string>
     <string name="settings_language_english">Английский</string>
+    <string name="settings_language_russian">Русский</string>
+    <string name="language_selection_title">Выберите язык</string>
     <string name="settings_section_toggle">Переключить раздел</string>
     <string name="settings_music_volume">Музыка</string>
     <string name="settings_sfx_volume">Звуковые эффекты</string>
