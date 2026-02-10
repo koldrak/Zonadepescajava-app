@@ -1890,6 +1890,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
             advanceTutorialStep();
         });
+        binding.tutorialOverlay.tutorialCloseButton.setOnClickListener(v -> {
+            if (activeTutorial == null) {
+                return;
+            }
+            cancelTutorialOverlay();
+        });
         binding.tutorialOverlay.getRoot().setOnTouchListener((view, event) -> {
             if (activeTutorial == null) {
                 return false;

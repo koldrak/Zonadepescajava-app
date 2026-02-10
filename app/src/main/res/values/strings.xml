@@ -306,6 +306,7 @@
     <string name="final_score_capture_image_description">Carta capturada</string>
     <string name="final_score_unknown_card">Carta desconocida</string>
     <string name="tutorial_next">Siguiente</string>
+    <string name="tutorial_close">Cerrar tutorial</string>
     <string name="tutorial_step_format">Paso %1$d de %2$d</string>
     <string name="tutorial_dice_step1_title">Selecciona tus dados</string>
     <string name="tutorial_dice_step1_message">Toca los dados del almacén para moverlos a la zona de selección.</string>
