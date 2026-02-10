@@ -903,6 +903,7 @@
     <string name="final_score_capture_image_description">Пойманная карта</string>
     <string name="final_score_unknown_card">Неизвестная карта</string>
     <string name="tutorial_next">Далее</string>
+    <string name="tutorial_close">Закрыть обучение</string>
     <string name="tutorial_step_format">Шаг %1$d из %2$d</string>
     <string name="tutorial_dice_step1_title">Выберите ваши кубики</string>
     <string name="tutorial_dice_step1_message">Нажмите на кубики в хранилище, чтобы переместить их в зону выбора.</string>
