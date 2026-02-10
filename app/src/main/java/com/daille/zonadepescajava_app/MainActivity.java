@@ -1894,7 +1894,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             if (activeTutorial == null) {
                 return;
             }
-            cancelTutorialOverlay();
+            dismissTutorialMessage();
         });
         binding.tutorialOverlay.getRoot().setOnTouchListener((view, event) -> {
             if (activeTutorial == null) {
@@ -2042,6 +2042,14 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void completeTutorial(TutorialType type) {
         setTutorialCompleted(type, true);
         cancelTutorialOverlay();
+    }
+
+    private void dismissTutorialMessage() {
+        if (activeTutorial == null) {
+            return;
+        }
+        binding.tutorialOverlay.getRoot().setVisibility(View.GONE);
+        clearTutorialHighlights();
     }
 
     private void cancelTutorialOverlay() {
