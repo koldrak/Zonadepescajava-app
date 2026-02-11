@@ -49,9 +49,13 @@ public final class RankingApiClient {
             NetworkCapabilities caps = cm.getNetworkCapabilities(net);
             if (caps == null) return false;
 
-            return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-                    || caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
-                    || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET);
+            // No depender del tipo de transporte (wifi/celular/vpn/etc.).
+            // Algunos operadores/reportes usan VPN u otros transports sobre datos móviles.
+            if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                return false;
+            }
+
+            return true;
         } catch (Exception ignored) {
             return false;
         }
