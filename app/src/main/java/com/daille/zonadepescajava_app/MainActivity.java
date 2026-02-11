@@ -958,10 +958,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
             scoreDatabaseHelper.saveScore(finalScore);
 
-            // ✅ Sube online SOLO si rompió récord (misma lógica actual)
-            if (brokeRecord) {
-                submitScoreOnlineIfPossible(finalScore);
-            }
+            // Subir cada partida finalizada (el backend decide si entra al top global).
+            submitScoreOnlineIfPossible(finalScore);
 
             viewModel.markFinalScoreRecorded();
             refreshScoreRecords();
