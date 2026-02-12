@@ -10,8 +10,8 @@ android {
         applicationId = "com.daille.zonadepescajava_app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.5"
+        versionCode = 9
+        versionName = "1.9"
         /*1. Correccion de errores en tutoriales
           2.
 */
