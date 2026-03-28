@@ -285,6 +285,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             showStartMenu();
         }
         showInitialLanguageDialogIfNeeded();
+        maybeShowInitialPlayerProfileDialogIfNeeded();
     }
 
     @Override
@@ -988,14 +989,13 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         if (!RankingApiClient.hasInternet(this)) return;
 
         android.content.SharedPreferences sp = getSharedPreferences(PREF_RANKING, MODE_PRIVATE);
-        String nombre = sp.getString(KEY_PLAYER_NAME, null);
-        String pais = sp.getString(KEY_PLAYER_COUNTRY, "CL");
-
-        if (nombre == null || nombre.trim().isEmpty()) {
+        if (!hasCompletePlayerProfile(sp)) {
             promptPlayerProfileThenSubmit(finalScore);
             return;
         }
 
+        String nombre = sp.getString(KEY_PLAYER_NAME, null);
+        String pais = sp.getString(KEY_PLAYER_COUNTRY, "CL");
         nombre = normalizeNombre(nombre);
         pais = normalizePais(pais);
 
@@ -1063,6 +1063,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 .setPositiveButton(R.string.ranking_profile_save, (d, w) -> {
                     String nombre = normalizeNombre(etNombre.getText().toString());
                     int index = spPais.getSelectedItemPosition();
+                    if (index < 0 || index >= countryOptions.size()) {
+                        index = 0;
+                    }
                     String selectedPais = countryOptions.get(index).code;
                     String pais = normalizePais(selectedPais);
 
@@ -1074,6 +1077,76 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
                     // ahora sí, subimos
                     submitScoreOnlineIfPossible(finalScore);
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private boolean hasCompletePlayerProfile() {
+        return hasCompletePlayerProfile(getSharedPreferences(PREF_RANKING, MODE_PRIVATE));
+    }
+
+    private boolean hasCompletePlayerProfile(SharedPreferences preferences) {
+        String nombre = preferences.getString(KEY_PLAYER_NAME, null);
+        String pais = preferences.getString(KEY_PLAYER_COUNTRY, null);
+        return nombre != null
+                && !nombre.trim().isEmpty()
+                && pais != null
+                && pais.trim().length() == 2;
+    }
+
+    private void maybeShowInitialPlayerProfileDialogIfNeeded() {
+        if (viewModel.isInitialized() && !viewModel.isFinalScoreRecorded()) {
+            return;
+        }
+        if (!getSharedPreferences(PREF_SETTINGS, MODE_PRIVATE).contains(KEY_TEXT_LANGUAGE)) {
+            return;
+        }
+        if (hasCompletePlayerProfile()) {
+            return;
+        }
+        showInitialPlayerProfileDialog();
+    }
+
+    private void showInitialPlayerProfileDialog() {
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        layout.setPadding(pad, pad, pad, pad);
+
+        android.widget.EditText etNombre = new android.widget.EditText(this);
+        etNombre.setHint(R.string.ranking_profile_name_hint);
+        etNombre.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(7)});
+        String storedName = getSharedPreferences(PREF_RANKING, MODE_PRIVATE)
+                .getString(KEY_PLAYER_NAME, "");
+        etNombre.setText(storedName == null ? "" : storedName);
+        layout.addView(etNombre);
+
+        List<CountryOption> countryOptions = buildCountryOptions();
+        android.widget.Spinner spPais = new android.widget.Spinner(this);
+        android.content.SharedPreferences sp = getSharedPreferences(PREF_RANKING, MODE_PRIVATE);
+        String storedPais = sp.getString(KEY_PLAYER_COUNTRY, "CL");
+        configureCountrySpinner(spPais, countryOptions, storedPais);
+        layout.addView(spPais);
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(R.string.ranking_profile_title)
+                .setMessage(R.string.ranking_profile_message)
+                .setView(layout)
+                .setPositiveButton(R.string.ranking_profile_save, (d, w) -> {
+                    String nombre = normalizeNombre(etNombre.getText().toString());
+                    int index = spPais.getSelectedItemPosition();
+                    if (index < 0 || index >= countryOptions.size()) {
+                        index = 0;
+                    }
+                    String selectedPais = countryOptions.get(index).code;
+                    String pais = normalizePais(selectedPais);
+
+                    getSharedPreferences(PREF_RANKING, MODE_PRIVATE)
+                            .edit()
+                            .putString(KEY_PLAYER_NAME, nombre)
+                            .putString(KEY_PLAYER_COUNTRY, pais)
+                            .apply();
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
@@ -1781,7 +1854,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                 saveTextLanguagePreference(languageCodes.get(position)));
     }
 
-    private void saveTextLanguagePreference(String language) {
+    private boolean saveTextLanguagePreference(String language) {
         SharedPreferences preferences = getSharedPreferences(PREF_SETTINGS, MODE_PRIVATE);
         String storedLanguage = preferences.getString(KEY_TEXT_LANGUAGE, LANGUAGE_SPANISH);
         if (!preferences.contains(KEY_TEXT_LANGUAGE) || !language.equals(storedLanguage)) {
@@ -1789,7 +1862,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         if (updateAppLocalesIfNeeded(language)) {
             restartApplication();
+            return true;
         }
+        return false;
     }
 
     private void applySavedTextLanguage() {
@@ -1833,15 +1908,24 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
         dialogView.findViewById(R.id.languageOptionSpanish).setOnClickListener(v -> {
             dialog.dismiss();
-            saveTextLanguagePreference(LANGUAGE_SPANISH);
+            boolean restarted = saveTextLanguagePreference(LANGUAGE_SPANISH);
+            if (!restarted) {
+                maybeShowInitialPlayerProfileDialogIfNeeded();
+            }
         });
         dialogView.findViewById(R.id.languageOptionEnglish).setOnClickListener(v -> {
             dialog.dismiss();
-            saveTextLanguagePreference(LANGUAGE_ENGLISH);
+            boolean restarted = saveTextLanguagePreference(LANGUAGE_ENGLISH);
+            if (!restarted) {
+                maybeShowInitialPlayerProfileDialogIfNeeded();
+            }
         });
         dialogView.findViewById(R.id.languageOptionRussian).setOnClickListener(v -> {
             dialog.dismiss();
-            saveTextLanguagePreference(LANGUAGE_RUSSIAN);
+            boolean restarted = saveTextLanguagePreference(LANGUAGE_RUSSIAN);
+            if (!restarted) {
+                maybeShowInitialPlayerProfileDialogIfNeeded();
+            }
         });
 
         dialog.show();

@@ -207,8 +207,8 @@
     <string name="tutorial_game_label">игра</string>
     <string name="tutorial_release_label">выпуск карт</string>
     <string name="tutorial_tide_label">приливы</string>
-    <string name="ranking_profile_title">Онлайн рейтинг</string>
-    <string name="ranking_profile_message">Используется для публикации вашего счета (только при наличии интернета).</string>
+    <string name="ranking_profile_title">Ваш профиль</string>
+    <string name="ranking_profile_message">Мы используем это, чтобы персонализировать ваш профиль и публиковать ваш счёт при наличии интернета.</string>
     <string name="ranking_profile_name_hint">Имя (макс. 7)</string>
     <string name="ranking_profile_save">Сохранить</string>
     <string name="toast_tap_card_continue">Нажмите на карту, чтобы продолжить.</string>

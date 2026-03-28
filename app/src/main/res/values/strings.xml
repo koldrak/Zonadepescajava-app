@@ -207,8 +207,8 @@
     <string name="tutorial_game_label">juego</string>
     <string name="tutorial_release_label">liberar cartas</string>
     <string name="tutorial_tide_label">mareas</string>
-    <string name="ranking_profile_title">Ranking online</string>
-    <string name="ranking_profile_message">Se usará para publicar tu puntaje (solo cuando tengas internet).</string>
+    <string name="ranking_profile_title">Tu perfil</string>
+    <string name="ranking_profile_message">Se usará para personalizar tu perfil y publicar tu puntaje cuando tengas internet.</string>
     <string name="ranking_profile_name_hint">Nombre (máx 7)</string>
     <string name="ranking_profile_save">Guardar</string>
     <string name="toast_tap_card_continue">Toca la carta para continuar.</string>

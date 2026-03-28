@@ -207,8 +207,8 @@
     <string name="tutorial_game_label">game</string>
     <string name="tutorial_release_label">release cards</string>
     <string name="tutorial_tide_label">tides</string>
-    <string name="ranking_profile_title">Online ranking</string>
-    <string name="ranking_profile_message">It will be used to publish your score (only when you have internet).</string>
+    <string name="ranking_profile_title">Your profile</string>
+    <string name="ranking_profile_message">We\'ll use it to personalize your profile and publish your score when you have internet.</string>
     <string name="ranking_profile_name_hint">Name (max 7)</string>
     <string name="ranking_profile_save">Save</string>
     <string name="toast_tap_card_continue">Tap the card to continue.</string>
