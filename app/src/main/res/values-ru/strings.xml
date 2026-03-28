@@ -104,7 +104,7 @@
     <string name="dice_shop_sell_cards">Продать карты</string>
     <string name="dice_selection_create_deck">Создать колоду</string>
     <string name="dice_selection_start_game">Начать игру</string>
-    <string name="dice_selection_minimum_warning">Выберите хотя бы 1 кубик для начала.</string>
+    <string name="dice_selection_minimum_warning">Выберите хотя бы %1$d кубиков для начала.</string>
     <string name="deck_selection_size_warning">Выберите от 30 до 40 карт для колоды.</string>
     <string name="deck_selection_empty_warning">Выберите карты перед сохранением колоды.</string>
     <string name="deck_selection_name_required">Введите имя для колоды.</string>

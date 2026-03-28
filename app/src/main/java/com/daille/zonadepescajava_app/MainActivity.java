@@ -152,7 +152,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private float musicVolume = 1f;
     private float sfxVolume = 1f;
     private float buttonVolume = 0.25f;
-    private boolean musicEnabled = true;
+    private boolean musicEnabled = false;
     private boolean sfxEnabled = true;
     private boolean buttonEnabled = true;
     private List<CountryOption> rankingCountryOptions = Collections.emptyList();
@@ -180,6 +180,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final int DICE_SELECTION_COLUMNS = 4;
     private static final int MIN_DICE_CAPACITY = 6;
     private static final int MAX_DICE_CAPACITY = 10;
+    private static final int MIN_STARTING_DICE = MIN_DICE_CAPACITY;
     private static final int MIN_DECK_CARDS = 30;
     private static final int CARD_SELL_MULTIPLIER = 6;
     private static final int MAX_DECK_CARDS = 40;
@@ -351,8 +352,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setButtonClickListener(binding.diceSelectionPanel.openDeckSelection, this::showDeckSelectionPanel);
         setButtonClickListener(binding.diceSelectionPanel.confirmDiceSelection, () -> {
             List<DieType> startingReserve = extractSelectedDice();
-            if (startingReserve.isEmpty()) {
-                Toast.makeText(this, getString(R.string.dice_selection_minimum_warning), Toast.LENGTH_SHORT).show();
+            if (startingReserve.size() < MIN_STARTING_DICE) {
+                Toast.makeText(this,
+                        getString(R.string.dice_selection_minimum_warning, MIN_STARTING_DICE),
+                        Toast.LENGTH_SHORT).show();
                 return;
             }
             if (activeTutorial == TutorialType.DICE_SELECTION && tutorialStepIndex == 2) {

@@ -104,7 +104,7 @@
     <string name="dice_shop_sell_cards">Vender cartas</string>
     <string name="dice_selection_create_deck">Crear mazo</string>
     <string name="dice_selection_start_game">Iniciar Partida</string>
-    <string name="dice_selection_minimum_warning">Selecciona al menos 1 dado para iniciar.</string>
+    <string name="dice_selection_minimum_warning">Selecciona al menos %1$d dados para iniciar.</string>
     <string name="deck_selection_size_warning">Selecciona entre 30 y 40 cartas para el mazo.</string>
     <string name="deck_selection_empty_warning">Selecciona cartas antes de guardar el mazo.</string>
     <string name="deck_selection_name_required">Ingresa un nombre para el mazo.</string>

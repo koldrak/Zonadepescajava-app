@@ -104,7 +104,7 @@
     <string name="dice_shop_sell_cards">Sell cards</string>
     <string name="dice_selection_create_deck">Create deck</string>
     <string name="dice_selection_start_game">Start game</string>
-    <string name="dice_selection_minimum_warning">Select at least 1 die to start.</string>
+    <string name="dice_selection_minimum_warning">Select at least %1$d dice to start.</string>
     <string name="deck_selection_size_warning">Select between 30 and 40 cards for the deck.</string>
     <string name="deck_selection_empty_warning">Select cards before saving the deck.</string>
     <string name="deck_selection_name_required">Enter a name for the deck.</string>
