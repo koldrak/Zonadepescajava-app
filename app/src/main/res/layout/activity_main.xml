@@ -22,6 +22,11 @@
             android:visibility="gone" />
 
         <include
+            android:id="@+id/deckManagementPanel"
+            layout="@layout/layout_deck_management"
+            android:visibility="gone" />
+
+        <include
             android:id="@+id/diceSelectionPanel"
             layout="@layout/layout_dice_selection"
             android:visibility="gone" />

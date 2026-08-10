@@ -36,7 +36,6 @@ import android.widget.GridLayout;
 import android.widget.GridView;
 import android.widget.LinearLayout;
 import android.widget.ArrayAdapter;
-import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -74,6 +73,7 @@ import com.daille.zonadepescajava_app.ui.CardFullscreenDialog;
 import com.daille.zonadepescajava_app.ui.CardImageResolver;
 import com.daille.zonadepescajava_app.ui.CardPackOpenDialog;
 import com.daille.zonadepescajava_app.ui.CollectionCardAdapter;
+import com.daille.zonadepescajava_app.ui.DeckPresetAdapter;
 import com.daille.zonadepescajava_app.ui.DeckSelectionAdapter;
 import com.daille.zonadepescajava_app.ui.DiceImageResolver;
 import com.daille.zonadepescajava_app.ui.FinalScoreCaptureAdapter;
@@ -112,6 +112,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private ArrayAdapter<String> scoreRecordsAdapter;
     private ArrayAdapter<String> rankingAdapter;
     private CollectionCardAdapter collectionCardAdapter;
+    private DeckPresetAdapter deckPresetAdapter;
     private DeckSelectionAdapter deckSelectionAdapter;
     private DeckSelectionAdapter cardSellAdapter;
     private final List<RankingApiClient.RemoteScore> globalRankingScores = new ArrayList<>();
@@ -129,6 +130,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private TideParticlesView tideParticlesView;
     private final Map<CardId, Integer> deckSelectionCounts = new EnumMap<>(CardId.class);
     private List<Card> selectedDeck = new ArrayList<>();
+    private String activeDeckName;
+    private String editingDeckName;
     private int deckSelectionPoints = 0;
     private int cardSellPoints = 0;
     private CardType deckSelectionFilterType;
@@ -158,6 +161,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private List<CountryOption> rankingCountryOptions = Collections.emptyList();
 
     private static final String TUTORIAL_PREFS = "tutorial_preferences";
+    private static final String DECK_PREFS = "deck_preferences";
+    private static final String ACTIVE_DECK_NAME_KEY = "active_deck_name";
     private static final String TUTORIAL_DICE_DONE_KEY = "tutorial_dice_done";
     private static final String TUTORIAL_DECK_DONE_KEY = "tutorial_deck_done";
     private static final String TUTORIAL_GAME_LOOP_DONE_KEY = "tutorial_game_loop_done";
@@ -182,6 +187,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private static final int MAX_DICE_CAPACITY = 10;
     private static final int MIN_STARTING_DICE = MIN_DICE_CAPACITY;
     private static final int MIN_DECK_CARDS = 30;
+    private static final int MAX_SAVED_DECKS = 9;
+    private static final int MAX_COPIES_PER_CARD = 3;
     private static final int CARD_SELL_MULTIPLIER = 6;
     private static final int MAX_DECK_CARDS = 40;
 
@@ -256,10 +263,12 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         }
         animationHandler = new Handler(Looper.getMainLooper());
         scoreDatabaseHelper = new ScoreDatabaseHelper(this);
+        loadActiveDeck();
         tutorialPreferences = getSharedPreferences(TUTORIAL_PREFS, MODE_PRIVATE);
         setupScoreRecordsList();
         setupMenuButtons();
         setupDiceSelectionUi();
+        setupDeckManagementPanel();
         setupDeckSelectionPanel();
         setupDiceShopPanel();
         setupCardSellPanel();
@@ -292,6 +301,10 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     @Override
     public void onBackPressed() {
         if (isPanelVisible(binding.deckSelectionPanel.getRoot())) {
+            showDeckManagementPanel();
+            return;
+        }
+        if (isPanelVisible(binding.deckManagementPanel.getRoot())) {
             showDiceSelectionPanel();
             return;
         }
@@ -349,7 +362,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void setupMenuButtons() {
         setSoundButtonClickListener(binding.startMenu.startNewGame, this::showDiceSelectionPanel);
         setSoundButtonClickListener(binding.startMenu.openDiceShop, this::showDiceShopPanel);
-        setButtonClickListener(binding.diceSelectionPanel.openDeckSelection, this::showDeckSelectionPanel);
+        setButtonClickListener(binding.diceSelectionPanel.openDeckSelection, this::showDeckManagementPanel);
+        binding.diceSelectionPanel.selectedDeckCard.setOnClickListener(view -> showDeckManagementPanel());
         setButtonClickListener(binding.diceSelectionPanel.confirmDiceSelection, () -> {
             List<DieType> startingReserve = extractSelectedDice();
             if (startingReserve.size() < MIN_STARTING_DICE) {
@@ -363,14 +377,17 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             }
             Map<CardId, Integer> ownedCounts = scoreDatabaseHelper.getCardInventoryCounts();
             if (selectedDeck == null || selectedDeck.size() < MIN_DECK_CARDS || selectedDeck.size() > MAX_DECK_CARDS) {
-                List<Card> autoDeck = GameUtils.buildRandomDeckSelection(
+                selectedDeck = GameUtils.buildRandomDeckSelection(
                         new java.util.Random(),
                         GameUtils.getSelectableCards(ownedCounts),
                         ownedCounts,
                         MIN_DECK_CARDS,
                         MAX_DECK_CARDS
                 );
-                selectedDeck = autoDeck;
+                if (selectedDeck.size() < MIN_DECK_CARDS || selectedDeck.size() > MAX_DECK_CARDS) {
+                    Toast.makeText(this, R.string.deck_selection_size_warning, Toast.LENGTH_SHORT).show();
+                    return;
+                }
             }
             // ===== snapshot de la partida (mazo + dados + inicio) =====
             matchStartElapsedMs = android.os.SystemClock.elapsedRealtime();
@@ -447,6 +464,21 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         setButtonClickListener(binding.rankingPanel.rankingBack, this::showStartMenu);
     }
 
+    private void setupDeckManagementPanel() {
+        deckPresetAdapter = new DeckPresetAdapter(this, this::openDeckEditor);
+        binding.deckManagementPanel.deckManagementRecycler.setLayoutManager(new GridLayoutManager(this, 3));
+        binding.deckManagementPanel.deckManagementRecycler.setAdapter(deckPresetAdapter);
+        setButtonClickListener(binding.deckManagementPanel.deckManagementBack, this::showDiceSelectionPanel);
+        setButtonClickListener(binding.deckManagementPanel.deckManagementCreate, () -> {
+            refreshDeckPresetList();
+            if (deckPresetNames.size() >= MAX_SAVED_DECKS) {
+                Toast.makeText(this, R.string.deck_management_limit_reached, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            openDeckEditor(null);
+        });
+    }
+
     private void setupDeckSelectionPanel() {
         deckSelectionAdapter = new DeckSelectionAdapter(this, this::updateDeckSelectionScore);
         binding.deckSelectionPanel.deckSelectionRecycler.setLayoutManager(new GridLayoutManager(this, 3));
@@ -464,126 +496,113 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             applyDeckSelectionFilter();
         });
         binding.deckSelectionPanel.deckSelectionFilterGroup.check(R.id.deckSelectionFilterAll);
-        setButtonClickListener(binding.deckSelectionPanel.deckSelectionBack, this::showDiceSelectionPanel);
-        setButtonClickListener(binding.deckSelectionPanel.deckSelectionConfirm, () -> {
-            if (deckSelectionAdapter == null) {
-                return;
-            }
-            List<Card> selected = deckSelectionAdapter.getSelectedDeck();
-            selectedDeck = new ArrayList<>(selected);
-            if (selected.size() < MIN_DECK_CARDS || selected.size() > MAX_DECK_CARDS) {
-                Toast.makeText(this, getString(R.string.deck_selection_size_warning), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            selectedDeck = new ArrayList<>(selected);
-            showDiceSelectionPanel();
-        });
-        setButtonClickListener(binding.deckSelectionPanel.deckSelectionSave, this::showDeckSaveDialog);
-        setButtonClickListener(binding.deckSelectionPanel.deckSelectionLoad,
-                () -> showDeckPresetSelectionDialog(R.string.deck_selection_load_title, this::loadDeckPreset));
+        setButtonClickListener(binding.deckSelectionPanel.deckSelectionBack, this::showDeckManagementPanel);
+        setButtonClickListener(binding.deckSelectionPanel.deckSelectionSave, this::saveDeckFromEditor);
         setButtonClickListener(binding.deckSelectionPanel.deckSelectionDelete,
-                () -> showDeckPresetSelectionDialog(R.string.deck_selection_delete_title, this::confirmDeleteDeckPreset));
+                this::confirmDeleteEditingDeck);
     }
 
-    private interface DeckPresetSelectionHandler {
-        void onPresetSelected(String name);
+    private void openDeckEditor(String name) {
+        editingDeckName = name;
+        refreshDeckSelectionList();
+        binding.deckSelectionPanel.deckSelectionName.setText(name == null ? "" : name);
+        binding.deckSelectionPanel.deckSelectionTitle.setText(name == null
+                ? R.string.deck_selection_create_title
+                : R.string.deck_selection_edit_title);
+        binding.deckSelectionPanel.deckSelectionSave.setText(name == null
+                ? R.string.deck_selection_save_and_use
+                : R.string.deck_selection_update_and_use);
+        binding.deckSelectionPanel.deckSelectionDelete.setVisibility(name == null ? View.GONE : View.VISIBLE);
+        if (name != null) {
+            Map<CardId, Integer> preset = scoreDatabaseHelper.getDeckPreset(name);
+            if (preset.isEmpty()) {
+                Toast.makeText(this, R.string.deck_selection_not_found, Toast.LENGTH_SHORT).show();
+                showDeckManagementPanel();
+                return;
+            }
+            deckSelectionAdapter.setSelectionCounts(preset);
+        }
+        showDeckSelectionPanel();
     }
 
-    private void showDeckSaveDialog() {
+    private void saveDeckFromEditor() {
         if (deckSelectionAdapter == null) {
+            return;
+        }
+        String name = binding.deckSelectionPanel.deckSelectionName.getText() == null
+                ? ""
+                : binding.deckSelectionPanel.deckSelectionName.getText().toString().trim();
+        if (name.isEmpty()) {
+            Toast.makeText(this, R.string.deck_selection_name_required, Toast.LENGTH_SHORT).show();
+            binding.deckSelectionPanel.deckSelectionName.requestFocus();
             return;
         }
         Map<CardId, Integer> selection = new EnumMap<>(CardId.class);
         selection.putAll(deckSelectionAdapter.getSelectionCounts());
-        if (selection.isEmpty()) {
-            Toast.makeText(this, getString(R.string.deck_selection_empty_warning), Toast.LENGTH_SHORT).show();
+        int cardCount = getDeckCardCount(selection);
+        if (cardCount < MIN_DECK_CARDS || cardCount > MAX_DECK_CARDS) {
+            Toast.makeText(this, R.string.deck_selection_size_warning, Toast.LENGTH_SHORT).show();
             return;
         }
-        EditText nameInput = new EditText(this);
-        nameInput.setHint(R.string.deck_selection_name_hint);
-        nameInput.setSingleLine(true);
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(R.string.deck_selection_create_title)
-                .setView(nameInput)
-                .setPositiveButton(R.string.deck_selection_save, null)
-                .setNegativeButton(android.R.string.cancel, null)
-                .create();
-        dialog.setOnShowListener(ignored -> {
-            Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-            attachButtonSound(positiveButton);
-            attachButtonSound(dialog.getButton(AlertDialog.BUTTON_NEGATIVE));
-            attachButtonSound(dialog.getButton(AlertDialog.BUTTON_NEUTRAL));
-            positiveButton.setOnClickListener(view -> {
-                String name = nameInput.getText().toString().trim();
-                if (name.isEmpty()) {
-                    Toast.makeText(this, getString(R.string.deck_selection_name_required), Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                Map<CardId, Integer> currentSelection = new EnumMap<>(CardId.class);
-                currentSelection.putAll(deckSelectionAdapter.getSelectionCounts());
-                if (currentSelection.isEmpty()) {
-                    Toast.makeText(this, getString(R.string.deck_selection_empty_warning), Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                boolean saved = scoreDatabaseHelper.saveDeckPreset(name, currentSelection);
-                if (!saved) {
-                    Toast.makeText(this, getString(R.string.deck_selection_save_failed), Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                refreshDeckPresetList();
-                Toast.makeText(this, getString(R.string.deck_selection_saved), Toast.LENGTH_SHORT).show();
-                if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 1) {
-                    advanceTutorialStep();
-                }
-                dialog.dismiss();
-            });
-        });
-        dialog.show();
-    }
-
-    private void showDeckPresetSelectionDialog(int titleResId, DeckPresetSelectionHandler handler) {
         refreshDeckPresetList();
-        if (deckPresetNames.isEmpty()) {
-            Toast.makeText(this, getString(R.string.deck_selection_empty_saved), Toast.LENGTH_SHORT).show();
+        String existingName = findDeckNameIgnoreCase(name);
+        boolean editingSameDeck = editingDeckName != null
+                && editingDeckName.equalsIgnoreCase(name);
+        if (existingName != null && !editingSameDeck) {
+            Toast.makeText(this, R.string.deck_selection_name_exists, Toast.LENGTH_SHORT).show();
             return;
         }
-        CharSequence[] items = deckPresetNames.toArray(new CharSequence[0]);
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(titleResId)
-                .setItems(items, (dlg, which) -> handler.onPresetSelected(deckPresetNames.get(which)))
-                .setNegativeButton(android.R.string.cancel, null)
-                .create();
-        attachDialogButtonSounds(dialog);
-        dialog.show();
-    }
-
-    private void loadDeckPreset(String name) {
-        Map<CardId, Integer> preset = scoreDatabaseHelper.getDeckPreset(name);
-        if (preset.isEmpty()) {
-            Toast.makeText(this, getString(R.string.deck_selection_not_found), Toast.LENGTH_SHORT).show();
+        if (editingDeckName == null && deckPresetNames.size() >= MAX_SAVED_DECKS) {
+            Toast.makeText(this, R.string.deck_management_limit_reached, Toast.LENGTH_SHORT).show();
             return;
         }
-        if (deckSelectionAdapter != null) {
-            deckSelectionAdapter.setSelectionCounts(preset);
+        boolean wasEditing = editingDeckName != null;
+        boolean saved = scoreDatabaseHelper.saveDeckPreset(name, selection);
+        if (!saved) {
+            Toast.makeText(this, R.string.deck_selection_save_failed, Toast.LENGTH_SHORT).show();
+            return;
         }
-        Toast.makeText(this, getString(R.string.deck_selection_loaded), Toast.LENGTH_SHORT).show();
+        if (editingDeckName != null && !editingDeckName.equals(name)) {
+            scoreDatabaseHelper.deleteDeckPreset(editingDeckName);
+        }
+        setActiveDeck(name, selection);
+        editingDeckName = null;
+        Toast.makeText(this, wasEditing ? R.string.deck_selection_updated : R.string.deck_selection_saved,
+                Toast.LENGTH_SHORT).show();
+        if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 1) {
+            advanceTutorialStep();
+        }
+        showDeckManagementPanel();
     }
 
-    private void confirmDeleteDeckPreset(String name) {
+    private String findDeckNameIgnoreCase(String name) {
+        for (String presetName : deckPresetNames) {
+            if (presetName.equalsIgnoreCase(name)) {
+                return presetName;
+            }
+        }
+        return null;
+    }
+
+    private void confirmDeleteEditingDeck() {
+        if (editingDeckName == null) {
+            return;
+        }
+        String name = editingDeckName;
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.deck_selection_delete_title)
                 .setMessage(getString(R.string.deck_selection_delete_confirm_format, name))
                 .setPositiveButton(R.string.deck_selection_delete, (dlg, which) -> {
                     boolean removed = scoreDatabaseHelper.deleteDeckPreset(name);
-                    refreshDeckPresetList();
-                    if (removed) {
-                        Toast.makeText(this, getString(R.string.deck_selection_deleted), Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(this, getString(R.string.deck_selection_delete_failed), Toast.LENGTH_SHORT).show();
+                    if (removed && name.equals(activeDeckName)) {
+                        clearActiveDeck();
                     }
-                    if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 2) {
-                        advanceTutorialStep();
-                    }
+                    Toast.makeText(this, removed
+                                    ? R.string.deck_selection_deleted
+                                    : R.string.deck_selection_delete_failed,
+                            Toast.LENGTH_SHORT).show();
+                    editingDeckName = null;
+                    showDeckManagementPanel();
                 })
                 .setNegativeButton(android.R.string.cancel, null)
                 .create();
@@ -676,7 +695,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void refreshScoreRecords() {
         // ===== 1) TOP PERSONAL (local) =====
-        List<ScoreRecord> records = scoreDatabaseHelper.getTopScores(5);
+        List<ScoreRecord> records = scoreDatabaseHelper.getTopScores(3);
         List<String> labels = new ArrayList<>();
 
         labels.add(getString(R.string.score_records_personal_title));
@@ -715,8 +734,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             );
         }
 
-        // ===== 3) Pedir TOP GLOBAL (10) =====
-        RankingApiClient.fetchTopAsync(10, (top, err) -> {
+        // ===== 3) Pedir resumen TOP GLOBAL (3) =====
+        RankingApiClient.fetchTopAsync(3, (top, err) -> {
             // Volvemos a construir la lista completa: local + global real
             List<String> merged = new ArrayList<>();
 
@@ -740,7 +759,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             if (err != null || top == null || top.isEmpty()) {
                 merged.add(getString(R.string.ranking_unavailable));
             } else {
-                for (int i = 0; i < top.size(); i++) {
+                for (int i = 0; i < Math.min(3, top.size()); i++) {
                     RankingApiClient.RemoteScore r = top.get(i);
 
                     // r.fecha viene como "YYYY-MM-DD" desde tu Worker
@@ -777,7 +796,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void refreshRankingList() {
         List<String> labels = new ArrayList<>();
-        labels.add(getString(R.string.ranking_title) + " (TOP 900)");
+        labels.add(getString(R.string.ranking_title) + " (TOP 300)");
         globalRankingScores.clear();
 
         if (!RankingApiClient.hasInternet(this)) {
@@ -793,9 +812,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         rankingAdapter.addAll(labels);
         rankingAdapter.notifyDataSetChanged();
 
-        RankingApiClient.fetchTopAsync(900, (top, err) -> {
+        RankingApiClient.fetchTopAsync(300, (top, err) -> {
             List<String> merged = new ArrayList<>();
-            merged.add(getString(R.string.ranking_title) + " (TOP 900)");
+            merged.add(getString(R.string.ranking_title) + " (TOP 300)");
 
             if (err != null || top == null || top.isEmpty()) {
                 globalRankingScores.clear();
@@ -803,7 +822,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             } else {
                 globalRankingScores.clear();
                 globalRankingScores.addAll(top);
-                for (int i = 0; i < top.size(); i++) {
+                for (int i = 0; i < Math.min(300, top.size()); i++) {
                     RankingApiClient.RemoteScore r = top.get(i);
                     merged.add(String.format(Locale.getDefault(),
                             "#%d • %s %s — %d (%s)",
@@ -1234,11 +1253,11 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
     private void showStartMenu() {
         cancelTutorialOverlay();
         resetDiceSelection();
-        selectedDeck = new ArrayList<>();
         deckSelectionPoints = 0;
         cardSellPoints = 0;
         binding.startMenu.getRoot().setVisibility(View.VISIBLE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.deckManagementPanel.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.diceShopPanel.getRoot().setVisibility(View.GONE);
         binding.cardSellPanel.getRoot().setVisibility(View.GONE);
@@ -1252,10 +1271,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
     private void showDeckSelectionPanel() {
         cancelTutorialOverlay();
-        refreshDeckSelectionList();
-        refreshDeckPresetList();
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.VISIBLE);
+        binding.deckManagementPanel.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.diceShopPanel.getRoot().setVisibility(View.GONE);
         binding.cardSellPanel.getRoot().setVisibility(View.GONE);
@@ -1267,11 +1285,29 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         binding.deckSelectionPanel.getRoot().post(() -> maybeStartTutorial(TutorialType.DECK_SELECTION));
     }
 
+    private void showDeckManagementPanel() {
+        cancelTutorialOverlay();
+        refreshDeckManagementPanel();
+        binding.startMenu.getRoot().setVisibility(View.GONE);
+        binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.deckManagementPanel.getRoot().setVisibility(View.VISIBLE);
+        binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.diceShopPanel.getRoot().setVisibility(View.GONE);
+        binding.cardSellPanel.getRoot().setVisibility(View.GONE);
+        binding.gamePanel.getRoot().setVisibility(View.GONE);
+        binding.collectionsPanel.getRoot().setVisibility(View.GONE);
+        binding.settingsPanel.getRoot().setVisibility(View.GONE);
+        binding.rankingPanel.getRoot().setVisibility(View.GONE);
+        updateAmbientMusic("ambientalplaya");
+    }
+
     private void showDiceSelectionPanel() {
         cancelTutorialOverlay();
         resetDiceSelection();
+        updateSelectedDeckSummary();
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.deckManagementPanel.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.VISIBLE);
         binding.diceShopPanel.getRoot().setVisibility(View.GONE);
         binding.cardSellPanel.getRoot().setVisibility(View.GONE);
@@ -1288,6 +1324,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         refreshDiceShopUi();
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.deckManagementPanel.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.diceShopPanel.getRoot().setVisibility(View.VISIBLE);
         binding.cardSellPanel.getRoot().setVisibility(View.GONE);
@@ -1303,6 +1340,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         refreshCardSellPanel();
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.deckManagementPanel.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.diceShopPanel.getRoot().setVisibility(View.GONE);
         binding.cardSellPanel.getRoot().setVisibility(View.VISIBLE);
@@ -1317,6 +1355,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         cancelTutorialOverlay();
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.deckManagementPanel.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.diceShopPanel.getRoot().setVisibility(View.GONE);
         binding.cardSellPanel.getRoot().setVisibility(View.GONE);
@@ -1331,6 +1370,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         cancelTutorialOverlay();
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.deckManagementPanel.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.diceShopPanel.getRoot().setVisibility(View.GONE);
         binding.cardSellPanel.getRoot().setVisibility(View.GONE);
@@ -1346,6 +1386,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         cancelTutorialOverlay();
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.deckManagementPanel.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.diceShopPanel.getRoot().setVisibility(View.GONE);
         binding.cardSellPanel.getRoot().setVisibility(View.GONE);
@@ -1362,6 +1403,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         cancelTutorialOverlay();
         binding.startMenu.getRoot().setVisibility(View.GONE);
         binding.deckSelectionPanel.getRoot().setVisibility(View.GONE);
+        binding.deckManagementPanel.getRoot().setVisibility(View.GONE);
         binding.diceSelectionPanel.getRoot().setVisibility(View.GONE);
         binding.diceShopPanel.getRoot().setVisibility(View.GONE);
         binding.cardSellPanel.getRoot().setVisibility(View.GONE);
@@ -1385,7 +1427,6 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
             return first.getName(textProvider).compareToIgnoreCase(second.getName(textProvider));
         });
         deckSelectionCounts.clear();
-        selectedDeck = new ArrayList<>();
         deckSelectionPoints = 0;
         if (deckSelectionAdapter != null) {
             deckSelectionAdapter.submitList(selectable);
@@ -1427,23 +1468,199 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         deckPresetNames.addAll(presets);
     }
 
-    private void updateDeckSelectionScore() {
-        int totalPoints = 0;
-        int totalCards = 0;
-        if (deckSelectionAdapter != null) {
-            List<Card> selected = deckSelectionAdapter.getSelectedDeck();
-            for (Card card : selected) {
-                totalPoints += card.getPoints();
+    private void refreshDeckManagementPanel() {
+        refreshDeckPresetList();
+        List<DeckPresetAdapter.Item> items = new ArrayList<>();
+        boolean activeStillExists = activeDeckName == null;
+        for (String name : deckPresetNames) {
+            Map<CardId, Integer> selection = scoreDatabaseHelper.getDeckPreset(name);
+            boolean isSelected = name.equals(activeDeckName);
+            activeStillExists = activeStillExists || isSelected;
+            items.add(new DeckPresetAdapter.Item(
+                    name,
+                    getDeckCardCount(selection),
+                    getDeckPoints(selection),
+                    getDeckIconRes(selection),
+                    isSelected
+            ));
+        }
+        if (!activeStillExists) {
+            clearActiveDeck();
+        }
+        deckPresetAdapter.submitList(items);
+        binding.deckManagementPanel.deckManagementCount.setText(getString(
+                R.string.deck_management_count_format, items.size(), MAX_SAVED_DECKS));
+        binding.deckManagementPanel.deckManagementEmpty.setVisibility(
+                items.isEmpty() ? View.VISIBLE : View.GONE);
+    }
+
+    private int getDeckCardCount(Map<CardId, Integer> selection) {
+        int total = 0;
+        if (selection == null) {
+            return total;
+        }
+        for (Integer count : selection.values()) {
+            if (count != null && count > 0) {
+                total += count;
             }
-            totalCards = selected.size();
+        }
+        return total;
+    }
+
+    private int getDeckPoints(Map<CardId, Integer> selection) {
+        if (selection == null) {
+            return 0;
+        }
+        List<Card> cards = new ArrayList<>();
+        for (Map.Entry<CardId, Integer> entry : selection.entrySet()) {
+            Card card = cardLookup.get(entry.getKey());
+            int count = entry.getValue() == null ? 0 : entry.getValue();
+            if (card != null && count > 0) {
+                for (int index = 0; index < count; index++) {
+                    cards.add(card);
+                }
+            }
+        }
+        return GameState.calculateCompleteCaptureScore(cards);
+    }
+
+    private int getDeckIconRes(Map<CardId, Integer> selection) {
+        CardType[] tieOrder = {
+                CardType.PEZ,
+                CardType.PEZ_GRANDE,
+                CardType.CRUSTACEO,
+                CardType.OBJETO
+        };
+        CardType winner = CardType.PEZ;
+        int winnerCount = -1;
+        int winnerPoints = -1;
+        for (CardType type : tieOrder) {
+            int countForType = 0;
+            int pointsForType = 0;
+            for (Map.Entry<CardId, Integer> entry : selection.entrySet()) {
+                Card card = cardLookup.get(entry.getKey());
+                int count = entry.getValue() == null ? 0 : entry.getValue();
+                if (card != null && card.getType() == type && count > 0) {
+                    countForType += count;
+                    pointsForType += card.getPoints() * count;
+                }
+            }
+            if (countForType > winnerCount
+                    || (countForType == winnerCount && pointsForType > winnerPoints)) {
+                winner = type;
+                winnerCount = countForType;
+                winnerPoints = pointsForType;
+            }
+        }
+        if (winner == CardType.CRUSTACEO) {
+            return R.drawable.mazona;
+        }
+        if (winner == CardType.PEZ_GRANDE) {
+            return R.drawable.mazove;
+        }
+        if (winner == CardType.OBJETO) {
+            return R.drawable.mazone;
+        }
+        return R.drawable.mazoce;
+    }
+
+    private List<Card> buildDeckFromSelection(Map<CardId, Integer> selection) {
+        List<Card> deck = new ArrayList<>();
+        Map<CardId, Integer> inventory = scoreDatabaseHelper.getCardInventoryCounts();
+        for (Card card : GameUtils.createAllCards()) {
+            int desired = selection.getOrDefault(card.getId(), 0);
+            int owned = inventory.getOrDefault(card.getId(), 0);
+            int copies = Math.min(desired, Math.min(owned, MAX_COPIES_PER_CARD));
+            for (int index = 0; index < copies; index++) {
+                deck.add(card);
+            }
+        }
+        return deck;
+    }
+
+    private void loadActiveDeck() {
+        activeDeckName = getSharedPreferences(DECK_PREFS, MODE_PRIVATE)
+                .getString(ACTIVE_DECK_NAME_KEY, null);
+        if (activeDeckName == null) {
+            selectedDeck = new ArrayList<>();
+            return;
+        }
+        Map<CardId, Integer> selection = scoreDatabaseHelper.getDeckPreset(activeDeckName);
+        if (selection.isEmpty()) {
+            activeDeckName = null;
+            selectedDeck = new ArrayList<>();
+            getSharedPreferences(DECK_PREFS, MODE_PRIVATE).edit()
+                    .remove(ACTIVE_DECK_NAME_KEY)
+                    .apply();
+            return;
+        }
+        selectedDeck = buildDeckFromSelection(selection);
+    }
+
+    private void setActiveDeck(String name, Map<CardId, Integer> selection) {
+        activeDeckName = name;
+        selectedDeck = buildDeckFromSelection(selection);
+        getSharedPreferences(DECK_PREFS, MODE_PRIVATE).edit()
+                .putString(ACTIVE_DECK_NAME_KEY, name)
+                .apply();
+        updateSelectedDeckSummary();
+    }
+
+    private void clearActiveDeck() {
+        activeDeckName = null;
+        selectedDeck = new ArrayList<>();
+        getSharedPreferences(DECK_PREFS, MODE_PRIVATE).edit()
+                .remove(ACTIVE_DECK_NAME_KEY)
+                .apply();
+        updateSelectedDeckSummary();
+    }
+
+    private void updateSelectedDeckSummary() {
+        if (activeDeckName == null) {
+            binding.diceSelectionPanel.selectedDeckImage.setVisibility(View.GONE);
+            binding.diceSelectionPanel.selectedDeckName.setText(R.string.dice_selection_no_deck);
+            binding.diceSelectionPanel.selectedDeckDetails.setText(R.string.dice_selection_no_deck_hint);
+            return;
+        }
+        Map<CardId, Integer> selection = scoreDatabaseHelper.getDeckPreset(activeDeckName);
+        if (selection.isEmpty()) {
+            clearActiveDeck();
+            return;
+        }
+        selectedDeck = buildDeckFromSelection(selection);
+        int totalPoints = GameState.calculateCompleteCaptureScore(selectedDeck);
+        binding.diceSelectionPanel.selectedDeckImage.setImageResource(getDeckIconRes(selection));
+        binding.diceSelectionPanel.selectedDeckImage.setVisibility(View.VISIBLE);
+        binding.diceSelectionPanel.selectedDeckName.setText(activeDeckName);
+        binding.diceSelectionPanel.selectedDeckDetails.setText(getString(
+                R.string.deck_management_item_details, selectedDeck.size(), totalPoints));
+    }
+
+    private void updateDeckSelectionScore() {
+        int totalCards = 0;
+        List<Card> selectedCards = Collections.emptyList();
+        if (deckSelectionAdapter != null) {
+            selectedCards = deckSelectionAdapter.getSelectedDeck();
+            totalCards = selectedCards.size();
             deckSelectionCounts.clear();
             deckSelectionCounts.putAll(deckSelectionAdapter.getSelectionCounts());
         }
-        deckSelectionPoints = totalPoints;
+        deckSelectionPoints = GameState.calculateCompleteCaptureScore(selectedCards);
         binding.deckSelectionPanel.deckSelectionScore.setText(
                 getString(R.string.deck_selection_score_format, deckSelectionPoints));
         binding.deckSelectionPanel.deckSelectionCount.setText(
                 getString(R.string.deck_selection_count_format, totalCards));
+        boolean validSize = totalCards >= MIN_DECK_CARDS && totalCards <= MAX_DECK_CARDS;
+        binding.deckSelectionPanel.deckSelectionSave.setEnabled(validSize);
+        if (totalCards < MIN_DECK_CARDS) {
+            binding.deckSelectionPanel.deckSelectionStatus.setText(getString(
+                    R.string.deck_selection_status_missing_format, MIN_DECK_CARDS - totalCards));
+        } else if (totalCards > MAX_DECK_CARDS) {
+            binding.deckSelectionPanel.deckSelectionStatus.setText(getString(
+                    R.string.deck_selection_status_too_many_format, totalCards - MAX_DECK_CARDS));
+        } else {
+            binding.deckSelectionPanel.deckSelectionStatus.setText(R.string.deck_selection_status_valid);
+        }
         if (activeTutorial == TutorialType.DECK_SELECTION && tutorialStepIndex == 0 && totalCards > 0) {
             advanceTutorialStep();
         }
@@ -2036,12 +2253,8 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
                     R.string.tutorial_deck_step2_title,
                     R.string.tutorial_deck_step2_message,
                     binding.deckSelectionPanel.deckSelectionRecycler,
+                    binding.deckSelectionPanel.deckSelectionName,
                     binding.deckSelectionPanel.deckSelectionSave));
-            tutorialSteps.add(new TutorialStep(
-                    R.string.tutorial_deck_step3_title,
-                    R.string.tutorial_deck_step3_message,
-                    binding.deckSelectionPanel.deckSelectionLoad,
-                    binding.deckSelectionPanel.deckSelectionDelete));
         } else if (type == TutorialType.GAME_LOOP) {
             tutorialSteps.add(new TutorialStep(
                     R.string.tutorial_game_loop_step1_title,
@@ -3591,7 +3804,7 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
         } else {
             rankingSection.setVisibility(View.VISIBLE);
             rankingValue.setText(R.string.final_score_ranking_loading);
-            RankingApiClient.fetchTopAsync(900, (top, err) -> {
+            RankingApiClient.fetchTopAsync(3, (top, err) -> {
                 Integer rank = null;
                 if (err == null) {
                     if (top != null && !top.isEmpty()) {
@@ -4080,6 +4293,9 @@ public class MainActivity extends AppCompatActivity implements BoardSlotAdapter.
 
                 // 👇 CLICK LARGO = CARTA EN GRANDE
                 cardWrapper.setOnLongClickListener(v -> {
+                    if (card == null) {
+                        return true;
+                    }
                     Bitmap fullImage = cardImageResolver.getImageFor(card, true);
                     if (fullImage == null) {
                         fullImage = cardImageResolver.getCardBack();

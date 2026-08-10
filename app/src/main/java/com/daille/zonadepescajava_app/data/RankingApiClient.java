@@ -24,6 +24,8 @@ import java.util.concurrent.Executors;
 
 public final class RankingApiClient {
 
+    private static final int MAX_GLOBAL_RESULTS = 300;
+
     // ✅ CAMBIA ESTO por tu URL real si difiere
     // (en tus capturas es algo como: https://red-king-7a67ranking-api.matiasdaille.workers.dev)
     private static final String BASE_URL = "https://red-king-7a67ranking-api.matiasdaille.workers.dev";
@@ -172,13 +174,14 @@ public final class RankingApiClient {
     }
 
     public static void fetchTopAsync(int limit, Callback<List<RemoteScore>> cb) {
+        int safeLimit = Math.max(0, Math.min(limit, MAX_GLOBAL_RESULTS));
         IO.execute(() -> {
             Exception error = null;
             List<RemoteScore> out = new ArrayList<>();
             HttpURLConnection conn = null;
 
             try {
-                URL url = new URL(BASE_URL + "/top?limit=" + limit);
+                URL url = new URL(BASE_URL + "/top?limit=" + safeLimit);
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setConnectTimeout(TIMEOUT_MS);
@@ -192,7 +195,7 @@ public final class RankingApiClient {
                 if (json.optBoolean("ok", false)) {
                     JSONArray arr = json.optJSONArray("top");
                     if (arr != null) {
-                        for (int i = 0; i < arr.length(); i++) {
+                        for (int i = 0; i < Math.min(arr.length(), safeLimit); i++) {
                             JSONObject row = arr.getJSONObject(i);
                             JSONArray deckArr = row.optJSONArray("deckCardIds");
                             JSONArray diceArr = row.optJSONArray("diceSides");

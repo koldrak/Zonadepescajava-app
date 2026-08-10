@@ -1,79 +1,79 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp"
     android:background="@drawable/menu_background_dice_selection"
+    android:fillViewport="true"
+    android:padding="24dp"
     tools:context=".MainActivity">
-
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:background="@drawable/menu_glass_panel"
         android:elevation="6dp"
         android:orientation="vertical"
         android:padding="20dp">
 
-    <TextView
-        android:id="@+id/diceSelectionInstruction"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        style="@style/App.Text.Title.Ocean.Sub"
-        android:text="@string/dice_selection_instruction"
-        android:textAppearance="@style/TextAppearance.Material3.TitleSmall" />
-
-    <FrameLayout
-        android:id="@+id/diceSelectionZone"
-        android:layout_width="match_parent"
-        android:layout_height="180dp"
-        android:layout_marginBottom="12dp"
-        android:background="@drawable/dice_selection_zone_background"
-        android:padding="12dp">
-
-        <ScrollView
-            android:id="@+id/diceSelectionScroll"
+        <TextView
+            android:id="@+id/diceSelectionInstruction"
+            style="@style/App.Text.Title.Ocean.Sub"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:paddingTop="24dp"
-            android:clipToPadding="false">
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:text="@string/dice_selection_instruction"
+            android:textAppearance="@style/TextAppearance.Material3.TitleSmall" />
 
-            <GridLayout
-                android:id="@+id/diceSelectionGrid"
+        <FrameLayout
+            android:id="@+id/diceSelectionZone"
+            android:layout_width="match_parent"
+            android:layout_height="160dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/dice_selection_zone_background"
+            android:padding="12dp">
+
+            <ScrollView
+                android:id="@+id/diceSelectionScroll"
                 android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingTop="24dp">
+
+                <GridLayout
+                    android:id="@+id/diceSelectionGrid"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:columnCount="4" />
+            </ScrollView>
+
+            <TextView
+                android:id="@+id/diceSelectionLabel"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:columnCount="4" />
-        </ScrollView>
+                android:layout_gravity="start|top"
+                android:layout_margin="8dp"
+                android:background="@drawable/dice_zone_label_background"
+                android:text="@string/dice_selection_zone_label"
+                android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+                android:textColor="@color/marine_deep" />
+        </FrameLayout>
 
         <TextView
-            android:id="@+id/diceSelectionLabel"
-            android:layout_width="wrap_content"
+            android:id="@+id/diceSelectionCounter"
+            style="@style/App.Text.Title.Ocean.Sub"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="start|top"
-            android:layout_margin="8dp"
-            android:background="@drawable/dice_zone_label_background"
-            android:text="@string/dice_selection_zone_label"
-            android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
-            android:textColor="@color/marine_deep" />
-    </FrameLayout>
-
-    <TextView
-        android:id="@+id/diceSelectionCounter"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        style="@style/App.Text.Title.Ocean.Sub"
-        android:text="@string/dice_selection_counter_placeholder"
-        android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
+            android:layout_marginBottom="8dp"
+            android:text="@string/dice_selection_counter_placeholder"
+            android:textAppearance="@style/TextAppearance.Material3.BodyMedium" />
 
         <FrameLayout
             android:id="@+id/diceWarehouseZone"
             android:layout_width="match_parent"
-            android:layout_height="180dp"
-            android:layout_marginBottom="20dp"
+            android:layout_height="160dp"
+            android:layout_marginBottom="12dp"
             android:background="@drawable/dice_warehouse_zone_background"
             android:padding="12dp">
 
@@ -103,42 +103,97 @@
                 android:textColor="@color/marine_deep" />
         </FrameLayout>
 
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/selectedDeckCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            app:cardBackgroundColor="@color/marine_foam"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="3dp"
+            app:strokeColor="@color/marine_turquoise"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="10dp">
+
+                <ImageView
+                    android:id="@+id/selectedDeckImage"
+                    android:layout_width="70dp"
+                    android:layout_height="78dp"
+                    android:contentDescription="@string/deck_management_icon_description"
+                    android:scaleType="fitCenter"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/dice_selection_selected_deck_label"
+                        android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+                        android:textColor="@color/marine_deep" />
+
+                    <TextView
+                        android:id="@+id/selectedDeckName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/dice_selection_no_deck"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                        android:textColor="@color/marine_deep" />
+
+                    <TextView
+                        android:id="@+id/selectedDeckDetails"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/dice_selection_no_deck_hint"
+                        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+                        android:textColor="@color/marine_deep" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/openDeckSelection"
+            android:id="@+id/openDeckSelection"
             android:layout_width="match_parent"
             android:layout_height="80dp"
-            android:layout_marginTop="1dp"
+            android:layout_marginTop="8dp"
             android:background="@drawable/botoncrearmazo"
-            android:text="@string/dice_selection_create_deck"
-            android:textAllCaps="false"
-            android:textStyle="bold"
-            android:textSize="18sp"
-
             android:gravity="center"
+            android:padding="0dp"
+            android:text="@string/dice_selection_manage_decks"
             android:textAlignment="center"
-            android:paddingStart="-80dp"
-            android:paddingEnd="0dp"
+            android:textAllCaps="false"
             android:textColor="@android:color/black"
-            android:padding="0dp"/>
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
         <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/confirmDiceSelection"
+            android:id="@+id/confirmDiceSelection"
             android:layout_width="match_parent"
             android:layout_height="80dp"
             android:layout_marginTop="1dp"
             android:background="@drawable/botonnuevojuego"
-            android:text="@string/dice_selection_start_game"
-            android:textAllCaps="false"
-            android:textStyle="bold"
-            android:textSize="18sp"
-
             android:gravity="center"
+            android:padding="0dp"
+            android:text="@string/dice_selection_start_game"
             android:textAlignment="center"
-            android:paddingStart="-70dp"
-            android:paddingEnd="0dp"
-
+            android:textAllCaps="false"
             android:textColor="@android:color/black"
-            android:padding="0dp"/>
-
+            android:textSize="18sp"
+            android:textStyle="bold" />
     </LinearLayout>
-</LinearLayout>
+</androidx.core.widget.NestedScrollView>

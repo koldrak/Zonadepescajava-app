@@ -4,9 +4,9 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/menu_background_collections"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="@drawable/menu_background_collections"
     tools:context=".MainActivity">
 
     <LinearLayout
@@ -19,31 +19,62 @@
 
         <TextView
             android:id="@+id/deckSelectionTitle"
+            style="@style/App.Text.Title.Ocean"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/deck_selection_title"
-            style="@style/App.Text.Title.Ocean" />
+            android:text="@string/deck_selection_create_title" />
 
-        <TextView
-            android:id="@+id/deckSelectionScore"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/deck_selection_score_placeholder"
-            style="@style/App.Text.Title.Ocean.Sub" />
+            android:layout_marginTop="8dp"
+            android:hint="@string/deck_selection_name_hint">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/deckSelectionName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:imeOptions="actionDone"
+                android:inputType="textCapSentences"
+                android:maxLength="28"
+                android:singleLine="true" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/deckSelectionCount"
+                style="@style/App.Text.Title.Ocean.Sub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/deck_selection_count_placeholder" />
+
+            <TextView
+                android:id="@+id/deckSelectionScore"
+                style="@style/App.Text.Title.Ocean.Sub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/deck_selection_score_placeholder" />
+        </LinearLayout>
 
         <TextView
-            android:id="@+id/deckSelectionCount"
+            android:id="@+id/deckSelectionStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="@string/deck_selection_count_placeholder"
-            style="@style/App.Text.Title.Ocean.Sub" />
+            android:text="@string/deck_selection_status_missing_format"
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+            android:textColor="@color/marine_deep" />
 
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:scrollbars="none">
 
             <com.google.android.material.button.MaterialButtonToggleGroup
@@ -51,8 +82,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                app:singleSelection="true"
-                app:selectionRequired="true">
+                app:selectionRequired="true"
+                app:singleSelection="true">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/deckSelectionFilterAll"
@@ -95,52 +126,11 @@
             </com.google.android.material.button.MaterialButtonToggleGroup>
         </HorizontalScrollView>
 
-        <TextView
-            android:id="@+id/deckSelectionSavedTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/deck_selection_saved_title"
-            style="@style/App.Text.Title.Ocean.Sub" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/deckSelectionSave"
-                style="@style/App.Button.Watercolor"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/deck_selection_save" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/deckSelectionLoad"
-                style="@style/App.Button.Glass"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:text="@string/deck_selection_load" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/deckSelectionDelete"
-                style="@style/App.Button.Glass"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:text="@string/deck_selection_delete" />
-        </LinearLayout>
-
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/deckSelectionRecycler"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:layout_weight="1"
             android:clipToPadding="false"
             android:padding="8dp"
@@ -149,7 +139,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -162,15 +152,23 @@
                 android:text="@string/back" />
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/deckSelectionConfirm"
+                android:id="@+id/deckSelectionDelete"
+                style="@style/App.Button.Glass"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="@string/deck_selection_delete"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/deckSelectionSave"
                 style="@style/App.Button.Watercolor"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:layout_weight="1"
-                android:text="@string/deck_selection_confirm" />
-
+                android:layout_marginStart="8dp"
+                android:layout_weight="1.35"
+                android:text="@string/deck_selection_save_and_use" />
         </LinearLayout>
     </LinearLayout>
-
 </LinearLayout>

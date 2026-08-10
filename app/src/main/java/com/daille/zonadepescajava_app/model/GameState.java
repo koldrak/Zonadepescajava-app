@@ -3007,13 +3007,41 @@ public class GameState {
 
     public int getScore() {
         int sum = 0;
-        int crustaceos = 0, peces = 0, pecesGrandes = 0, objetos = 0;
-        int krillCount = 0, sardinaCount = 0, tiburonMartilloCount = 0, limpiadorCount = 0, tiburonBallenaCount = 0;
-        int copepodoCount = 0, congrioCount = 0, fosaAbisalCount = 0;
         for (Card c : captures) {
             int multiplier = captureMultipliers.getOrDefault(c, 1);
             sum += c.getPoints() * multiplier;
             sum += captureZoneBonuses.getOrDefault(c, 0);
+        }
+        return sum + calculateCompositionBonus(captures, failedDiscards);
+    }
+
+    /**
+     * Returns the deterministic score for a deck when every card is captured.
+     * It includes printed card values and all composition bonuses. Capture streak
+     * multipliers and sea-zone bonuses are excluded because they depend on play order.
+     */
+    public static int calculateCompleteCaptureScore(List<Card> cards) {
+        if (cards == null || cards.isEmpty()) {
+            return 0;
+        }
+        int baseScore = 0;
+        for (Card card : cards) {
+            if (card != null) {
+                baseScore += card.getPoints();
+            }
+        }
+        return baseScore + calculateCompositionBonus(cards, Collections.emptyList());
+    }
+
+    private static int calculateCompositionBonus(List<Card> capturedCards, List<Card> discardedCards) {
+        int crustaceos = 0, peces = 0, pecesGrandes = 0, objetos = 0;
+        int krillCount = 0, sardinaCount = 0, tiburonMartilloCount = 0;
+        int limpiadorCount = 0, tiburonBallenaCount = 0;
+        int copepodoCount = 0, congrioCount = 0, fosaAbisalCount = 0;
+        for (Card c : capturedCards) {
+            if (c == null) {
+                continue;
+            }
             switch (c.getType()) {
                 case CRUSTACEO: crustaceos++; break;
                 case PEZ: peces++; break;
@@ -3033,7 +3061,10 @@ public class GameState {
         int crustaceosFallados = 0;
         int pecesFallados = 0;
         int objetosFallados = 0;
-        for (Card c : failedDiscards) {
+        for (Card c : discardedCards) {
+            if (c == null) {
+                continue;
+            }
             if (c.getType() == CardType.CRUSTACEO) {
                 crustaceosFallados++;
             } else if (c.getType() == CardType.PEZ) {
@@ -3043,17 +3074,18 @@ public class GameState {
             }
         }
 
-        sum += krillCount * crustaceos;
-        sum += copepodoCount * crustaceosFallados;
-        sum += sardinaCount * peces;
-        sum += congrioCount * pecesFallados;
-        sum += tiburonMartilloCount * pecesGrandes * 2;
-        sum += limpiadorCount * objetos * 2;
-        sum += fosaAbisalCount * objetosFallados;
+        int bonus = 0;
+        bonus += krillCount * crustaceos;
+        bonus += copepodoCount * crustaceosFallados;
+        bonus += sardinaCount * peces;
+        bonus += congrioCount * pecesFallados;
+        bonus += tiburonMartilloCount * pecesGrandes * 2;
+        bonus += limpiadorCount * objetos * 2;
+        bonus += fosaAbisalCount * objetosFallados;
         if (crustaceos >= 3) {
-            sum += tiburonBallenaCount * 6;
+            bonus += tiburonBallenaCount * 6;
         }
-        return sum;
+        return bonus;
     }
 
     public ZoneTransition consumeZoneTransition() {

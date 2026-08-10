@@ -59,9 +59,11 @@ public final class CardFullscreenDialog {
         }
         Dialog dialog = new Dialog(context, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
         dialog.setContentView(R.layout.dialog_fullscreen_card);
-        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
 
         ImageView imageView = dialog.findViewById(R.id.fullscreenImage);
+        if (imageView == null) {
+            return;
+        }
         imageView.setImageBitmap(image);
         imageView.setOnClickListener(v -> dialog.dismiss());
 
@@ -160,6 +162,11 @@ public final class CardFullscreenDialog {
             }
         });
         dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT);
+        }
     }
 
     private static String buildAbilityText(Context context, Card card) {

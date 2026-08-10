@@ -18,12 +18,16 @@ import java.util.Map;
 public class ScoreDatabaseHelper extends SQLiteOpenHelper {
 
     private static final String DATABASE_NAME = "scores.db";
-    private static final int DATABASE_VERSION = 9;
+    private static final int DATABASE_VERSION = 10;
     private static final String TABLE_SCORES = "scores";
+    private static final String TABLE_SCORE_RECORDS = "score_records";
     private static final String COLUMN_ID = "id";
     private static final String COLUMN_SCORE = "score";
     private static final String COLUMN_CREATED_AT = "created_at";
     private static final String COLUMN_IS_SEED = "is_seed";
+    private static final String COLUMN_PLAYER_ID = "player_id";
+    private static final String LOCAL_PLAYER_ID = "local_player";
+    private static final int MAX_SCORE_RECORDS = 3;
     private static final String TABLE_CARD_CAPTURES = "card_captures";
     private static final String COLUMN_CARD_ID = "card_id";
     private static final String COLUMN_CAPTURE_COUNT = "capture_count";
@@ -65,6 +69,7 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                 COLUMN_CREATED_AT + " INTEGER NOT NULL, " +
                 COLUMN_IS_SEED + " INTEGER NOT NULL DEFAULT 0"
                 + ")");
+        createScoreRecordsTable(db);
         db.execSQL("CREATE TABLE " + TABLE_CARD_CAPTURES + " (" +
                 COLUMN_CARD_ID + " TEXT PRIMARY KEY, " +
                 COLUMN_CAPTURE_COUNT + " INTEGER NOT NULL DEFAULT 0"
@@ -169,6 +174,16 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
                     COLUMN_IS_SEED + " INTEGER NOT NULL DEFAULT 0");
             markSeedScore(db);
         }
+        if (oldVersion < 10) {
+            createScoreRecordsTable(db);
+            db.execSQL("INSERT INTO " + TABLE_SCORE_RECORDS + " (" +
+                    COLUMN_SCORE + ", " + COLUMN_CREATED_AT + ", " + COLUMN_PLAYER_ID + ") " +
+                    "SELECT " + COLUMN_SCORE + ", " + COLUMN_CREATED_AT + ", '" + LOCAL_PLAYER_ID + "' " +
+                    "FROM " + TABLE_SCORES +
+                    " WHERE " + COLUMN_IS_SEED + " = 0 " +
+                    "ORDER BY " + COLUMN_SCORE + " DESC, " + COLUMN_CREATED_AT + " DESC " +
+                    "LIMIT " + MAX_SCORE_RECORDS);
+        }
     }
 
     public void saveScore(int score) {
@@ -178,6 +193,13 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         values.put(COLUMN_CREATED_AT, System.currentTimeMillis());
         values.put(COLUMN_IS_SEED, 0);
         db.insert(TABLE_SCORES, null, values);
+
+        ContentValues recordValues = new ContentValues();
+        recordValues.put(COLUMN_SCORE, score);
+        recordValues.put(COLUMN_CREATED_AT, values.getAsLong(COLUMN_CREATED_AT));
+        recordValues.put(COLUMN_PLAYER_ID, LOCAL_PLAYER_ID);
+        db.insert(TABLE_SCORE_RECORDS, null, recordValues);
+        pruneScoreRecords(db, LOCAL_PLAYER_ID);
     }
 
     public List<ScoreRecord> getTopScores(int limit) {
@@ -185,10 +207,10 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         List<ScoreRecord> records = new ArrayList<>();
 
         try (Cursor cursor = db.query(
-                TABLE_SCORES,
+                TABLE_SCORE_RECORDS,
                 new String[]{COLUMN_SCORE, COLUMN_CREATED_AT},
-                COLUMN_IS_SEED + " = 0",
-                null,
+                COLUMN_PLAYER_ID + " = ?",
+                new String[]{LOCAL_PLAYER_ID},
                 null,
                 null,
                 COLUMN_SCORE + " DESC",
@@ -202,6 +224,25 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
         }
 
         return records;
+    }
+
+    private void createScoreRecordsTable(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + TABLE_SCORE_RECORDS + " (" +
+                COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                COLUMN_SCORE + " INTEGER NOT NULL, " +
+                COLUMN_CREATED_AT + " INTEGER NOT NULL, " +
+                COLUMN_PLAYER_ID + " TEXT NOT NULL" +
+                ")");
+    }
+
+    private void pruneScoreRecords(SQLiteDatabase db, String playerId) {
+        db.execSQL("DELETE FROM " + TABLE_SCORE_RECORDS +
+                " WHERE " + COLUMN_PLAYER_ID + " = ? AND " + COLUMN_ID + " NOT IN (" +
+                "SELECT " + COLUMN_ID + " FROM " + TABLE_SCORE_RECORDS +
+                " WHERE " + COLUMN_PLAYER_ID + " = ? " +
+                "ORDER BY " + COLUMN_SCORE + " DESC, " + COLUMN_CREATED_AT + " DESC " +
+                "LIMIT " + MAX_SCORE_RECORDS + ")",
+                new String[]{playerId, playerId});
     }
 
     public int getHighestScore() {
@@ -435,6 +476,7 @@ public class ScoreDatabaseHelper extends SQLiteOpenHelper {
     public void resetAllData() {
         SQLiteDatabase db = getWritableDatabase();
         db.delete(TABLE_SCORES, null, null);
+        db.delete(TABLE_SCORE_RECORDS, null, null);
         db.delete(TABLE_CARD_CAPTURES, null, null);
         db.delete(TABLE_DICE_INVENTORY, null, null);
         db.delete(TABLE_CARD_INVENTORY, null, null);
